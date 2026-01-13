@@ -1,4 +1,4 @@
-import { Button, Slider, ComboBox } from "std-widgets.slint";
+import { Button, Slider, ComboBox, ScrollView } from "std-widgets.slint";
 
 component TrackButton {
     in property <string> label;
@@ -74,13 +74,15 @@ export component GrainRustUI inherits Window {
     callback refresh-devices();
     callback apply-settings();
 
-    width: 760px;
-    height: 600px;
     background: #0f0f12;
 
-    VerticalLayout {
-        padding: 12px;
-        spacing: 8px;
+    ScrollView {
+        width: parent.width;
+        height: parent.height;
+
+        VerticalLayout {
+            padding: 12px;
+            spacing: 8px;
 
         Text {
             text: "GrainRust";
@@ -247,49 +249,50 @@ export component GrainRustUI inherits Window {
             Button { text: "Load Project"; clicked => root.load-project(); }
         }
 
-        Rectangle {
-            visible: root.show-settings;
-            background: #15151c;
-            border-color: #2a2a35;
-            border-width: 1px;
-            border-radius: 6px;
-            padding: 12px;
-            VerticalLayout {
-                spacing: 8px;
-
-                Text { text: "Audio Settings"; color: #e4e4ea; font-size: 16px; }
-
-                Text { text: "Output device"; color: #9c9ca4; font-size: 13px; }
-                ComboBox {
-                    model: root.output-devices;
-                    current-index: root.output-device-index;
-                    selected => { root.output-device-selected(self.current-index); }
-                }
-
-                Text { text: "Sample rate"; color: #9c9ca4; font-size: 13px; }
-                ComboBox {
-                    model: root.sample-rates;
-                    current-index: root.sample-rate-index;
-                    selected => { root.sample-rate-selected(self.current-index); }
-                }
-
-                Text { text: "Buffer size"; color: #9c9ca4; font-size: 13px; }
-                ComboBox {
-                    model: root.buffer-sizes;
-                    current-index: root.buffer-size-index;
-                    selected => { root.buffer-size-selected(self.current-index); }
-                }
-
-                HorizontalLayout {
+            Rectangle {
+                visible: root.show-settings;
+                background: #15151c;
+                border-color: #2a2a35;
+                border-width: 1px;
+                border-radius: 6px;
+                padding: 12px;
+                VerticalLayout {
                     spacing: 8px;
-                    Button { text: "Refresh Devices"; clicked => root.refresh-devices(); }
-                    Button { text: "Apply & Restart"; clicked => root.apply-settings(); }
-                }
 
-                Text {
-                    text: root.settings-status;
-                    color: #d0a7ff;
-                    font-size: 12px;
+                    Text { text: "Audio Settings"; color: #e4e4ea; font-size: 16px; }
+
+                    Text { text: "Output device"; color: #9c9ca4; font-size: 13px; }
+                    ComboBox {
+                        model: root.output-devices;
+                        current-index: root.output-device-index;
+                        selected => { root.output-device-selected(self.current-index); }
+                    }
+
+                    Text { text: "Sample rate"; color: #9c9ca4; font-size: 13px; }
+                    ComboBox {
+                        model: root.sample-rates;
+                        current-index: root.sample-rate-index;
+                        selected => { root.sample-rate-selected(self.current-index); }
+                    }
+
+                    Text { text: "Buffer size"; color: #9c9ca4; font-size: 13px; }
+                    ComboBox {
+                        model: root.buffer-sizes;
+                        current-index: root.buffer-size-index;
+                        selected => { root.buffer-size-selected(self.current-index); }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button { text: "Refresh Devices"; clicked => root.refresh-devices(); }
+                        Button { text: "Apply & Restart"; clicked => root.apply-settings(); }
+                    }
+
+                    Text {
+                        text: root.settings-status;
+                        color: #d0a7ff;
+                        font-size: 12px;
+                    }
                 }
             }
         }

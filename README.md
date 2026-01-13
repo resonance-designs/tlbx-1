@@ -9,6 +9,7 @@ GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4
 - Per-track level, mute, and loop controls (start/length/x-fade)
 - Project save/load (JSON)
 - Standalone audio device settings (device, sample rate, buffer size)
+- Smoothed per-track level changes to reduce crackle
 
 ## Build
 
@@ -29,6 +30,7 @@ Build a plugin binary using nih-plug (VST3/CLAP/etc.) depending on your local se
 - Loop Start/Length/XFade apply to the active track
 - Save/Load Project stores track paths and loop/mix state
 - Settings panel is for standalone audio device configuration
+- UI scrolls if the window is too small to show all controls
 
 ## Project Files
 Project files are saved as JSON and include:

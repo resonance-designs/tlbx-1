@@ -43,6 +43,8 @@ struct Track {
     play_pos: AtomicU32,
     /// Track output level (linear gain).
     level: AtomicU32,
+    /// Smoothed track output level (linear gain).
+    level_smooth: AtomicU32,
     /// Track mute state.
     is_muted: AtomicBool,
     /// Loop start position as normalized 0..1.
@@ -67,6 +69,7 @@ impl Default for Track {
             is_playing: AtomicBool::new(false),
             play_pos: AtomicU32::new(0.0f32.to_bits()),
             level: AtomicU32::new(1.0f32.to_bits()),
+            level_smooth: AtomicU32::new(1.0f32.to_bits()),
             is_muted: AtomicBool::new(false),
             loop_start: AtomicU32::new(0.0f32.to_bits()),
             loop_length: AtomicU32::new(1.0f32.to_bits()),
@@ -297,9 +300,18 @@ impl Plugin for GrainRust {
 
                     let num_samples = samples[0].len();
                     let num_channels = samples.len();
+                    let num_buffer_samples = buffer.samples();
                     let track_level =
                         f32::from_bits(track.level.load(Ordering::Relaxed));
                     let track_muted = track.is_muted.load(Ordering::Relaxed);
+                    let target_level = if track_muted { 0.0 } else { track_level };
+                    let mut smooth_level =
+                        f32::from_bits(track.level_smooth.load(Ordering::Relaxed));
+                    let level_step = if num_buffer_samples > 0 {
+                        (target_level - smooth_level) / num_buffer_samples as f32
+                    } else {
+                        0.0
+                    };
                     let loop_enabled = track.loop_enabled.load(Ordering::Relaxed);
                     let loop_start_norm =
                         f32::from_bits(track.loop_start.load(Ordering::Relaxed))
@@ -310,8 +322,6 @@ impl Plugin for GrainRust {
                     let loop_xfade_norm =
                         f32::from_bits(track.loop_xfade.load(Ordering::Relaxed))
                             .clamp(0.0, 0.5);
-                    
-                    let num_buffer_samples = buffer.samples();
                     let output = buffer.as_slice();
                     let mut play_pos = f32::from_bits(track.play_pos.load(Ordering::Relaxed));
 
@@ -372,9 +382,8 @@ impl Plugin for GrainRust {
                                     }
                                 }
                             }
-                            if !track_muted {
-                                output[channel_idx][sample_idx] += sample_value * track_level;
-                            }
+                            let level = smooth_level + level_step * sample_idx as f32;
+                            output[channel_idx][sample_idx] += sample_value * level;
                         }
 
                         play_pos += 1.0;
@@ -386,6 +395,10 @@ impl Plugin for GrainRust {
                     }
                     
                     track.play_pos.store(play_pos.to_bits(), Ordering::Relaxed);
+                    smooth_level += level_step * num_buffer_samples as f32;
+                    track
+                        .level_smooth
+                        .store(smooth_level.to_bits(), Ordering::Relaxed);
                 }
             }
         }
@@ -607,7 +620,7 @@ impl Editor for SlintEditor {
             &ParentWindowHandleAdapter(parent),
             WindowOpenOptions {
                 title: "GrainRust".to_string(),
-                size: baseview::Size::new(760.0, 600.0),
+                size: baseview::Size::new(1280.0, 800.0),
                 scale: WindowScalePolicy::SystemScaleFactor,
                 gl_config: None,
             },
@@ -618,7 +631,7 @@ impl Editor for SlintEditor {
     }
 
     fn size(&self) -> (u32, u32) {
-        (760, 600)
+        (1280, 800)
     }
 
     fn set_scale_factor(&self, _factor: f32) -> bool {
@@ -680,8 +693,8 @@ impl SlintWindow {
         let (project_dialog_tx, project_dialog_rx) = mpsc::channel();
 
         let scale_factor = 1.0_f32;
-        let logical_width = 820.0_f32;
-        let logical_height = 720.0_f32;
+        let logical_width = 1280.0_f32;
+        let logical_height = 800.0_f32;
         let physical_width = (logical_width * scale_factor).round() as u32;
         let physical_height = (logical_height * scale_factor).round() as u32;
 

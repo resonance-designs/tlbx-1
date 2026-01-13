@@ -1981,10 +1981,11 @@ dependencies = [
 
 [[package]]
 name = "grainrust"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "baseview",
  "cpal",
+ "fastrand",
  "fundsp",
  "hound",
  "nih_plug",
@@ -1998,6 +1999,7 @@ dependencies = [
  "slint-build",
  "softbuffer",
  "symphonia",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

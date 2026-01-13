@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## [0.1.1] - 2026-01-13
+
+- Added per-track engine loader with confirmation prompt
+- Default UI now starts minimal and reveals controls after engine load
+
+## [0.1.0] - 2026-01-13
+
 - Switched UI to Slint with baseview + softbuffer renderer
 - Added global transport and per-track playback
 - Added per-track level/mute and loop controls (start/length/x-fade)

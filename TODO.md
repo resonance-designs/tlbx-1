@@ -11,9 +11,9 @@
 
 ## Phase 2: Material Device (Tape)
 
-- [ ] Implement tape device parameters: speed, tempo, start, length, rotate, x-fade
-- [ ] Implement tape actions: load, monitor, overdub, record, save, reverse, freeze, keylock
-- [ ] Add UI for tape page 1/2 parameters and action buttons
+- [x] Implement tape device parameters: speed, tempo, start, length, rotate, x-fade
+- [x] Implement tape actions: load, monitor, overdub, record, save, reverse, freeze, keylock
+- [x] Add UI for tape page 1/2 parameters and action buttons
 
 ## Phase 3: Material Device (Poly)
 

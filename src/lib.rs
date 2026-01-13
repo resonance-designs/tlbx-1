@@ -127,8 +127,6 @@ struct Track {
     loop_mode: AtomicU32,
     /// Playback direction for ping-pong mode.
     loop_dir: AtomicI32,
-    /// Last loop start position in samples (for jump-to behavior).
-    loop_start_last: AtomicU32,
     /// Engine type loaded for this track (0 = none, 1 = tape).
     engine_type: AtomicU32,
     /// Logs one debug line per playback start to confirm audio thread output.
@@ -174,7 +172,6 @@ impl Default for Track {
             loop_enabled: AtomicBool::new(true),
             loop_mode: AtomicU32::new(0),
             loop_dir: AtomicI32::new(1),
-            loop_start_last: AtomicU32::new(0),
             engine_type: AtomicU32::new(0),
             debug_logged: AtomicBool::new(false),
             sample_rate: AtomicU32::new(44_100),
@@ -652,21 +649,6 @@ impl Plugin for GrainRust {
                     };
                     if tape_reverse {
                         direction *= -1;
-                    }
-                    if loop_mode == 5 && loop_active {
-                        let last_start = track.loop_start_last.load(Ordering::Relaxed) as usize;
-                        if last_start != loop_start {
-                            play_pos = loop_start as f32;
-                            if keylock_enabled {
-                                keylock_phase = 0.0;
-                                keylock_grain_a = play_pos;
-                                keylock_grain_b =
-                                    play_pos + direction as f32 * KEYLOCK_GRAIN_HOP as f32;
-                            }
-                        }
-                        track
-                            .loop_start_last
-                            .store(loop_start as u32, Ordering::Relaxed);
                     }
 
                     if !track.debug_logged.swap(true, Ordering::Relaxed) {
@@ -1943,7 +1925,6 @@ fn initialize_ui(
         SharedString::from("One-Shot"),
         SharedString::from("Reverse"),
         SharedString::from("Random Start"),
-        SharedString::from("Jump To"),
     ])));
     ui.set_visualizer_modes(ModelRc::new(VecModel::from(vec![
         SharedString::from("Oscilloscope"),
@@ -2099,9 +2080,6 @@ fn initialize_ui(
                 } else {
                     track.play_pos.store(loop_start.to_bits(), Ordering::Relaxed);
                 }
-                track
-                    .loop_start_last
-                    .store(loop_start as u32, Ordering::Relaxed);
                 let mut direction = if loop_mode == 3 { -1 } else { 1 };
                 if track.tape_reverse.load(Ordering::Relaxed) {
                     direction *= -1;
@@ -2433,7 +2411,7 @@ fn initialize_ui(
     ui.on_loop_mode_selected(move |index| {
         let track_idx = params_loop.selected_track.value().saturating_sub(1) as usize;
         if track_idx < NUM_TRACKS {
-        let mode = index.clamp(0, 5) as u32;
+            let mode = index.clamp(0, 4) as u32;
             tracks_loop[track_idx]
                 .loop_mode
                 .store(mode, Ordering::Relaxed);

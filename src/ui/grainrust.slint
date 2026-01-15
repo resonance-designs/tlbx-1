@@ -131,6 +131,7 @@ export component GrainRustUI inherits Window {
     in-out property <float> track-meter-right: 0.0;
     in-out property <float> tape-speed: 1.0;
     in-out property <float> tape-tempo: 120.0;
+    in property <string> tempo-label;
     in property <[string]> tape-rate-modes;
     in-out property <int> tape-rate-mode: 0;
     in property <[string]> ring-decay-modes;
@@ -184,6 +185,11 @@ export component GrainRustUI inherits Window {
     in-out property <bool> engine-loaded: false;
     in-out property <bool> mosaic-enabled: true;
     in-out property <bool> ring-enabled: false;
+    in-out property <bool> metronome-enabled: false;
+    in-out property <float> metronome-count-in: 0.0;
+    in-out property <bool> metronome-count-playback: false;
+    in-out property <bool> metronome-count-record: false;
+    in property <string> metronome-count-in-label;
     in-out property <bool> show-engine-confirm: false;
     in property <string> engine-confirm-text;
 
@@ -240,6 +246,10 @@ export component GrainRustUI inherits Window {
     callback ring-wet-changed(value: float);
     callback ring-detune-changed(value: float);
     callback toggle-ring-enabled();
+    callback toggle-metronome();
+    callback metronome-count-in-changed(value: float);
+    callback toggle-metronome-count-playback();
+    callback toggle-metronome-count-record();
     callback save-sample();
     callback loop-start-changed(value: float);
     callback loop-length-changed(value: float);
@@ -295,6 +305,25 @@ export component GrainRustUI inherits Window {
                     changed => {
                         root.gain = self.value;
                         root.gain-changed(self.value);
+                    }
+                }
+            }
+
+            VerticalLayout {
+                spacing: 4px;
+                width: 180px;
+                Text {
+                    text: root.tempo-label;
+                    color: #b9b9bf;
+                    font-size: 12px;
+                }
+                Slider {
+                    value: root.tape-tempo;
+                    minimum: 20;
+                    maximum: 240;
+                    changed => {
+                        root.tape-tempo = self.value;
+                        root.tape-tempo-changed(self.value);
                     }
                 }
             }
@@ -1139,6 +1168,42 @@ export component GrainRustUI inherits Window {
                             model: root.buffer-sizes;
                             current-index: root.buffer-size-index;
                             selected => { root.buffer-size-selected(self.current-index); }
+                        }
+                    }
+
+                    Text { text: "Metronome"; color: #e4e4ea; font-size: 15px; }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: root.metronome-enabled ? "Metronome On" : "Metronome Off";
+                            clicked => root.toggle-metronome();
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text { text: root.metronome-count-in-label; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
+                        Slider {
+                            value: root.metronome-count-in;
+                            minimum: 0;
+                            maximum: 8;
+                            changed => {
+                                root.metronome-count-in = self.value;
+                                root.metronome-count-in-changed(self.value);
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: root.metronome-count-playback ? "Count-In Playback On" : "Count-In Playback Off";
+                            clicked => root.toggle-metronome-count-playback();
+                        }
+                        Button {
+                            text: root.metronome-count-record ? "Count-In Record On" : "Count-In Record Off";
+                            clicked => root.toggle-metronome-count-record();
                         }
                     }
 

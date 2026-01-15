@@ -1,6 +1,6 @@
 # GrainRust
 
-Version: 0.1.3
+Version: 0.1.4
 
 GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4] - 2026-01-15
+
+- Added ring modulator effect with adjustable parameters including cutoff, resonance, decay, pitch, tone, tilt, slope, wet/dry mix, detuning, waveform selection, and noise integration
+- Metronome with count-in support for playback and recording modes
+- Global tempo control with host tempo synchronization capability
+- Tempo settings persistence across project saves and loads
+
 ## [0.1.3] - 2026-01-14
 
 - Added Mosaic parameter smoothing and full DSP mapping

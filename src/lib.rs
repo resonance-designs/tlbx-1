@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.3
+ * Version: 0.1.4
  * Component: Core Logic
  */
 
@@ -33,7 +33,7 @@ use baseview::{
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use raw_window_handle_06 as raw_window_handle_06;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command as ProcessCommand;
 use std::sync::atomic::AtomicI32;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -318,7 +318,70 @@ struct Track {
     ring_low: [AtomicU32; 2],
     /// Ring filter band-pass state per channel.
     ring_band: [AtomicU32; 2],
-    /// Engine type loaded for this track (0 = none, 1 = tape).
+    /// Animate slot types (0 = wavetable, 1 = sample).
+    animate_slot_types: [AtomicU32; 4],
+    /// Animate slot wavetable indices.
+    animate_slot_wavetables: [AtomicU32; 4],
+    /// Animate slot sample indices.
+    animate_slot_samples: [AtomicU32; 4],
+    /// Animate slot coarse pitch.
+    animate_slot_coarse: [AtomicU32; 4],
+    /// Animate slot fine pitch.
+    animate_slot_fine: [AtomicU32; 4],
+    /// Animate slot level.
+    animate_slot_level: [AtomicU32; 4],
+    /// Smoothed animate slot level.
+    animate_slot_level_smooth: [AtomicU32; 4],
+    /// Animate slot pan.
+    animate_slot_pan: [AtomicU32; 4],
+    /// Smoothed animate slot pan.
+    animate_slot_pan_smooth: [AtomicU32; 4],
+    /// Animate vector position X (0..1).
+    animate_vector_x: AtomicU32,
+    /// Animate vector position Y (0..1).
+    animate_vector_y: AtomicU32,
+    /// Smoothed animate vector position X.
+    animate_vector_x_smooth: AtomicU32,
+    /// Smoothed animate vector position Y.
+    animate_vector_y_smooth: AtomicU32,
+    /// Animate filter cutoff.
+    animate_filter_cutoff: AtomicU32,
+    /// Smoothed animate filter cutoff.
+    animate_filter_cutoff_smooth: AtomicU32,
+    /// Animate filter resonance.
+    animate_filter_resonance: AtomicU32,
+    /// Smoothed animate filter resonance.
+    animate_filter_resonance_smooth: AtomicU32,
+    /// Animate filter drive.
+    animate_filter_drive: AtomicU32,
+    /// Animate filter type.
+    animate_filter_type: AtomicU32,
+    /// Animate amp envelope attack.
+    animate_amp_attack: AtomicU32,
+    /// Animate amp envelope decay.
+    animate_amp_decay: AtomicU32,
+    /// Animate amp envelope sustain.
+    animate_amp_sustain: AtomicU32,
+    /// Animate amp envelope release.
+    animate_amp_release: AtomicU32,
+    /// Animate sequencer grid (10 rows * 16 steps).
+    animate_sequencer_grid: Arc<[AtomicBool; 160]>,
+    /// Animate sequencer current step.
+    animate_sequencer_step: AtomicI32,
+    /// Animate sequencer phase in samples.
+    animate_sequencer_phase: AtomicU32,
+    /// Animate slot oscillator phases (0..1).
+    animate_slot_phases: [AtomicU32; 4],
+    /// Animate slot sample playback positions (in samples).
+    animate_slot_sample_pos: [AtomicU32; 4],
+    /// Animate amp envelope stage (0 = idle, 1 = attack, 2 = decay, 3 = sustain, 4 = release).
+    animate_amp_stage: AtomicU32,
+    /// Animate amp envelope level (0..1).
+    animate_amp_level: AtomicU32,
+    /// Animate filter state (history for each channel).
+    animate_filter_v1: [AtomicU32; 2],
+    animate_filter_v2: [AtomicU32; 2],
+    /// Engine type loaded for this track (0 = none, 1 = tape, 2 = animate).
     engine_type: AtomicU32,
     /// Logs one debug line per playback start to confirm audio thread output.
     debug_logged: AtomicBool,
@@ -442,6 +505,38 @@ impl Default for Track {
             ring_enabled: AtomicBool::new(false),
             ring_low: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             ring_band: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_slot_types: std::array::from_fn(|_| AtomicU32::new(0)),
+            animate_slot_wavetables: std::array::from_fn(|_| AtomicU32::new(0)),
+            animate_slot_samples: std::array::from_fn(|_| AtomicU32::new(0)),
+            animate_slot_coarse: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_slot_fine: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_slot_level: std::array::from_fn(|_| AtomicU32::new(1.0f32.to_bits())),
+            animate_slot_level_smooth: std::array::from_fn(|_| AtomicU32::new(1.0f32.to_bits())),
+            animate_slot_pan: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_slot_pan_smooth: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_vector_x: AtomicU32::new(0.5f32.to_bits()),
+            animate_vector_y: AtomicU32::new(0.5f32.to_bits()),
+            animate_vector_x_smooth: AtomicU32::new(0.5f32.to_bits()),
+            animate_vector_y_smooth: AtomicU32::new(0.5f32.to_bits()),
+            animate_filter_cutoff: AtomicU32::new(0.5f32.to_bits()),
+            animate_filter_cutoff_smooth: AtomicU32::new(0.5f32.to_bits()),
+            animate_filter_resonance: AtomicU32::new(0.5f32.to_bits()),
+            animate_filter_resonance_smooth: AtomicU32::new(0.5f32.to_bits()),
+            animate_filter_drive: AtomicU32::new(0.0f32.to_bits()),
+            animate_filter_type: AtomicU32::new(0),
+            animate_amp_attack: AtomicU32::new(0.01f32.to_bits()),
+            animate_amp_decay: AtomicU32::new(0.1f32.to_bits()),
+            animate_amp_sustain: AtomicU32::new(0.8f32.to_bits()),
+            animate_amp_release: AtomicU32::new(0.3f32.to_bits()),
+            animate_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
+            animate_sequencer_step: AtomicI32::new(-1),
+            animate_sequencer_phase: AtomicU32::new(0),
+            animate_slot_phases: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_slot_sample_pos: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_amp_stage: AtomicU32::new(0),
+            animate_amp_level: AtomicU32::new(0.0f32.to_bits()),
+            animate_filter_v1: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_filter_v2: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             engine_type: AtomicU32::new(0),
             debug_logged: AtomicBool::new(false),
             sample_rate: AtomicU32::new(44_100),
@@ -462,6 +557,12 @@ pub struct GrainRust {
     metronome_count_in_record: Arc<AtomicBool>,
     metronome_phase_samples: u32,
     metronome_click_remaining: u32,
+    animate_library: Arc<AnimateLibrary>,
+}
+
+struct AnimateLibrary {
+    wavetables: Vec<Vec<f32>>,
+    samples: Vec<Vec<Vec<f32>>>,
 }
 
 #[derive(Params)]
@@ -471,6 +572,43 @@ pub struct GrainRustParams {
 
     #[id = "gain"]
     pub gain: FloatParam,
+}
+
+impl AnimateLibrary {
+    fn load() -> Self {
+        let mut wavetables = Vec::new();
+        let mut samples = Vec::new();
+
+        fn scan_dir(dir: &Path, wavetables: &mut Vec<Vec<f32>>, samples: &mut Vec<Vec<Vec<f32>>>, is_wavetable: bool) {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                let mut sorted_entries: Vec<_> = entries.flatten().collect();
+                sorted_entries.sort_by_key(|e| e.file_name());
+
+                for entry in sorted_entries {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        scan_dir(&path, wavetables, samples, is_wavetable);
+                    } else if path.extension().map_or(false, |ext| ext == "wav" || ext == "mp3") {
+                        if let Ok((data, _)) = load_audio_file(&path) {
+                            if is_wavetable {
+                                // For wavetables, we only take the first channel
+                                if !data.is_empty() {
+                                    wavetables.push(data[0].clone());
+                                }
+                            } else {
+                                samples.push(data);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        scan_dir(Path::new("src/library/factory/wavetables"), &mut wavetables, &mut samples, true);
+        scan_dir(Path::new("src/library/factory/samples"), &mut wavetables, &mut samples, false);
+
+        Self { wavetables, samples }
+    }
 }
 
 impl Default for GrainRust {
@@ -495,6 +633,7 @@ impl Default for GrainRust {
             metronome_count_in_record: Arc::new(AtomicBool::new(false)),
             metronome_phase_samples: 0,
             metronome_click_remaining: 0,
+            animate_library: Arc::new(AnimateLibrary::load()),
         }
     }
 }
@@ -698,6 +837,47 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
             channel.fill(0.0);
         }
     }
+    for i in 0..4 {
+        track.animate_slot_types[i].store(0, Ordering::Relaxed);
+        track.animate_slot_wavetables[i].store(0, Ordering::Relaxed);
+        track.animate_slot_samples[i].store(0, Ordering::Relaxed);
+        track.animate_slot_coarse[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_fine[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_level[i].store(1.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_level_smooth[i].store(1.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_pan[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_pan_smooth[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+    }
+    track.animate_vector_x.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_vector_y.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_vector_x_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_vector_y_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_filter_cutoff.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_filter_cutoff_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_filter_resonance.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_filter_resonance_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.animate_filter_drive.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.animate_filter_type.store(0, Ordering::Relaxed);
+    track.animate_amp_attack.store(0.01f32.to_bits(), Ordering::Relaxed);
+    track.animate_amp_decay.store(0.1f32.to_bits(), Ordering::Relaxed);
+    track.animate_amp_sustain.store(0.8f32.to_bits(), Ordering::Relaxed);
+    track.animate_amp_release.store(0.3f32.to_bits(), Ordering::Relaxed);
+    for i in 0..160 {
+        track.animate_sequencer_grid[i].store(false, Ordering::Relaxed);
+    }
+    track.animate_sequencer_step.store(-1, Ordering::Relaxed);
+    track.animate_sequencer_phase.store(0, Ordering::Relaxed);
+    for i in 0..4 {
+        track.animate_slot_phases[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_sample_pos[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+    }
+    track.animate_amp_stage.store(0, Ordering::Relaxed);
+    track.animate_amp_level.store(0.0f32.to_bits(), Ordering::Relaxed);
+    for i in 0..2 {
+        track.animate_filter_v1[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_filter_v2[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+    }
+
     track.sample_rate.store(44_100, Ordering::Relaxed);
     track.debug_logged.store(false, Ordering::Relaxed);
 
@@ -710,6 +890,219 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
         summary.fill(0.0);
     }
     *track.sample_path.lock() = None;
+}
+
+impl GrainRust {
+    fn process_animate(
+        track: &Track,
+        buffer: &mut Buffer,
+        global_tempo: &AtomicU32,
+        animate_library: &AnimateLibrary,
+    ) {
+        let num_buffer_samples = buffer.samples();
+        let sr = track.sample_rate.load(Ordering::Relaxed).max(1) as f32;
+        let tempo = f32::from_bits(global_tempo.load(Ordering::Relaxed)).clamp(20.0, 240.0);
+
+        // Sequencer timing
+        let samples_per_step = (sr * 60.0) / (tempo * 4.0); // 16th notes
+        let mut sequencer_phase = track.animate_sequencer_phase.load(Ordering::Relaxed);
+        let mut current_step = track.animate_sequencer_step.load(Ordering::Relaxed);
+
+        // Animate Parameters
+        let target_x = f32::from_bits(track.animate_vector_x.load(Ordering::Relaxed));
+        let target_y = f32::from_bits(track.animate_vector_y.load(Ordering::Relaxed));
+        let mut x_smooth = f32::from_bits(track.animate_vector_x_smooth.load(Ordering::Relaxed));
+        let mut y_smooth = f32::from_bits(track.animate_vector_y_smooth.load(Ordering::Relaxed));
+
+        let attack = f32::from_bits(track.animate_amp_attack.load(Ordering::Relaxed)).max(0.001);
+        let decay = f32::from_bits(track.animate_amp_decay.load(Ordering::Relaxed)).max(0.001);
+        let sustain = f32::from_bits(track.animate_amp_sustain.load(Ordering::Relaxed));
+        let release = f32::from_bits(track.animate_amp_release.load(Ordering::Relaxed)).max(0.001);
+
+        let mut amp_stage = track.animate_amp_stage.load(Ordering::Relaxed);
+        let mut amp_level = f32::from_bits(track.animate_amp_level.load(Ordering::Relaxed));
+
+        let cutoff = f32::from_bits(track.animate_filter_cutoff.load(Ordering::Relaxed));
+        let resonance = f32::from_bits(track.animate_filter_resonance.load(Ordering::Relaxed));
+        let _drive = f32::from_bits(track.animate_filter_drive.load(Ordering::Relaxed));
+        let _filter_type = track.animate_filter_type.load(Ordering::Relaxed);
+
+        let frequencies = [
+            65.41, 73.42, 82.41, 98.00, 110.00, // C2, D2, E2, G2, A2
+            130.81, 146.83, 164.81, 196.00, 220.00, // C3, D3, E3, G3, A3
+        ];
+
+        let num_channels = buffer.channels();
+        let mut output = buffer.as_slice();
+
+        for sample_idx in 0..num_buffer_samples {
+            // Step sequencer
+            if sequencer_phase >= samples_per_step as u32 {
+                sequencer_phase = 0;
+                current_step = (current_step + 1) % 16;
+                track.animate_sequencer_step.store(current_step, Ordering::Relaxed);
+
+                // Check if any note is active in this step
+                let mut note_active = false;
+                for row in 0..10 {
+                    if track.animate_sequencer_grid[row * 16 + current_step as usize].load(Ordering::Relaxed) {
+                        note_active = true;
+                        break;
+                    }
+                }
+
+                if note_active {
+                    if amp_stage == 0 || amp_stage == 4 {
+                        amp_stage = 1; // Attack
+                    }
+                } else if amp_stage != 4 && amp_stage != 0 {
+                    amp_stage = 4; // Release
+                }
+            }
+            sequencer_phase += 1;
+
+            // Process Envelope
+            match amp_stage {
+                1 => { // Attack
+                    amp_level += 1.0 / (attack * sr);
+                    if amp_level >= 1.0 {
+                        amp_level = 1.0;
+                        amp_stage = 2;
+                    }
+                }
+                2 => { // Decay
+                    amp_level -= (1.0 - sustain) / (decay * sr);
+                    if amp_level <= sustain {
+                        amp_level = sustain;
+                        amp_stage = 3;
+                    }
+                }
+                3 => { // Sustain
+                    amp_level = sustain;
+                }
+                4 => { // Release
+                    amp_level -= 1.0 / (release * sr);
+                    if amp_level <= 0.0 {
+                        amp_level = 0.0;
+                        amp_stage = 0;
+                    }
+                }
+                _ => {
+                    amp_level = 0.0;
+                }
+            }
+
+            if amp_level <= 0.0 && amp_stage == 0 {
+                continue;
+            }
+
+            // Smooth vector position
+            x_smooth = x_smooth * 0.99 + target_x * 0.01;
+            y_smooth = y_smooth * 0.99 + target_y * 0.01;
+
+            // Calculate weights for 4 slots
+            let w_a = (1.0 - x_smooth) * (1.0 - y_smooth);
+            let w_b = x_smooth * (1.0 - y_smooth);
+            let w_c = (1.0 - x_smooth) * y_smooth;
+            let w_d = x_smooth * y_smooth;
+            let weights = [w_a, w_b, w_c, w_d];
+
+            let mut mixed_sample_l = 0.0f32;
+            let mut mixed_sample_r = 0.0f32;
+
+            // Sum active notes
+            for row in 0..10 {
+                if track.animate_sequencer_grid[row * 16 + current_step as usize].load(Ordering::Relaxed) {
+                    let base_freq = frequencies[row as usize];
+                    
+                    for slot in 0..4 {
+                        let slot_type = track.animate_slot_types[slot].load(Ordering::Relaxed);
+                        let coarse = f32::from_bits(track.animate_slot_coarse[slot].load(Ordering::Relaxed));
+                        let fine = f32::from_bits(track.animate_slot_fine[slot].load(Ordering::Relaxed));
+                        let pitch_ratio = 2.0f32.powf((coarse + fine / 100.0) / 12.0);
+                        let freq = base_freq * pitch_ratio;
+
+                        let mut slot_sample = 0.0f32;
+                        if slot_type == 0 { // Wavetable
+                            let wt_idx = track.animate_slot_wavetables[slot].load(Ordering::Relaxed) as usize;
+                            if let Some(wt) = animate_library.wavetables.get(wt_idx) {
+                                if !wt.is_empty() {
+                                    let phase = f32::from_bits(track.animate_slot_phases[slot].load(Ordering::Relaxed));
+                                    // Use first cycle (2048 samples)
+                                    let cycle_len = wt.len().min(2048);
+                                    let pos = phase * (cycle_len - 1) as f32;
+                                    let idx = pos as usize;
+                                    let frac = pos - idx as f32;
+                                    let s1 = wt[idx];
+                                    let s2 = wt[(idx + 1) % cycle_len];
+                                    slot_sample = s1 + (s2 - s1) * frac;
+
+                                    let new_phase = (phase + freq / sr) % 1.0;
+                                    track.animate_slot_phases[slot].store(new_phase.to_bits(), Ordering::Relaxed);
+                                }
+                            }
+                        } else { // Sample
+                            let smp_idx = track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
+                            if let Some(smp) = animate_library.samples.get(smp_idx) {
+                                if !smp.is_empty() && !smp[0].is_empty() {
+                                    let pos = f32::from_bits(track.animate_slot_sample_pos[slot].load(Ordering::Relaxed));
+                                    let idx = pos as usize;
+                                    if idx < smp[0].len() {
+                                        slot_sample = smp[0][idx];
+                                        let new_pos = pos + (freq / 440.0); // Rough sample playback
+                                        track.animate_slot_sample_pos[slot].store(new_pos.to_bits(), Ordering::Relaxed);
+                                    } else {
+                                        track.animate_slot_sample_pos[slot].store(0.0f32.to_bits(), Ordering::Relaxed);
+                                    }
+                                }
+                            }
+                        }
+
+                        let level = f32::from_bits(track.animate_slot_level[slot].load(Ordering::Relaxed)) * weights[slot] * amp_level;
+                        let pan = f32::from_bits(track.animate_slot_pan[slot].load(Ordering::Relaxed)).clamp(-1.0, 1.0);
+                        
+                        let left_gain = (1.0 - pan).min(1.0);
+                        let right_gain = (1.0 + pan).min(1.0);
+                        
+                        mixed_sample_l += slot_sample * level * left_gain;
+                        mixed_sample_r += slot_sample * level * right_gain;
+                    }
+                }
+            }
+
+            // SVF Filter (State Variable Filter)
+            // f = 2 * sin(pi * fc / fs)
+            // q = 1 / Q
+            let f = 2.0 * (std::f32::consts::PI * cutoff.powf(2.0) * 20000.0 / sr).sin();
+            let q = 1.0 - resonance;
+            
+            for ch in 0..num_channels.min(2) {
+                let input = if ch == 0 { mixed_sample_l } else { mixed_sample_r };
+                let mut v1 = f32::from_bits(track.animate_filter_v1[ch].load(Ordering::Relaxed));
+                let mut v2 = f32::from_bits(track.animate_filter_v2[ch].load(Ordering::Relaxed));
+                
+                let low = v2 + f * v1;
+                let high = input - low - q * v1;
+                let band = f * high + v1;
+                
+                let filtered = low; // Lowpass
+                
+                v1 = band;
+                v2 = low;
+                
+                track.animate_filter_v1[ch].store(v1.to_bits(), Ordering::Relaxed);
+                track.animate_filter_v2[ch].store(v2.to_bits(), Ordering::Relaxed);
+                
+                output[ch][sample_idx] += filtered;
+            }
+        }
+
+        track.animate_sequencer_phase.store(sequencer_phase, Ordering::Relaxed);
+        track.animate_vector_x_smooth.store(x_smooth.to_bits(), Ordering::Relaxed);
+        track.animate_vector_y_smooth.store(y_smooth.to_bits(), Ordering::Relaxed);
+        track.animate_amp_stage.store(amp_stage, Ordering::Relaxed);
+        track.animate_amp_level.store(amp_level.to_bits(), Ordering::Relaxed);
+    }
 }
 
 impl Plugin for GrainRust {
@@ -994,6 +1387,18 @@ impl Plugin for GrainRust {
 
             if track.is_playing.load(Ordering::Relaxed) {
                 keep_alive = true;
+
+                let engine_type = track.engine_type.load(Ordering::Relaxed);
+                if engine_type == 2 {
+                    Self::process_animate(
+                        track,
+                        buffer,
+                        &self.global_tempo,
+                        &self.animate_library,
+                    );
+                    continue;
+                }
+
                 if let Some(samples) = track.samples.try_lock() {
                     if samples.is_empty() || samples[0].is_empty() {
                         track.is_playing.store(false, Ordering::Relaxed);
@@ -3089,6 +3494,77 @@ impl SlintWindow {
         let ring_enabled = self.tracks[track_idx].ring_enabled.load(Ordering::Relaxed);
         let ring_decay_mode = self.tracks[track_idx].ring_decay_mode.load(Ordering::Relaxed);
         let engine_loaded = self.tracks[track_idx].engine_type.load(Ordering::Relaxed) != 0;
+        let active_engine_type = self.tracks[track_idx].engine_type.load(Ordering::Relaxed);
+
+        let animate_slot_types = [
+            self.tracks[track_idx].animate_slot_types[0].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_types[1].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_types[2].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_types[3].load(Ordering::Relaxed),
+        ];
+        let animate_slot_wavetables = [
+            self.tracks[track_idx].animate_slot_wavetables[0].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_wavetables[1].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_wavetables[2].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_wavetables[3].load(Ordering::Relaxed),
+        ];
+        let animate_slot_samples = [
+            self.tracks[track_idx].animate_slot_samples[0].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_samples[1].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_samples[2].load(Ordering::Relaxed),
+            self.tracks[track_idx].animate_slot_samples[3].load(Ordering::Relaxed),
+        ];
+        let animate_slot_coarse = [
+            f32::from_bits(self.tracks[track_idx].animate_slot_coarse[0].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_coarse[1].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_coarse[2].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_coarse[3].load(Ordering::Relaxed)),
+        ];
+        let animate_slot_fine = [
+            f32::from_bits(self.tracks[track_idx].animate_slot_fine[0].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_fine[1].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_fine[2].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_fine[3].load(Ordering::Relaxed)),
+        ];
+        let animate_slot_level = [
+            f32::from_bits(self.tracks[track_idx].animate_slot_level[0].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_level[1].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_level[2].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_level[3].load(Ordering::Relaxed)),
+        ];
+        let animate_slot_pan = [
+            f32::from_bits(self.tracks[track_idx].animate_slot_pan[0].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_pan[1].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_pan[2].load(Ordering::Relaxed)),
+            f32::from_bits(self.tracks[track_idx].animate_slot_pan[3].load(Ordering::Relaxed)),
+        ];
+        let animate_vector_x =
+            f32::from_bits(self.tracks[track_idx].animate_vector_x.load(Ordering::Relaxed));
+        let animate_vector_y =
+            f32::from_bits(self.tracks[track_idx].animate_vector_y.load(Ordering::Relaxed));
+        let animate_filter_cutoff =
+            f32::from_bits(self.tracks[track_idx].animate_filter_cutoff.load(Ordering::Relaxed));
+        let animate_filter_resonance =
+            f32::from_bits(self.tracks[track_idx].animate_filter_resonance.load(Ordering::Relaxed));
+        let animate_filter_drive =
+            f32::from_bits(self.tracks[track_idx].animate_filter_drive.load(Ordering::Relaxed));
+        let animate_filter_type = self.tracks[track_idx].animate_filter_type.load(Ordering::Relaxed);
+        let animate_amp_attack =
+            f32::from_bits(self.tracks[track_idx].animate_amp_attack.load(Ordering::Relaxed));
+        let animate_amp_decay =
+            f32::from_bits(self.tracks[track_idx].animate_amp_decay.load(Ordering::Relaxed));
+        let animate_amp_sustain =
+            f32::from_bits(self.tracks[track_idx].animate_amp_sustain.load(Ordering::Relaxed));
+        let animate_amp_release =
+            f32::from_bits(self.tracks[track_idx].animate_amp_release.load(Ordering::Relaxed));
+        let animate_sequencer_current_step =
+            self.tracks[track_idx].animate_sequencer_step.load(Ordering::Relaxed);
+
+        let mut animate_sequencer_grid = Vec::with_capacity(160);
+        for i in 0..160 {
+            animate_sequencer_grid
+                .push(self.tracks[track_idx].animate_sequencer_grid[i].load(Ordering::Relaxed));
+        }
 
         let play_pos = f32::from_bits(self.tracks[track_idx].play_pos.load(Ordering::Relaxed));
         let total_samples = if let Some(samples) = self.tracks[track_idx].samples.try_lock() {
@@ -3190,6 +3666,63 @@ impl SlintWindow {
         self.ui.set_ring_enabled(ring_enabled);
         self.ui.set_ring_decay_mode(ring_decay_mode as i32);
         self.ui.set_engine_loaded(engine_loaded);
+        self.ui.set_active_engine_type(active_engine_type as i32);
+
+        self.ui.set_animate_slot_a_type(animate_slot_types[0] as i32);
+        self.ui.set_animate_slot_b_type(animate_slot_types[1] as i32);
+        self.ui.set_animate_slot_c_type(animate_slot_types[2] as i32);
+        self.ui.set_animate_slot_d_type(animate_slot_types[3] as i32);
+
+        self.ui.set_animate_slot_a_wavetable(animate_slot_wavetables[0] as i32);
+        self.ui.set_animate_slot_b_wavetable(animate_slot_wavetables[1] as i32);
+        self.ui.set_animate_slot_c_wavetable(animate_slot_wavetables[2] as i32);
+        self.ui.set_animate_slot_d_wavetable(animate_slot_wavetables[3] as i32);
+
+        self.ui.set_animate_slot_a_sample(animate_slot_samples[0] as i32);
+        self.ui.set_animate_slot_b_sample(animate_slot_samples[1] as i32);
+        self.ui.set_animate_slot_c_sample(animate_slot_samples[2] as i32);
+        self.ui.set_animate_slot_d_sample(animate_slot_samples[3] as i32);
+
+        self.ui.set_animate_slot_a_coarse(animate_slot_coarse[0]);
+        self.ui.set_animate_slot_a_fine(animate_slot_fine[0]);
+        self.ui.set_animate_slot_a_level(animate_slot_level[0]);
+        self.ui.set_animate_slot_a_pan(animate_slot_pan[0]);
+
+        self.ui.set_animate_slot_b_coarse(animate_slot_coarse[1]);
+        self.ui.set_animate_slot_b_fine(animate_slot_fine[1]);
+        self.ui.set_animate_slot_b_level(animate_slot_level[1]);
+        self.ui.set_animate_slot_b_pan(animate_slot_pan[1]);
+
+        self.ui.set_animate_slot_c_coarse(animate_slot_coarse[2]);
+        self.ui.set_animate_slot_c_fine(animate_slot_fine[2]);
+        self.ui.set_animate_slot_c_level(animate_slot_level[2]);
+        self.ui.set_animate_slot_c_pan(animate_slot_pan[2]);
+
+        self.ui.set_animate_slot_d_coarse(animate_slot_coarse[3]);
+        self.ui.set_animate_slot_d_fine(animate_slot_fine[3]);
+        self.ui.set_animate_slot_d_level(animate_slot_level[3]);
+        self.ui.set_animate_slot_d_pan(animate_slot_pan[3]);
+
+        self.ui.set_animate_vector_x(animate_vector_x);
+        self.ui.set_animate_vector_y(animate_vector_y);
+
+        self.ui.set_animate_filter_cutoff(animate_filter_cutoff);
+        self.ui.set_animate_filter_resonance(animate_filter_resonance);
+        self.ui.set_animate_filter_drive(animate_filter_drive);
+        self.ui.set_animate_filter_type(animate_filter_type as i32);
+
+        self.ui.set_animate_amp_attack(animate_amp_attack);
+        self.ui.set_animate_amp_decay(animate_amp_decay);
+        self.ui.set_animate_amp_sustain(animate_amp_sustain);
+        self.ui.set_animate_amp_release(animate_amp_release);
+
+        self.ui
+            .set_animate_sequencer_current_step(animate_sequencer_current_step);
+        self.ui
+            .set_animate_sequencer_grid(ModelRc::from(std::rc::Rc::new(VecModel::from(
+                animate_sequencer_grid,
+            ))));
+
         self.ui.set_metronome_enabled(metronome_enabled);
         self.ui
             .set_metronome_count_in(metronome_count_in_ticks as f32);
@@ -3446,11 +3979,67 @@ fn initialize_ui(
     ])));
     ui.set_engine_types(ModelRc::new(VecModel::from(vec![
         SharedString::from("Tape"),
+        SharedString::from("Animate"),
     ])));
     ui.set_engine_index(0);
     ui.set_engine_confirm_text(SharedString::from(
         "Loading a new engine will clear unsaved data for this track. Continue?",
     ));
+
+    ui.set_animate_slot_types(ModelRc::new(VecModel::from(vec![
+        SharedString::from("Wavetable"),
+        SharedString::from("Sample"),
+    ])));
+
+    ui.set_animate_filter_types(ModelRc::new(VecModel::from(vec![
+        SharedString::from("Lowpass 24dB"),
+        SharedString::from("Lowpass 12dB"),
+        SharedString::from("Highpass"),
+        SharedString::from("Bandpass"),
+    ])));
+
+    // Scan for wavetables and samples
+    let mut wavetables = Vec::new();
+    if let Ok(entries) = std::fs::read_dir("src/library/factory/wavetables") {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                if let Ok(subentries) = std::fs::read_dir(entry.path()) {
+                    for subentry in subentries.flatten() {
+                        if subentry.path().extension().map_or(false, |ext| ext == "wav") {
+                            let label = format!("{}/{}", 
+                                entry.file_name().to_string_lossy(),
+                                subentry.file_name().to_string_lossy());
+                            wavetables.push(SharedString::from(label));
+                        }
+                    }
+                }
+            } else if entry.path().extension().map_or(false, |ext| ext == "wav") {
+                wavetables.push(SharedString::from(entry.file_name().to_string_lossy().to_string()));
+            }
+        }
+    }
+    ui.set_animate_wavetables(ModelRc::new(VecModel::from(wavetables)));
+
+    let mut samples = Vec::new();
+    if let Ok(entries) = std::fs::read_dir("src/library/factory/samples") {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                if let Ok(subentries) = std::fs::read_dir(entry.path()) {
+                    for subentry in subentries.flatten() {
+                        if subentry.path().extension().map_or(false, |ext| ext == "wav" || ext == "mp3") {
+                            let label = format!("{}/{}", 
+                                entry.file_name().to_string_lossy(),
+                                subentry.file_name().to_string_lossy());
+                            samples.push(SharedString::from(label));
+                        }
+                    }
+                }
+            } else if entry.path().extension().map_or(false, |ext| ext == "wav" || ext == "mp3") {
+                samples.push(SharedString::from(entry.file_name().to_string_lossy().to_string()));
+            }
+        }
+    }
+    ui.set_animate_samples(ModelRc::new(VecModel::from(samples)));
 
     let output_device_index = current_arg_value("--output-device")
         .and_then(|name| output_devices.iter().position(|device| device == &name))
@@ -3502,6 +4091,7 @@ fn initialize_ui(
         };
             let engine_type = match engine_index {
                 0 => 1,
+                1 => 2,
                 _ => 0,
             };
             if engine_type == 0 {
@@ -4451,6 +5041,363 @@ fn initialize_ui(
                     let _ = project_dialog_tx.send(ProjectDialogAction::Load(path));
                 }
             });
+        }
+    });
+
+    // Animate Engine Callbacks
+    for i in 0..4 {
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        let slot_idx = i;
+        match i {
+            0 => ui.on_animate_slot_a_type_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_types[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_type_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_types[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_type_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_types[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_type_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_types[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        match i {
+            0 => ui.on_animate_slot_a_wavetable_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_wavetable_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_wavetable_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_wavetable_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        match i {
+            0 => ui.on_animate_slot_a_sample_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_samples[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_sample_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_samples[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_sample_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_samples[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_sample_changed(move |index| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_samples[slot_idx]
+                        .store(index as u32, Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        match i {
+            0 => ui.on_animate_slot_a_coarse_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_coarse[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_coarse_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_coarse[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_coarse_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_coarse[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_coarse_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_coarse[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        match i {
+            0 => ui.on_animate_slot_a_fine_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_fine[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_fine_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_fine[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_fine_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_fine[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_fine_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_fine[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        match i {
+            0 => ui.on_animate_slot_a_level_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_level[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_level_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_level[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_level_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_level[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_level_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_level[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+
+        let tracks_animate = Arc::clone(tracks);
+        let params_animate = Arc::clone(params);
+        match i {
+            0 => ui.on_animate_slot_a_pan_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_pan[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            1 => ui.on_animate_slot_b_pan_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_pan[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            2 => ui.on_animate_slot_c_pan_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_pan[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            3 => ui.on_animate_slot_d_pan_changed(move |value| {
+                let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+                if track_idx < NUM_TRACKS {
+                    tracks_animate[track_idx].animate_slot_pan[slot_idx]
+                        .store(value.to_bits(), Ordering::Relaxed);
+                }
+            }),
+            _ => (),
+        }
+    }
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_vector_changed(move |x, y| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_vector_x
+                .store(x.to_bits(), Ordering::Relaxed);
+            tracks_animate[track_idx]
+                .animate_vector_y
+                .store(y.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_filter_cutoff_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_filter_cutoff
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_filter_resonance_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_filter_resonance
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_filter_drive_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_filter_drive
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_filter_type_changed(move |index| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_filter_type
+                .store(index as u32, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_amp_attack_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_amp_attack
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_amp_decay_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_amp_decay
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_amp_sustain_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_amp_sustain
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_amp_release_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_amp_release
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_sequencer_grid_toggled(move |row, step| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let index = (row * 16 + step) as usize;
+            if index < 160 {
+                let current = tracks_animate[track_idx].animate_sequencer_grid[index].load(Ordering::Relaxed);
+                tracks_animate[track_idx].animate_sequencer_grid[index].store(!current, Ordering::Relaxed);
+            }
         }
     });
 }

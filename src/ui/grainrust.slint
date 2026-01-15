@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.3
+ * Version: 0.1.4
  * Component: UI Definitions
  */
 
@@ -69,6 +69,28 @@ component VUMeter {
             height: parent.height;
             background: root.fill-color;
             border-radius: 4px;
+        }
+    }
+}
+
+component SequencerCell {
+    in property <bool> active;
+    in property <bool> current;
+    callback clicked();
+
+    width: 20px;
+    height: 20px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: root.current ? #ffffff : (root.active ? #c53bff : #2a2a35);
+        border-radius: 2px;
+        border-color: #3a3a45;
+        border-width: 1px;
+
+        TouchArea {
+            clicked => root.clicked();
         }
     }
 }
@@ -201,6 +223,65 @@ export component GrainRustUI inherits Window {
     in property <string> metronome-count-in-label;
     in-out property <bool> show-engine-confirm: false;
     in property <string> engine-confirm-text;
+    in property <int> active-engine-type: 0; // 1 = Tape, 2 = Animate
+
+    // Animate Engine Properties
+    in property <[string]> animate-slot-types;
+    in-out property <int> animate-slot-a-type: 0;
+    in-out property <int> animate-slot-b-type: 0;
+    in-out property <int> animate-slot-c-type: 0;
+    in-out property <int> animate-slot-d-type: 0;
+    
+    in property <[string]> animate-wavetables;
+    in-out property <int> animate-slot-a-wavetable: 0;
+    in-out property <int> animate-slot-b-wavetable: 0;
+    in-out property <int> animate-slot-c-wavetable: 0;
+    in-out property <int> animate-slot-d-wavetable: 0;
+
+    in property <[string]> animate-samples;
+    in-out property <int> animate-slot-a-sample: 0;
+    in-out property <int> animate-slot-b-sample: 0;
+    in-out property <int> animate-slot-c-sample: 0;
+    in-out property <int> animate-slot-d-sample: 0;
+
+    in-out property <float> animate-slot-a-coarse: 0.0;
+    in-out property <float> animate-slot-a-fine: 0.0;
+    in-out property <float> animate-slot-a-level: 1.0;
+    in-out property <float> animate-slot-a-pan: 0.0;
+    
+    in-out property <float> animate-slot-b-coarse: 0.0;
+    in-out property <float> animate-slot-b-fine: 0.0;
+    in-out property <float> animate-slot-b-level: 1.0;
+    in-out property <float> animate-slot-b-pan: 0.0;
+    
+    in-out property <float> animate-slot-c-coarse: 0.0;
+    in-out property <float> animate-slot-c-fine: 0.0;
+    in-out property <float> animate-slot-c-level: 1.0;
+    in-out property <float> animate-slot-c-pan: 0.0;
+    
+    in-out property <float> animate-slot-d-coarse: 0.0;
+    in-out property <float> animate-slot-d-fine: 0.0;
+    in-out property <float> animate-slot-d-level: 1.0;
+    in-out property <float> animate-slot-d-pan: 0.0;
+
+    in-out property <float> animate-vector-x: 0.5;
+    in-out property <float> animate-vector-y: 0.5;
+
+    in-out property <float> animate-filter-cutoff: 0.5;
+    in-out property <float> animate-filter-resonance: 0.5;
+    in-out property <float> animate-filter-drive: 0.5;
+    in property <[string]> animate-filter-types;
+    in-out property <int> animate-filter-type: 0;
+
+    in-out property <float> animate-amp-attack: 0.01;
+    in-out property <float> animate-amp-decay: 0.1;
+    in-out property <float> animate-amp-sustain: 0.8;
+    in-out property <float> animate-amp-release: 0.3;
+
+    in-out property <[bool]> animate-sequencer-grid; // Flat array rows * steps
+    in property <int> animate-sequencer-steps: 16;
+    in property <int> animate-sequencer-rows: 10;
+    in property <int> animate-sequencer-current-step: -1;
 
     in-out property <bool> show-settings: false;
     in property <[string]> output-devices;
@@ -287,6 +368,56 @@ export component GrainRustUI inherits Window {
     callback confirm-engine-load();
     callback cancel-engine-load();
     callback open-docs();
+
+    // Animate Engine Callbacks
+    callback animate-slot-a-type-changed(index: int);
+    callback animate-slot-b-type-changed(index: int);
+    callback animate-slot-c-type-changed(index: int);
+    callback animate-slot-d-type-changed(index: int);
+
+    callback animate-slot-a-wavetable-changed(index: int);
+    callback animate-slot-b-wavetable-changed(index: int);
+    callback animate-slot-c-wavetable-changed(index: int);
+    callback animate-slot-d-wavetable-changed(index: int);
+
+    callback animate-slot-a-sample-changed(index: int);
+    callback animate-slot-b-sample-changed(index: int);
+    callback animate-slot-c-sample-changed(index: int);
+    callback animate-slot-d-sample-changed(index: int);
+
+    callback animate-slot-a-coarse-changed(value: float);
+    callback animate-slot-a-fine-changed(value: float);
+    callback animate-slot-a-level-changed(value: float);
+    callback animate-slot-a-pan-changed(value: float);
+
+    callback animate-slot-b-coarse-changed(value: float);
+    callback animate-slot-b-fine-changed(value: float);
+    callback animate-slot-b-level-changed(value: float);
+    callback animate-slot-b-pan-changed(value: float);
+
+    callback animate-slot-c-coarse-changed(value: float);
+    callback animate-slot-c-fine-changed(value: float);
+    callback animate-slot-c-level-changed(value: float);
+    callback animate-slot-c-pan-changed(value: float);
+
+    callback animate-slot-d-coarse-changed(value: float);
+    callback animate-slot-d-fine-changed(value: float);
+    callback animate-slot-d-level-changed(value: float);
+    callback animate-slot-d-pan-changed(value: float);
+
+    callback animate-vector-changed(x: float, y: float);
+
+    callback animate-filter-cutoff-changed(value: float);
+    callback animate-filter-resonance-changed(value: float);
+    callback animate-filter-drive-changed(value: float);
+    callback animate-filter-type-changed(index: int);
+
+    callback animate-amp-attack-changed(value: float);
+    callback animate-amp-decay-changed(value: float);
+    callback animate-amp-sustain-changed(value: float);
+    callback animate-amp-release-changed(value: float);
+
+    callback animate-sequencer-grid-toggled(row: int, step: int);
 
     background: #0f0f12;
 
@@ -549,8 +680,11 @@ export component GrainRustUI inherits Window {
                 Button { text: root.is-playing ? "Stop" : "Play"; clicked => root.toggle-play(); }
             }
 
-            Text { text: "Tape Engine"; color: #f0f0f2; font-size: 15px; }
-            Text { text: "Tape Controls"; color: #e4e4ea; font-size: 14px; }
+            VerticalLayout {
+                visible: root.active-engine-type == 1;
+                spacing: 8px;
+                Text { text: "Tape Engine"; color: #f0f0f2; font-size: 15px; }
+                Text { text: "Tape Controls"; color: #e4e4ea; font-size: 14px; }
 
             HorizontalLayout {
                 spacing: 16px;
@@ -752,6 +886,239 @@ export component GrainRustUI inherits Window {
                                 root.loop-xfade = self.value;
                                 root.loop-xfade-changed(self.value);
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            visible: root.active-engine-type == 2;
+                spacing: 12px;
+                Text { text: "Animate Engine"; color: #f0f0f2; font-size: 15px; }
+
+                HorizontalLayout {
+                    spacing: 16px;
+                    width: parent.width;
+
+                    // Slot controls
+                    VerticalLayout {
+                        spacing: 8px;
+                        width: (parent.width - 200px);
+                        
+                        // Slot A
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Slot A"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                            ComboBox {
+                                width: 100px;
+                                model: root.animate-slot-types;
+                                current-index: root.animate-slot-a-type;
+                                selected => { root.animate-slot-a-type = self.current-index; root.animate-slot-a-type-changed(self.current-index); }
+                            }
+                            ComboBox {
+                                width: 150px;
+                                model: root.animate-slot-a-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                current-index: root.animate-slot-a-type == 0 ? root.animate-slot-a-wavetable : root.animate-slot-a-sample;
+                                selected => {
+                                    if (root.animate-slot-a-type == 0) {
+                                        root.animate-slot-a-wavetable = self.current-index;
+                                        root.animate-slot-a-wavetable-changed(self.current-index);
+                                    } else {
+                                        root.animate-slot-a-sample = self.current-index;
+                                        root.animate-slot-a-sample-changed(self.current-index);
+                                    }
+                                }
+                            }
+                            Slider {
+                                width: 100px;
+                                value: root.animate-slot-a-level;
+                                minimum: 0; maximum: 1;
+                                changed => { root.animate-slot-a-level = self.value; root.animate-slot-a-level-changed(self.value); }
+                            }
+                        }
+                        // Slot B
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Slot B"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                            ComboBox {
+                                width: 100px;
+                                model: root.animate-slot-types;
+                                current-index: root.animate-slot-b-type;
+                                selected => { root.animate-slot-b-type = self.current-index; root.animate-slot-b-type-changed(self.current-index); }
+                            }
+                            ComboBox {
+                                width: 150px;
+                                model: root.animate-slot-b-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                current-index: root.animate-slot-b-type == 0 ? root.animate-slot-b-wavetable : root.animate-slot-b-sample;
+                                selected => {
+                                    if (root.animate-slot-b-type == 0) {
+                                        root.animate-slot-b-wavetable = self.current-index;
+                                        root.animate-slot-b-wavetable-changed(self.current-index);
+                                    } else {
+                                        root.animate-slot-b-sample = self.current-index;
+                                        root.animate-slot-b-sample-changed(self.current-index);
+                                    }
+                                }
+                            }
+                            Slider {
+                                width: 100px;
+                                value: root.animate-slot-b-level;
+                                minimum: 0; maximum: 1;
+                                changed => { root.animate-slot-b-level = self.value; root.animate-slot-b-level-changed(self.value); }
+                            }
+                        }
+                        // Slot C
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Slot C"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                            ComboBox {
+                                width: 100px;
+                                model: root.animate-slot-types;
+                                current-index: root.animate-slot-c-type;
+                                selected => { root.animate-slot-c-type = self.current-index; root.animate-slot-c-type-changed(self.current-index); }
+                            }
+                            ComboBox {
+                                width: 150px;
+                                model: root.animate-slot-c-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                current-index: root.animate-slot-c-type == 0 ? root.animate-slot-c-wavetable : root.animate-slot-c-sample;
+                                selected => {
+                                    if (root.animate-slot-c-type == 0) {
+                                        root.animate-slot-c-wavetable = self.current-index;
+                                        root.animate-slot-c-wavetable-changed(self.current-index);
+                                    } else {
+                                        root.animate-slot-c-sample = self.current-index;
+                                        root.animate-slot-c-sample-changed(self.current-index);
+                                    }
+                                }
+                            }
+                            Slider {
+                                width: 100px;
+                                value: root.animate-slot-c-level;
+                                minimum: 0; maximum: 1;
+                                changed => { root.animate-slot-c-level = self.value; root.animate-slot-c-level-changed(self.value); }
+                            }
+                        }
+                        // Slot D
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Slot D"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                            ComboBox {
+                                width: 100px;
+                                model: root.animate-slot-types;
+                                current-index: root.animate-slot-d-type;
+                                selected => { root.animate-slot-d-type = self.current-index; root.animate-slot-d-type-changed(self.current-index); }
+                            }
+                            ComboBox {
+                                width: 150px;
+                                model: root.animate-slot-d-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                current-index: root.animate-slot-d-type == 0 ? root.animate-slot-d-wavetable : root.animate-slot-d-sample;
+                                selected => {
+                                    if (root.animate-slot-d-type == 0) {
+                                        root.animate-slot-d-wavetable = self.current-index;
+                                        root.animate-slot-d-wavetable-changed(self.current-index);
+                                    } else {
+                                        root.animate-slot-d-sample = self.current-index;
+                                        root.animate-slot-d-sample-changed(self.current-index);
+                                    }
+                                }
+                            }
+                            Slider {
+                                width: 100px;
+                                value: root.animate-slot-d-level;
+                                minimum: 0; maximum: 1;
+                                changed => { root.animate-slot-d-level = self.value; root.animate-slot-d-level-changed(self.value); }
+                            }
+                        }
+                    }
+
+                    // Vector XY pad
+                    Rectangle {
+                        width: 160px;
+                        height: 160px;
+                        background: #1a1a22;
+                        border-radius: 4px;
+                        border-color: #3a3a45;
+                        border-width: 1px;
+                        
+                        Rectangle {
+                            width: 12px; height: 12px;
+                            background: #c53bff;
+                            border-radius: 6px;
+                            x: root.animate-vector-x * (parent.width - 12px);
+                            y: (1.0 - root.animate-vector-y) * (parent.height - 12px);
+                        }
+
+                        TouchArea {
+                            moved => {
+                                root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
+                                root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
+                                root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
+                            }
+                            clicked => {
+                                root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
+                                root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
+                                root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
+                            }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 16px;
+                    
+                    VerticalLayout {
+                        spacing: 6px;
+                        Text { text: "Filter"; color: #e4e4ea; font-size: 14px; }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Cutoff"; color: #b9b9bf; font-size: 12px; width: 60px; }
+                            Slider {
+                                value: root.animate-filter-cutoff;
+                                changed => { root.animate-filter-cutoff = self.value; root.animate-filter-cutoff-changed(self.value); }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Res"; color: #b9b9bf; font-size: 12px; width: 60px; }
+                            Slider {
+                                value: root.animate-filter-resonance;
+                                changed => { root.animate-filter-resonance = self.value; root.animate-filter-resonance-changed(self.value); }
+                            }
+                        }
+                        ComboBox {
+                            model: root.animate-filter-types;
+                            current-index: root.animate-filter-type;
+                            selected => { root.animate-filter-type = self.current-index; root.animate-filter-type-changed(self.current-index); }
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        Text { text: "Amp Envelope"; color: #e4e4ea; font-size: 14px; }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "A"; color: #b9b9bf; font-size: 11px; width: 15px; }
+                            Slider { value: root.animate-amp-attack; changed => { root.animate-amp-attack = self.value; root.animate-amp-attack-changed(self.value); } }
+                            Text { text: "D"; color: #b9b9bf; font-size: 11px; width: 15px; }
+                            Slider { value: root.animate-amp-decay; changed => { root.animate-amp-decay = self.value; root.animate-amp-decay-changed(self.value); } }
+                            Text { text: "S"; color: #b9b9bf; font-size: 11px; width: 15px; }
+                            Slider { value: root.animate-amp-sustain; changed => { root.animate-amp-sustain = self.value; root.animate-amp-sustain-changed(self.value); } }
+                            Text { text: "R"; color: #b9b9bf; font-size: 11px; width: 15px; }
+                            Slider { value: root.animate-amp-release; changed => { root.animate-amp-release = self.value; root.animate-amp-release-changed(self.value); } }
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 4px;
+                    Text { text: "Sequencer"; color: #e4e4ea; font-size: 14px; }
+                    for r in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : HorizontalLayout {
+                        spacing: 2px;
+                        for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : SequencerCell {
+                            active: root.animate-sequencer-grid[r * 16 + s];
+                            current: s == root.animate-sequencer-current-step;
+                            clicked => { root.animate-sequencer-grid-toggled(r, s); }
                         }
                     }
                 }

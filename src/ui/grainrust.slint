@@ -136,6 +136,11 @@ export component GrainRustUI inherits Window {
     in-out property <int> tape-rate-mode: 0;
     in property <[string]> ring-decay-modes;
     in-out property <int> ring-decay-mode: 0;
+    in property <[string]> ring-rate-modes;
+    in-out property <int> ring-waves-rate-mode: 0;
+    in-out property <int> ring-noise-rate-mode: 0;
+    in property <[string]> ring-scale-modes;
+    in-out property <int> ring-scale: 0;
     in-out property <float> tape-rotate: 0.0;
     in-out property <float> tape-glide: 0.0;
     in-out property <float> tape-sos: 0.0;
@@ -165,6 +170,10 @@ export component GrainRustUI inherits Window {
     in-out property <float> ring-slope: 0.5;
     in-out property <float> ring-wet: 0.0;
     in-out property <float> ring-detune: 0.0;
+    in-out property <float> ring-waves: 0.0;
+    in-out property <float> ring-waves-rate: 0.5;
+    in-out property <float> ring-noise: 0.0;
+    in-out property <float> ring-noise-rate: 0.5;
     in-out property <float> loop-start: 0.0;
     in-out property <float> loop-length: 1.0;
     in-out property <float> loop-xfade: 0.0;
@@ -245,6 +254,13 @@ export component GrainRustUI inherits Window {
     callback ring-slope-changed(value: float);
     callback ring-wet-changed(value: float);
     callback ring-detune-changed(value: float);
+    callback ring-waves-changed(value: float);
+    callback ring-waves-rate-changed(value: float);
+    callback ring-waves-rate-mode-selected(index: int);
+    callback ring-noise-changed(value: float);
+    callback ring-noise-rate-changed(value: float);
+    callback ring-noise-rate-mode-selected(index: int);
+    callback ring-scale-selected(index: int);
     callback toggle-ring-enabled();
     callback toggle-metronome();
     callback metronome-count-in-changed(value: float);

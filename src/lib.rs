@@ -64,6 +64,8 @@ const RING_CUTOFF_MIN_HZ: f32 = 20.0;
 const RING_CUTOFF_MAX_HZ: f32 = 20_000.0;
 const RING_DETUNE_CENTS: f32 = 20.0;
 const RING_DETUNE_RATE_HZ: f32 = 0.25;
+const RING_LFO_RATE_MIN_HZ: f32 = 0.1;
+const RING_LFO_RATE_MAX_HZ: f32 = 12.0;
 const METRONOME_CLICK_MS: f32 = 12.0;
 const METRONOME_CLICK_GAIN: f32 = 0.25;
 const METRONOME_COUNT_IN_MAX_TICKS: u32 = 8;
@@ -278,6 +280,36 @@ struct Track {
     ring_detune: AtomicU32,
     /// Smoothed ring detune.
     ring_detune_smooth: AtomicU32,
+    /// Ring waves depth (normalized 0..1).
+    ring_waves: AtomicU32,
+    /// Smoothed ring waves depth.
+    ring_waves_smooth: AtomicU32,
+    /// Ring waves rate (normalized 0..1).
+    ring_waves_rate: AtomicU32,
+    /// Smoothed ring waves rate.
+    ring_waves_rate_smooth: AtomicU32,
+    /// Ring waves rate mode (0 = free, 1 = straight, 2 = dotted, 3 = triplet).
+    ring_waves_rate_mode: AtomicU32,
+    /// Ring waves LFO phase.
+    ring_waves_phase: AtomicU32,
+    /// Ring noise depth (normalized 0..1).
+    ring_noise: AtomicU32,
+    /// Smoothed ring noise depth.
+    ring_noise_smooth: AtomicU32,
+    /// Ring noise rate (normalized 0..1).
+    ring_noise_rate: AtomicU32,
+    /// Smoothed ring noise rate.
+    ring_noise_rate_smooth: AtomicU32,
+    /// Ring noise rate mode (0 = free, 1 = straight, 2 = dotted, 3 = triplet).
+    ring_noise_rate_mode: AtomicU32,
+    /// Ring noise phase.
+    ring_noise_phase: AtomicU32,
+    /// Ring noise current value (-1..1).
+    ring_noise_value: AtomicU32,
+    /// Ring noise RNG state.
+    ring_noise_rng: AtomicU32,
+    /// Ring scale mode (0 = chromatic, 1 = major, 2 = minor).
+    ring_scale: AtomicU32,
     /// Ring detune LFO phase.
     ring_detune_phase: AtomicU32,
     /// Ring filter enabled.
@@ -391,6 +423,21 @@ impl Default for Track {
             ring_wet_smooth: AtomicU32::new(0.0f32.to_bits()),
             ring_detune: AtomicU32::new(0.0f32.to_bits()),
             ring_detune_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_waves: AtomicU32::new(0.0f32.to_bits()),
+            ring_waves_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_waves_rate: AtomicU32::new(0.5f32.to_bits()),
+            ring_waves_rate_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_waves_rate_mode: AtomicU32::new(0),
+            ring_waves_phase: AtomicU32::new(0.0f32.to_bits()),
+            ring_noise: AtomicU32::new(0.0f32.to_bits()),
+            ring_noise_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_noise_rate: AtomicU32::new(0.5f32.to_bits()),
+            ring_noise_rate_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_noise_rate_mode: AtomicU32::new(0),
+            ring_noise_phase: AtomicU32::new(0.0f32.to_bits()),
+            ring_noise_value: AtomicU32::new(0.0f32.to_bits()),
+            ring_noise_rng: AtomicU32::new(0x1357_2468),
+            ring_scale: AtomicU32::new(0),
             ring_detune_phase: AtomicU32::new(0.0f32.to_bits()),
             ring_enabled: AtomicBool::new(false),
             ring_low: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
@@ -625,6 +672,21 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.ring_wet_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.ring_detune.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.ring_detune_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_waves.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_waves_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_waves_rate.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_waves_rate_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_waves_rate_mode.store(0, Ordering::Relaxed);
+    track.ring_waves_phase.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise_rate.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise_rate_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise_rate_mode.store(0, Ordering::Relaxed);
+    track.ring_noise_phase.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise_value.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_noise_rng.store(0x1357_2468, Ordering::Relaxed);
+    track.ring_scale.store(0, Ordering::Relaxed);
     track.ring_detune_phase.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.ring_enabled.store(false, Ordering::Relaxed);
     for channel in 0..2 {
@@ -1695,6 +1757,23 @@ impl Plugin for GrainRust {
                 let target_detune =
                     f32::from_bits(ring_track.ring_detune.load(Ordering::Relaxed))
                         .clamp(0.0, 1.0);
+                let target_waves =
+                    f32::from_bits(ring_track.ring_waves.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_waves_rate =
+                    f32::from_bits(ring_track.ring_waves_rate.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_waves_mode =
+                    ring_track.ring_waves_rate_mode.load(Ordering::Relaxed);
+                let target_noise =
+                    f32::from_bits(ring_track.ring_noise.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_noise_rate =
+                    f32::from_bits(ring_track.ring_noise_rate.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_noise_mode =
+                    ring_track.ring_noise_rate_mode.load(Ordering::Relaxed);
+                let ring_scale = ring_track.ring_scale.load(Ordering::Relaxed);
 
                 let ring_cutoff = smooth_param(
                     f32::from_bits(ring_track.ring_cutoff_smooth.load(Ordering::Relaxed)),
@@ -1751,6 +1830,30 @@ impl Plugin for GrainRust {
                     num_buffer_samples,
                     sr,
                 );
+                let ring_waves = smooth_param(
+                    f32::from_bits(ring_track.ring_waves_smooth.load(Ordering::Relaxed)),
+                    target_waves,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_waves_rate = smooth_param(
+                    f32::from_bits(ring_track.ring_waves_rate_smooth.load(Ordering::Relaxed)),
+                    target_waves_rate,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_noise = smooth_param(
+                    f32::from_bits(ring_track.ring_noise_smooth.load(Ordering::Relaxed)),
+                    target_noise,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_noise_rate = smooth_param(
+                    f32::from_bits(ring_track.ring_noise_rate_smooth.load(Ordering::Relaxed)),
+                    target_noise_rate,
+                    num_buffer_samples,
+                    sr,
+                );
 
                 ring_track
                     .ring_cutoff_smooth
@@ -1779,6 +1882,18 @@ impl Plugin for GrainRust {
                 ring_track
                     .ring_detune_smooth
                     .store(ring_detune.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_waves_smooth
+                    .store(ring_waves.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_waves_rate_smooth
+                    .store(ring_waves_rate.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_noise_smooth
+                    .store(ring_noise.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_noise_rate_smooth
+                    .store(ring_noise_rate.to_bits(), Ordering::Relaxed);
 
                 if ring_wet > 0.0 {
                     let decay_mode = ring_track.ring_decay_mode.load(Ordering::Relaxed);
@@ -1793,6 +1908,7 @@ impl Plugin for GrainRust {
                         * (RING_CUTOFF_MAX_HZ / RING_CUTOFF_MIN_HZ).powf(ring_cutoff);
                     let cutoff_hz =
                         (cutoff_hz * pitch_ratio).clamp(20.0, sr * 0.45);
+                    let cutoff_hz = ring_quantize_freq(cutoff_hz, ring_scale);
                     let q = 0.5 + ring_resonance * 12.0;
                     let r = 1.0 / (2.0 * q.max(0.001));
                     let slope = ring_slope.clamp(0.0, 1.0);
@@ -1801,6 +1917,19 @@ impl Plugin for GrainRust {
                     let output = buffer.as_slice();
                     let detune_phase =
                         f32::from_bits(ring_track.ring_detune_phase.load(Ordering::Relaxed));
+                    let waves_mode = target_waves_mode;
+                    let noise_mode = target_noise_mode;
+                    let waves_rate_hz = ring_rate_hz(ring_waves_rate, waves_mode, global_tempo);
+                    let noise_rate_hz = ring_rate_hz(ring_noise_rate, noise_mode, global_tempo);
+                    let waves_step = (waves_rate_hz / sr).min(1.0);
+                    let noise_step = (noise_rate_hz / sr).min(1.0);
+                    let mut waves_phase =
+                        f32::from_bits(ring_track.ring_waves_phase.load(Ordering::Relaxed));
+                    let mut noise_phase =
+                        f32::from_bits(ring_track.ring_noise_phase.load(Ordering::Relaxed));
+                    let mut noise_value =
+                        f32::from_bits(ring_track.ring_noise_value.load(Ordering::Relaxed));
+                    let mut noise_rng = ring_track.ring_noise_rng.load(Ordering::Relaxed);
                     let mut phase = detune_phase;
                     let detune_rate = RING_DETUNE_RATE_HZ / sr;
                     let detune_depth = ring_detune.clamp(0.0, 1.0) * RING_DETUNE_CENTS;
@@ -1852,8 +1981,14 @@ impl Plugin for GrainRust {
                                 band *= band_decay;
                             }
                             let tone_mix = filtered + tone_bipolar * (high - low) * 0.5;
+                            let waves_lfo = (waves_phase * 2.0 * PI).sin();
+                            let waves_mod =
+                                (1.0 - ring_waves) + ring_waves * (0.5 + 0.5 * waves_lfo);
+                            let noise_mod =
+                                (1.0 - ring_noise) + ring_noise * (0.5 + 0.5 * noise_value);
                             output[channel_idx][sample_idx] =
-                                input * (1.0 - ring_wet) + tone_mix * ring_wet;
+                                input * (1.0 - ring_wet)
+                                    + tone_mix * ring_wet * waves_mod * noise_mod;
                             if !low.is_finite() || !band.is_finite() || !output[channel_idx][sample_idx].is_finite() {
                                 low = 0.0;
                                 band = 0.0;
@@ -1863,6 +1998,23 @@ impl Plugin for GrainRust {
                                 phase += detune_rate;
                                 if phase >= 1.0 {
                                     phase -= 1.0;
+                                }
+                                waves_phase += waves_step;
+                                if waves_phase >= 1.0 {
+                                    waves_phase -= 1.0;
+                                }
+                                noise_phase += noise_step;
+                                if noise_phase >= 1.0 {
+                                    noise_phase -= 1.0;
+                                    noise_rng = noise_rng
+                                        .wrapping_mul(1664525)
+                                        .wrapping_add(1013904223);
+                                    let noise = (noise_rng as f32 / u32::MAX as f32) * 2.0 - 1.0;
+                                    if noise.is_finite() {
+                                        noise_value = noise;
+                                    } else {
+                                        noise_value = 0.0;
+                                    }
                                 }
                             }
                         }
@@ -1874,6 +2026,18 @@ impl Plugin for GrainRust {
                     ring_track
                         .ring_detune_phase
                         .store(phase.to_bits(), Ordering::Relaxed);
+                    ring_track
+                        .ring_waves_phase
+                        .store(waves_phase.to_bits(), Ordering::Relaxed);
+                    ring_track
+                        .ring_noise_phase
+                        .store(noise_phase.to_bits(), Ordering::Relaxed);
+                    ring_track
+                        .ring_noise_value
+                        .store(noise_value.to_bits(), Ordering::Relaxed);
+                    ring_track
+                        .ring_noise_rng
+                        .store(noise_rng, Ordering::Relaxed);
                 }
             }
         }
@@ -2156,6 +2320,47 @@ fn smooth_param(current: f32, target: f32, num_samples: usize, sample_rate: f32)
         next = target;
     }
     next
+}
+
+fn ring_rate_hz(rate_norm: f32, mode: u32, tempo: f32) -> f32 {
+    let rate_norm = rate_norm.clamp(0.0, 1.0);
+    if mode == 0 {
+        return RING_LFO_RATE_MIN_HZ
+            + rate_norm * (RING_LFO_RATE_MAX_HZ - RING_LFO_RATE_MIN_HZ);
+    }
+
+    let base = tempo.clamp(20.0, 300.0) / 60.0;
+    let factor = match mode {
+        1 => 1.0,
+        2 => 1.5,
+        3 => 2.0 / 3.0,
+        _ => 1.0,
+    };
+    let multiplier = 0.25 + rate_norm * 3.75;
+    (base * factor * multiplier).max(0.01)
+}
+
+fn ring_quantize_freq(freq: f32, scale_mode: u32) -> f32 {
+    let freq = freq.max(1.0);
+    let scale = match scale_mode {
+        1 => [0, 2, 4, 5, 7, 9, 11],
+        2 => [0, 2, 3, 5, 7, 8, 10],
+        _ => return freq,
+    };
+    let note = 69.0 + 12.0 * (freq / 440.0).log2();
+    let base_octave = (note / 12.0).floor();
+    let semitone = ((note - base_octave * 12.0).round() as i32).rem_euclid(12);
+    let mut closest = scale[0];
+    let mut best_dist = 12;
+    for &deg in scale.iter() {
+        let dist = (deg - semitone).abs();
+        if dist < best_dist {
+            best_dist = dist;
+            closest = deg;
+        }
+    }
+    let quant_note = base_octave * 12.0 + closest as f32;
+    440.0 * 2.0f32.powf((quant_note - 69.0) / 12.0)
 }
 
 fn count_in_samples(tempo: f32, sample_rate: u32, ticks: u32) -> u32 {
@@ -2857,6 +3062,20 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].ring_wet.load(Ordering::Relaxed));
         let ring_detune =
             f32::from_bits(self.tracks[track_idx].ring_detune.load(Ordering::Relaxed));
+        let ring_waves =
+            f32::from_bits(self.tracks[track_idx].ring_waves.load(Ordering::Relaxed));
+        let ring_waves_rate =
+            f32::from_bits(self.tracks[track_idx].ring_waves_rate.load(Ordering::Relaxed));
+        let ring_waves_rate_mode =
+            self.tracks[track_idx].ring_waves_rate_mode.load(Ordering::Relaxed);
+        let ring_noise =
+            f32::from_bits(self.tracks[track_idx].ring_noise.load(Ordering::Relaxed));
+        let ring_noise_rate =
+            f32::from_bits(self.tracks[track_idx].ring_noise_rate.load(Ordering::Relaxed));
+        let ring_noise_rate_mode =
+            self.tracks[track_idx].ring_noise_rate_mode.load(Ordering::Relaxed);
+        let ring_scale =
+            self.tracks[track_idx].ring_scale.load(Ordering::Relaxed);
         let loop_start =
             f32::from_bits(self.tracks[track_idx].loop_start.load(Ordering::Relaxed));
         let loop_length =
@@ -2955,6 +3174,13 @@ impl SlintWindow {
         self.ui.set_ring_slope(ring_slope);
         self.ui.set_ring_wet(ring_wet);
         self.ui.set_ring_detune(ring_detune);
+        self.ui.set_ring_waves(ring_waves);
+        self.ui.set_ring_waves_rate(ring_waves_rate);
+        self.ui.set_ring_waves_rate_mode(ring_waves_rate_mode as i32);
+        self.ui.set_ring_noise(ring_noise);
+        self.ui.set_ring_noise_rate(ring_noise_rate);
+        self.ui.set_ring_noise_rate_mode(ring_noise_rate_mode as i32);
+        self.ui.set_ring_scale(ring_scale as i32);
         self.ui.set_loop_start(loop_start);
         self.ui.set_loop_length(loop_length);
         self.ui.set_loop_xfade(loop_xfade);
@@ -3206,6 +3432,17 @@ fn initialize_ui(
     ui.set_ring_decay_modes(ModelRc::new(VecModel::from(vec![
         SharedString::from("Sustain"),
         SharedString::from("Choke"),
+    ])));
+    ui.set_ring_rate_modes(ModelRc::new(VecModel::from(vec![
+        SharedString::from("Free"),
+        SharedString::from("Straight"),
+        SharedString::from("Dotted"),
+        SharedString::from("Triplet"),
+    ])));
+    ui.set_ring_scale_modes(ModelRc::new(VecModel::from(vec![
+        SharedString::from("Chromatic"),
+        SharedString::from("Major"),
+        SharedString::from("Minor"),
     ])));
     ui.set_engine_types(ModelRc::new(VecModel::from(vec![
         SharedString::from("Tape"),

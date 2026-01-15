@@ -1,0 +1,18 @@
+{
+  "name": "grainrust",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Project tooling for docs and scripting",
+  "scripts": {
+    "grainrust:dev": "cargo run",
+    "grainrust:dev-bt": "set RUST_BACKTRACE=1&& cargo run",
+    "grainrust:build": "node scripts/packaging/build.js",
+    "version:sync": "node scripts/version-sync.js",
+    "docs:install": "npm --prefix docs-site install",
+    "docs:dev": "npm --prefix docs-site run start",
+    "docs:build": "npm --prefix docs-site run build",
+    "docs:serve": "npm --prefix docs-site run serve",
+    "storybook": "npm --prefix docs-site run storybook",
+    "storybook:build": "npm --prefix docs-site run storybook:build"
+  }
+}

@@ -1,0 +1,57 @@
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
+const cargoToml = fs.readFileSync(path.join(root, 'Cargo.toml'), 'utf8');
+const versionMatch = cargoToml.match(/^version\s*=\s*"([^"]+)"/m);
+if (!versionMatch) {
+  console.error('Failed to locate version in Cargo.toml');
+  process.exit(1);
+}
+const version = versionMatch[1];
+
+const headerTemplate = fs.readFileSync(path.join(root, 'scripts', 'header-template.txt'), 'utf8');
+
+function writeHeader(filePath, component) {
+  const fullPath = path.join(root, filePath);
+  const contents = fs.readFileSync(fullPath, 'utf8');
+  const header = headerTemplate
+    .replace('{{version}}', version)
+    .replace('{{component}}', component);
+  const updated = contents.replace(/^\s*\/\*\*[\s\S]*?\*\/\s*/m, header + '\n');
+  if (updated === contents) {
+    // If no header was replaced, prepend.
+    fs.writeFileSync(fullPath, header + '\n' + contents, 'utf8');
+    return;
+  }
+  fs.writeFileSync(fullPath, updated, 'utf8');
+}
+
+function writePackageVersion(filePath) {
+  const fullPath = path.join(root, filePath);
+  const pkg = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+  pkg.version = version;
+  fs.writeFileSync(fullPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+}
+
+function writeReadmeVersion() {
+  const readmePath = path.join(root, 'README.md');
+  let text = fs.readFileSync(readmePath, 'utf8');
+  if (!text.includes('Version:')) {
+    text = text.replace(/^#\s+GrainRust\s*$/m, `# GrainRust\n\nVersion: ${version}`);
+  } else {
+    text = text.replace(/^Version:\s*.*$/m, `Version: ${version}`);
+  }
+  fs.writeFileSync(readmePath, text, 'utf8');
+}
+
+writePackageVersion('package.json');
+writePackageVersion(path.join('docs-site', 'package.json'));
+writeReadmeVersion();
+
+writeHeader(path.join('src', 'main.rs'), 'Main Entry Point');
+writeHeader(path.join('src', 'lib.rs'), 'Core Logic');
+writeHeader('build.rs', 'Build Script');
+writeHeader(path.join('src', 'ui', 'grainrust.slint'), 'UI Definitions');
+
+console.log(`Synced version ${version}`);

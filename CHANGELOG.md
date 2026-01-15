@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2] - 2026-01-14
+
+- Added Mosaic granular buffer with per-track bypass
+- Added Mosaic parameter controls and grouped Tape/Mosaic sections
+- Added full-window UI scrolling for tall layouts
+- Added docs tooling (Docusaurus + Storybook MDX) and onboarding guide
+- Added cross-platform packaging scripts (NSIS/pkgbuild/Linux staging)
+- Added npm scripts for app/dev/build workflows
+
 ## [0.1.1] - 2026-01-13
 
 - Added per-track engine loader with confirmation prompt

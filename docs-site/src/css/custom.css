@@ -1,0 +1,13 @@
+:root {
+  --ifm-color-primary: #7b2cbf;
+  --ifm-color-primary-dark: #6920a3;
+  --ifm-color-primary-darker: #5f1c93;
+  --ifm-color-primary-darkest: #4c1677;
+  --ifm-color-primary-light: #8a3ad3;
+  --ifm-color-primary-lighter: #9a55e0;
+  --ifm-color-primary-lightest: #b887f0;
+}
+
+.hero__title {
+  letter-spacing: 0.02em;
+}

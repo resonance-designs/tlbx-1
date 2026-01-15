@@ -370,14 +370,14 @@ struct Track {
     animate_sequencer_step: AtomicI32,
     /// Animate sequencer phase in samples.
     animate_sequencer_phase: AtomicU32,
-    /// Animate slot oscillator phases (0..1).
-    animate_slot_phases: [AtomicU32; 4],
-    /// Animate slot sample playback positions (in samples).
-    animate_slot_sample_pos: [AtomicU32; 4],
-    /// Animate amp envelope stage (0 = idle, 1 = attack, 2 = decay, 3 = sustain, 4 = release).
-    animate_amp_stage: AtomicU32,
-    /// Animate amp envelope level (0..1).
-    animate_amp_level: AtomicU32,
+    /// Animate slot oscillator phases (0..1) for each voice.
+    animate_slot_phases: [[AtomicU32; 4]; 10],
+    /// Animate slot sample playback positions (in samples) for each voice.
+    animate_slot_sample_pos: [[AtomicU32; 4]; 10],
+    /// Animate amp envelope stage (0 = idle, 1 = attack, 2 = decay, 3 = sustain, 4 = release) for each voice.
+    animate_amp_stage: [AtomicU32; 10],
+    /// Animate amp envelope level (0..1) for each voice.
+    animate_amp_level: [AtomicU32; 10],
     /// Animate filter state (history for each channel).
     animate_filter_v1: [AtomicU32; 2],
     animate_filter_v2: [AtomicU32; 2],
@@ -531,10 +531,10 @@ impl Default for Track {
             animate_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
             animate_sequencer_step: AtomicI32::new(-1),
             animate_sequencer_phase: AtomicU32::new(0),
-            animate_slot_phases: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
-            animate_slot_sample_pos: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
-            animate_amp_stage: AtomicU32::new(0),
-            animate_amp_level: AtomicU32::new(0.0f32.to_bits()),
+            animate_slot_phases: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits()))),
+            animate_slot_sample_pos: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits()))),
+            animate_amp_stage: std::array::from_fn(|_| AtomicU32::new(0)),
+            animate_amp_level: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             animate_filter_v1: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             animate_filter_v2: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             engine_type: AtomicU32::new(0),
@@ -867,12 +867,14 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     }
     track.animate_sequencer_step.store(-1, Ordering::Relaxed);
     track.animate_sequencer_phase.store(0, Ordering::Relaxed);
-    for i in 0..4 {
-        track.animate_slot_phases[i].store(0.0f32.to_bits(), Ordering::Relaxed);
-        track.animate_slot_sample_pos[i].store(0.0f32.to_bits(), Ordering::Relaxed);
+    for voice in 0..10 {
+        for slot in 0..4 {
+            track.animate_slot_phases[voice][slot].store(0.0f32.to_bits(), Ordering::Relaxed);
+            track.animate_slot_sample_pos[voice][slot].store(0.0f32.to_bits(), Ordering::Relaxed);
+        }
+        track.animate_amp_stage[voice].store(0, Ordering::Relaxed);
+        track.animate_amp_level[voice].store(0.0f32.to_bits(), Ordering::Relaxed);
     }
-    track.animate_amp_stage.store(0, Ordering::Relaxed);
-    track.animate_amp_level.store(0.0f32.to_bits(), Ordering::Relaxed);
     for i in 0..2 {
         track.animate_filter_v1[i].store(0.0f32.to_bits(), Ordering::Relaxed);
         track.animate_filter_v2[i].store(0.0f32.to_bits(), Ordering::Relaxed);
@@ -919,13 +921,25 @@ impl GrainRust {
         let sustain = f32::from_bits(track.animate_amp_sustain.load(Ordering::Relaxed));
         let release = f32::from_bits(track.animate_amp_release.load(Ordering::Relaxed)).max(0.001);
 
-        let mut amp_stage = track.animate_amp_stage.load(Ordering::Relaxed);
-        let mut amp_level = f32::from_bits(track.animate_amp_level.load(Ordering::Relaxed));
+        let mut amp_levels = [0.0f32; 10];
+        let mut amp_stages = [0u32; 10];
+        for i in 0..10 {
+            amp_levels[i] = f32::from_bits(track.animate_amp_level[i].load(Ordering::Relaxed));
+            amp_stages[i] = track.animate_amp_stage[i].load(Ordering::Relaxed);
+        }
 
         let cutoff = f32::from_bits(track.animate_filter_cutoff.load(Ordering::Relaxed));
         let resonance = f32::from_bits(track.animate_filter_resonance.load(Ordering::Relaxed));
-        let _drive = f32::from_bits(track.animate_filter_drive.load(Ordering::Relaxed));
-        let _filter_type = track.animate_filter_type.load(Ordering::Relaxed);
+        
+        // Pre-calculate envelope coefficients
+        let calc_coef = |time_secs: f32| -> f32 {
+            if time_secs <= 0.001 { 0.0 }
+            else { (-1.0 / (time_secs * sr)).exp() }
+        };
+
+        let coef_attack = calc_coef(attack);
+        let coef_decay = calc_coef(decay);
+        let coef_release = calc_coef(release);
 
         let frequencies = [
             65.41, 73.42, 82.41, 98.00, 110.00, // C2, D2, E2, G2, A2
@@ -933,7 +947,7 @@ impl GrainRust {
         ];
 
         let num_channels = buffer.channels();
-        let mut output = buffer.as_slice();
+        let output = buffer.as_slice();
 
         for sample_idx in 0..num_buffer_samples {
             // Step sequencer
@@ -942,63 +956,58 @@ impl GrainRust {
                 current_step = (current_step + 1) % 16;
                 track.animate_sequencer_step.store(current_step, Ordering::Relaxed);
 
-                // Check if any note is active in this step
-                let mut note_active = false;
+                // Update envelope stages for all voices based on grid
                 for row in 0..10 {
-                    if track.animate_sequencer_grid[row * 16 + current_step as usize].load(Ordering::Relaxed) {
-                        note_active = true;
-                        break;
+                    let note_active = track.animate_sequencer_grid[row * 16 + current_step as usize].load(Ordering::Relaxed);
+                    if note_active {
+                        if amp_stages[row] == 0 || amp_stages[row] == 4 {
+                            amp_stages[row] = 1; // Attack
+                        }
+                    } else {
+                        if amp_stages[row] != 0 && amp_stages[row] != 4 {
+                            amp_stages[row] = 4; // Release
+                        }
                     }
-                }
-
-                if note_active {
-                    if amp_stage == 0 || amp_stage == 4 {
-                        amp_stage = 1; // Attack
-                    }
-                } else if amp_stage != 4 && amp_stage != 0 {
-                    amp_stage = 4; // Release
                 }
             }
             sequencer_phase += 1;
 
-            // Process Envelope
-            match amp_stage {
-                1 => { // Attack
-                    amp_level += 1.0 / (attack * sr);
-                    if amp_level >= 1.0 {
-                        amp_level = 1.0;
-                        amp_stage = 2;
+            // Process Envelopes for all voices
+            for i in 0..10 {
+                match amp_stages[i] {
+                    1 => { // Attack
+                        amp_levels[i] = amp_levels[i] * coef_attack + 1.1 * (1.0 - coef_attack);
+                        if amp_levels[i] >= 1.0 {
+                            amp_levels[i] = 1.0;
+                            amp_stages[i] = 2;
+                        }
+                    }
+                    2 => { // Decay
+                        amp_levels[i] = amp_levels[i] * coef_decay + sustain * (1.0 - coef_decay);
+                        if (amp_levels[i] - sustain).abs() < 0.001 {
+                            amp_levels[i] = sustain;
+                            amp_stages[i] = 3;
+                        }
+                    }
+                    3 => { // Sustain
+                        amp_levels[i] = sustain;
+                    }
+                    4 => { // Release
+                        amp_levels[i] = amp_levels[i] * coef_release;
+                        if amp_levels[i] < 0.0001 {
+                            amp_levels[i] = 0.0;
+                            amp_stages[i] = 0;
+                        }
+                    }
+                    _ => {
+                        amp_levels[i] = 0.0;
                     }
                 }
-                2 => { // Decay
-                    amp_level -= (1.0 - sustain) / (decay * sr);
-                    if amp_level <= sustain {
-                        amp_level = sustain;
-                        amp_stage = 3;
-                    }
-                }
-                3 => { // Sustain
-                    amp_level = sustain;
-                }
-                4 => { // Release
-                    amp_level -= 1.0 / (release * sr);
-                    if amp_level <= 0.0 {
-                        amp_level = 0.0;
-                        amp_stage = 0;
-                    }
-                }
-                _ => {
-                    amp_level = 0.0;
-                }
-            }
-
-            if amp_level <= 0.0 && amp_stage == 0 {
-                continue;
             }
 
             // Smooth vector position
-            x_smooth = x_smooth * 0.99 + target_x * 0.01;
-            y_smooth = y_smooth * 0.99 + target_y * 0.01;
+            x_smooth = x_smooth * 0.999 + target_x * 0.001;
+            y_smooth = y_smooth * 0.999 + target_y * 0.001;
 
             // Calculate weights for 4 slots
             let w_a = (1.0 - x_smooth) * (1.0 - y_smooth);
@@ -1010,69 +1019,70 @@ impl GrainRust {
             let mut mixed_sample_l = 0.0f32;
             let mut mixed_sample_r = 0.0f32;
 
-            // Sum active notes
+            // Sum active voices
             for row in 0..10 {
-                if track.animate_sequencer_grid[row * 16 + current_step as usize].load(Ordering::Relaxed) {
-                    let base_freq = frequencies[row as usize];
-                    
-                    for slot in 0..4 {
-                        let slot_type = track.animate_slot_types[slot].load(Ordering::Relaxed);
-                        let coarse = f32::from_bits(track.animate_slot_coarse[slot].load(Ordering::Relaxed));
-                        let fine = f32::from_bits(track.animate_slot_fine[slot].load(Ordering::Relaxed));
-                        let pitch_ratio = 2.0f32.powf((coarse + fine / 100.0) / 12.0);
-                        let freq = base_freq * pitch_ratio;
+                if amp_levels[row] <= 0.0 {
+                    continue;
+                }
+                
+                let base_freq = frequencies[row as usize];
+                
+                for slot in 0..4 {
+                    let slot_type = track.animate_slot_types[slot].load(Ordering::Relaxed);
+                    let coarse = f32::from_bits(track.animate_slot_coarse[slot].load(Ordering::Relaxed));
+                    let fine = f32::from_bits(track.animate_slot_fine[slot].load(Ordering::Relaxed));
+                    let pitch_ratio = 2.0f32.powf((coarse + fine / 100.0) / 12.0);
+                    let freq = base_freq * pitch_ratio;
 
-                        let mut slot_sample = 0.0f32;
-                        if slot_type == 0 { // Wavetable
-                            let wt_idx = track.animate_slot_wavetables[slot].load(Ordering::Relaxed) as usize;
-                            if let Some(wt) = animate_library.wavetables.get(wt_idx) {
-                                if !wt.is_empty() {
-                                    let phase = f32::from_bits(track.animate_slot_phases[slot].load(Ordering::Relaxed));
-                                    // Use first cycle (2048 samples)
-                                    let cycle_len = wt.len().min(2048);
-                                    let pos = phase * (cycle_len - 1) as f32;
-                                    let idx = pos as usize;
-                                    let frac = pos - idx as f32;
-                                    let s1 = wt[idx];
-                                    let s2 = wt[(idx + 1) % cycle_len];
-                                    slot_sample = s1 + (s2 - s1) * frac;
+                    let mut slot_sample = 0.0f32;
+                    if slot_type == 0 { // Wavetable
+                        let wt_idx = track.animate_slot_wavetables[slot].load(Ordering::Relaxed) as usize;
+                        if let Some(wt) = animate_library.wavetables.get(wt_idx) {
+                            if !wt.is_empty() {
+                                let phase = f32::from_bits(track.animate_slot_phases[row][slot].load(Ordering::Relaxed));
+                                // Use first cycle (2048 samples)
+                                let cycle_len = wt.len().min(2048);
+                                let pos = phase * (cycle_len - 1) as f32;
+                                let idx = pos as usize;
+                                let frac = pos - idx as f32;
+                                let s1 = wt[idx];
+                                let s2 = wt[(idx + 1) % cycle_len];
+                                slot_sample = s1 + (s2 - s1) * frac;
 
-                                    let new_phase = (phase + freq / sr) % 1.0;
-                                    track.animate_slot_phases[slot].store(new_phase.to_bits(), Ordering::Relaxed);
-                                }
+                                let new_phase = (phase + freq / sr) % 1.0;
+                                track.animate_slot_phases[row][slot].store(new_phase.to_bits(), Ordering::Relaxed);
                             }
-                        } else { // Sample
-                            let smp_idx = track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
-                            if let Some(smp) = animate_library.samples.get(smp_idx) {
-                                if !smp.is_empty() && !smp[0].is_empty() {
-                                    let pos = f32::from_bits(track.animate_slot_sample_pos[slot].load(Ordering::Relaxed));
-                                    let idx = pos as usize;
-                                    if idx < smp[0].len() {
-                                        slot_sample = smp[0][idx];
-                                        let new_pos = pos + (freq / 440.0); // Rough sample playback
-                                        track.animate_slot_sample_pos[slot].store(new_pos.to_bits(), Ordering::Relaxed);
-                                    } else {
-                                        track.animate_slot_sample_pos[slot].store(0.0f32.to_bits(), Ordering::Relaxed);
-                                    }
+                        }
+                    } else { // Sample
+                        let smp_idx = track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
+                        if let Some(smp) = animate_library.samples.get(smp_idx) {
+                            if !smp.is_empty() && !smp[0].is_empty() {
+                                let pos = f32::from_bits(track.animate_slot_sample_pos[row][slot].load(Ordering::Relaxed));
+                                let idx = pos as usize;
+                                if idx < smp[0].len() {
+                                    slot_sample = smp[0][idx];
+                                    let new_pos = pos + (freq / 440.0); // Rough sample playback
+                                    track.animate_slot_sample_pos[row][slot].store(new_pos.to_bits(), Ordering::Relaxed);
+                                } else {
+                                    // Loop sample for now to avoid clicks at end if envelope still open
+                                    track.animate_slot_sample_pos[row][slot].store(0.0f32.to_bits(), Ordering::Relaxed);
                                 }
                             }
                         }
-
-                        let level = f32::from_bits(track.animate_slot_level[slot].load(Ordering::Relaxed)) * weights[slot] * amp_level;
-                        let pan = f32::from_bits(track.animate_slot_pan[slot].load(Ordering::Relaxed)).clamp(-1.0, 1.0);
-                        
-                        let left_gain = (1.0 - pan).min(1.0);
-                        let right_gain = (1.0 + pan).min(1.0);
-                        
-                        mixed_sample_l += slot_sample * level * left_gain;
-                        mixed_sample_r += slot_sample * level * right_gain;
                     }
+
+                    let level = f32::from_bits(track.animate_slot_level[slot].load(Ordering::Relaxed)) * weights[slot] * amp_levels[row];
+                    let pan = f32::from_bits(track.animate_slot_pan[slot].load(Ordering::Relaxed)).clamp(-1.0, 1.0);
+                    
+                    let left_gain = (1.0 - pan).min(1.0);
+                    let right_gain = (1.0 + pan).min(1.0);
+                    
+                    mixed_sample_l += slot_sample * level * left_gain;
+                    mixed_sample_r += slot_sample * level * right_gain;
                 }
             }
 
             // SVF Filter (State Variable Filter)
-            // f = 2 * sin(pi * fc / fs)
-            // q = 1 / Q
             let f = 2.0 * (std::f32::consts::PI * cutoff.powf(2.0) * 20000.0 / sr).sin();
             let q = 1.0 - resonance;
             
@@ -1100,8 +1110,10 @@ impl GrainRust {
         track.animate_sequencer_phase.store(sequencer_phase, Ordering::Relaxed);
         track.animate_vector_x_smooth.store(x_smooth.to_bits(), Ordering::Relaxed);
         track.animate_vector_y_smooth.store(y_smooth.to_bits(), Ordering::Relaxed);
-        track.animate_amp_stage.store(amp_stage, Ordering::Relaxed);
-        track.animate_amp_level.store(amp_level.to_bits(), Ordering::Relaxed);
+        for i in 0..10 {
+            track.animate_amp_stage[i].store(amp_stages[i], Ordering::Relaxed);
+            track.animate_amp_level[i].store(amp_levels[i].to_bits(), Ordering::Relaxed);
+        }
     }
 }
 

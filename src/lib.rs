@@ -7,15 +7,6 @@
  * Component: Core Logic
  */
 
-/**
- * GrainRust - A Rust-based granular audio sampler.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.3
- * Component: Core Logic
- */
-
 use nih_plug::prelude::*;
 use cpal::traits::{DeviceTrait, HostTrait};
 use parking_lot::Mutex;

@@ -59,6 +59,11 @@ const MOSAIC_SIZE_MAX_MS: f32 = 250.0;
 const MOSAIC_PITCH_SEMITONES: f32 = 36.0;
 const MOSAIC_DETUNE_CENTS: f32 = 25.0;
 const MOSAIC_PARAM_SMOOTH_MS: f32 = 20.0;
+const RING_PITCH_SEMITONES: f32 = 24.0;
+const RING_CUTOFF_MIN_HZ: f32 = 20.0;
+const RING_CUTOFF_MAX_HZ: f32 = 20_000.0;
+const RING_DETUNE_CENTS: f32 = 20.0;
+const RING_DETUNE_RATE_HZ: f32 = 0.25;
 const KEYLOCK_GRAIN_SIZE: usize = 256;
 const KEYLOCK_GRAIN_HOP: usize = KEYLOCK_GRAIN_SIZE / 2;
 const OSCILLOSCOPE_SAMPLES: usize = 256;
@@ -226,6 +231,52 @@ struct Track {
     mosaic_grain_pitch: AtomicU32,
     /// Mosaic RNG state for grain start selection.
     mosaic_rng_state: AtomicU32,
+    /// Ring filter cutoff (normalized 0..1).
+    ring_cutoff: AtomicU32,
+    /// Smoothed ring cutoff.
+    ring_cutoff_smooth: AtomicU32,
+    /// Ring filter resonance (normalized 0..1).
+    ring_resonance: AtomicU32,
+    /// Smoothed ring resonance.
+    ring_resonance_smooth: AtomicU32,
+    /// Ring filter decay (normalized 0..1).
+    ring_decay: AtomicU32,
+    /// Smoothed ring decay.
+    ring_decay_smooth: AtomicU32,
+    /// Ring filter decay mode (0 = sustain, 1 = choke).
+    ring_decay_mode: AtomicU32,
+    /// Ring filter pitch offset (normalized 0..1, bipolar).
+    ring_pitch: AtomicU32,
+    /// Smoothed ring pitch offset.
+    ring_pitch_smooth: AtomicU32,
+    /// Ring filter tone (normalized 0..1, bipolar).
+    ring_tone: AtomicU32,
+    /// Smoothed ring tone.
+    ring_tone_smooth: AtomicU32,
+    /// Ring filter tilt (normalized 0..1, bipolar).
+    ring_tilt: AtomicU32,
+    /// Smoothed ring tilt.
+    ring_tilt_smooth: AtomicU32,
+    /// Ring filter slope (normalized 0..1).
+    ring_slope: AtomicU32,
+    /// Smoothed ring slope.
+    ring_slope_smooth: AtomicU32,
+    /// Ring filter wet mix (normalized 0..1).
+    ring_wet: AtomicU32,
+    /// Smoothed ring wet mix.
+    ring_wet_smooth: AtomicU32,
+    /// Ring filter detune (normalized 0..1).
+    ring_detune: AtomicU32,
+    /// Smoothed ring detune.
+    ring_detune_smooth: AtomicU32,
+    /// Ring detune LFO phase.
+    ring_detune_phase: AtomicU32,
+    /// Ring filter enabled.
+    ring_enabled: AtomicBool,
+    /// Ring filter low-pass state per channel.
+    ring_low: [AtomicU32; 2],
+    /// Ring filter band-pass state per channel.
+    ring_band: [AtomicU32; 2],
     /// Engine type loaded for this track (0 = none, 1 = tape).
     engine_type: AtomicU32,
     /// Logs one debug line per playback start to confirm audio thread output.
@@ -309,6 +360,29 @@ impl Default for Track {
             mosaic_grain_wait: AtomicU32::new(0),
             mosaic_grain_pitch: AtomicU32::new(1.0f32.to_bits()),
             mosaic_rng_state: AtomicU32::new(0x1234_abcd),
+            ring_cutoff: AtomicU32::new(0.5f32.to_bits()),
+            ring_cutoff_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_resonance: AtomicU32::new(0.0f32.to_bits()),
+            ring_resonance_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_decay: AtomicU32::new(0.0f32.to_bits()),
+            ring_decay_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_decay_mode: AtomicU32::new(0),
+            ring_pitch: AtomicU32::new(0.5f32.to_bits()),
+            ring_pitch_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_tone: AtomicU32::new(0.5f32.to_bits()),
+            ring_tone_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_tilt: AtomicU32::new(0.5f32.to_bits()),
+            ring_tilt_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_slope: AtomicU32::new(0.5f32.to_bits()),
+            ring_slope_smooth: AtomicU32::new(0.5f32.to_bits()),
+            ring_wet: AtomicU32::new(0.0f32.to_bits()),
+            ring_wet_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_detune: AtomicU32::new(0.0f32.to_bits()),
+            ring_detune_smooth: AtomicU32::new(0.0f32.to_bits()),
+            ring_detune_phase: AtomicU32::new(0.0f32.to_bits()),
+            ring_enabled: AtomicBool::new(false),
+            ring_low: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            ring_band: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             engine_type: AtomicU32::new(0),
             debug_logged: AtomicBool::new(false),
             sample_rate: AtomicU32::new(44_100),
@@ -501,6 +575,31 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.mosaic_grain_wait.store(0, Ordering::Relaxed);
     track.mosaic_grain_pitch.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_rng_state.store(0x1234_abcd, Ordering::Relaxed);
+    track.ring_cutoff.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_cutoff_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_resonance.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_resonance_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_decay.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_decay_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_decay_mode.store(0, Ordering::Relaxed);
+    track.ring_pitch.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_pitch_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_tone.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_tone_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_tilt.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_tilt_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_slope.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_slope_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.ring_wet.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_wet_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_detune.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_detune_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_detune_phase.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.ring_enabled.store(false, Ordering::Relaxed);
+    for channel in 0..2 {
+        track.ring_low[channel].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.ring_band[channel].store(0.0f32.to_bits(), Ordering::Relaxed);
+    }
     if let Some(mut buffer) = track.mosaic_buffer.try_lock() {
         for channel in buffer.iter_mut() {
             channel.fill(0.0);
@@ -1453,12 +1552,241 @@ impl Plugin for GrainRust {
             }
         }
 
+        let ring_track_idx = self
+            .params
+            .selected_track
+            .value()
+            .saturating_sub(1) as usize;
+        let ring_track_idx = ring_track_idx.min(NUM_TRACKS - 1);
+        let ring_track = &self.tracks[ring_track_idx];
+        if ring_track.ring_enabled.load(Ordering::Relaxed) {
+            let num_buffer_samples = buffer.samples();
+            if num_buffer_samples > 0 {
+                let sr = ring_track.sample_rate.load(Ordering::Relaxed).max(1) as f32;
+                let target_cutoff =
+                    f32::from_bits(ring_track.ring_cutoff.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_resonance =
+                    f32::from_bits(ring_track.ring_resonance.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_decay =
+                    f32::from_bits(ring_track.ring_decay.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_pitch =
+                    f32::from_bits(ring_track.ring_pitch.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_tone =
+                    f32::from_bits(ring_track.ring_tone.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_tilt =
+                    f32::from_bits(ring_track.ring_tilt.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_slope =
+                    f32::from_bits(ring_track.ring_slope.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_wet =
+                    f32::from_bits(ring_track.ring_wet.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+                let target_detune =
+                    f32::from_bits(ring_track.ring_detune.load(Ordering::Relaxed))
+                        .clamp(0.0, 1.0);
+
+                let ring_cutoff = smooth_param(
+                    f32::from_bits(ring_track.ring_cutoff_smooth.load(Ordering::Relaxed)),
+                    target_cutoff,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_resonance = smooth_param(
+                    f32::from_bits(ring_track.ring_resonance_smooth.load(Ordering::Relaxed)),
+                    target_resonance,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_decay = smooth_param(
+                    f32::from_bits(ring_track.ring_decay_smooth.load(Ordering::Relaxed)),
+                    target_decay,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_pitch = smooth_param(
+                    f32::from_bits(ring_track.ring_pitch_smooth.load(Ordering::Relaxed)),
+                    target_pitch,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_tone = smooth_param(
+                    f32::from_bits(ring_track.ring_tone_smooth.load(Ordering::Relaxed)),
+                    target_tone,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_tilt = smooth_param(
+                    f32::from_bits(ring_track.ring_tilt_smooth.load(Ordering::Relaxed)),
+                    target_tilt,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_slope = smooth_param(
+                    f32::from_bits(ring_track.ring_slope_smooth.load(Ordering::Relaxed)),
+                    target_slope,
+                    num_buffer_samples,
+                    sr,
+                );
+                let ring_wet = smooth_param(
+                    f32::from_bits(ring_track.ring_wet_smooth.load(Ordering::Relaxed)),
+                    target_wet,
+                    num_buffer_samples,
+                    sr,
+                )
+                .clamp(0.0, 1.0);
+                let ring_detune = smooth_param(
+                    f32::from_bits(ring_track.ring_detune_smooth.load(Ordering::Relaxed)),
+                    target_detune,
+                    num_buffer_samples,
+                    sr,
+                );
+
+                ring_track
+                    .ring_cutoff_smooth
+                    .store(ring_cutoff.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_resonance_smooth
+                    .store(ring_resonance.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_decay_smooth
+                    .store(ring_decay.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_pitch_smooth
+                    .store(ring_pitch.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_tone_smooth
+                    .store(ring_tone.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_tilt_smooth
+                    .store(ring_tilt.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_slope_smooth
+                    .store(ring_slope.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_wet_smooth
+                    .store(ring_wet.to_bits(), Ordering::Relaxed);
+                ring_track
+                    .ring_detune_smooth
+                    .store(ring_detune.to_bits(), Ordering::Relaxed);
+
+                if ring_wet > 0.0 {
+                    let decay_mode = ring_track.ring_decay_mode.load(Ordering::Relaxed);
+                    let decay_sec = 0.05 + ring_decay.clamp(0.0, 1.0) * 3.95;
+                    let decay_factor = (-1.0 / (decay_sec * sr)).exp();
+                    let pitch_bipolar = ring_pitch * 2.0 - 1.0;
+                    let tone_bipolar = ring_tone * 2.0 - 1.0;
+                    let tilt_bipolar = ring_tilt * 2.0 - 1.0;
+                    let pitch_ratio =
+                        2.0f32.powf((pitch_bipolar * RING_PITCH_SEMITONES) / 12.0);
+                    let cutoff_hz = RING_CUTOFF_MIN_HZ
+                        * (RING_CUTOFF_MAX_HZ / RING_CUTOFF_MIN_HZ).powf(ring_cutoff);
+                    let cutoff_hz =
+                        (cutoff_hz * pitch_ratio).clamp(20.0, sr * 0.45);
+                    let q = 0.5 + ring_resonance * 12.0;
+                    let r = 1.0 / (2.0 * q.max(0.001));
+                    let slope = ring_slope.clamp(0.0, 1.0);
+
+                    let num_channels = buffer.channels();
+                    let output = buffer.as_slice();
+                    let detune_phase =
+                        f32::from_bits(ring_track.ring_detune_phase.load(Ordering::Relaxed));
+                    let mut phase = detune_phase;
+                    let detune_rate = RING_DETUNE_RATE_HZ / sr;
+                    let detune_depth = ring_detune.clamp(0.0, 1.0) * RING_DETUNE_CENTS;
+                    for channel_idx in 0..num_channels {
+                        let mut low =
+                            f32::from_bits(ring_track.ring_low[channel_idx].load(Ordering::Relaxed));
+                        let mut band =
+                            f32::from_bits(ring_track.ring_band[channel_idx].load(Ordering::Relaxed));
+                        for sample_idx in 0..num_buffer_samples {
+                            if decay_mode == 1 {
+                                let tilt = tilt_bipolar;
+                                let low_decay = (decay_factor * (1.0 - tilt * 0.35)).clamp(0.0, 1.0);
+                                let band_decay = (decay_factor * (1.0 + tilt * 0.35)).clamp(0.0, 1.0);
+                                low *= low_decay;
+                                band *= band_decay;
+                            }
+                            let input = output[channel_idx][sample_idx];
+                            let lfo = (phase * 2.0 * PI).sin();
+                            let detune_cents =
+                                detune_depth * lfo * if channel_idx == 0 { -1.0 } else { 1.0 };
+                            let detune_ratio = 2.0f32.powf(detune_cents / 1200.0);
+                            let detuned_hz =
+                                (cutoff_hz * detune_ratio).clamp(20.0, sr * 0.45);
+                            let mut g_detune = (PI * detuned_hz / sr).tan();
+                            if !g_detune.is_finite() {
+                                g_detune = 0.0;
+                            } else if g_detune > 10.0 {
+                                g_detune = 10.0;
+                            }
+                            let v1 = (input - low - r * band) * g_detune;
+                            let v2 = band + v1;
+                            low += v2;
+                            band = v2;
+                            low = low.clamp(-8.0, 8.0);
+                            band = band.clamp(-8.0, 8.0);
+                            let high = input - low - r * band;
+                            let filtered = if slope < 0.5 {
+                                let t = slope / 0.5;
+                                low + (band - low) * t
+                            } else {
+                                let t = (slope - 0.5) / 0.5;
+                                band + (high - band) * t
+                            };
+                            if decay_mode == 0 {
+                                let tilt = tilt_bipolar;
+                                let low_decay = (decay_factor * (1.0 - tilt * 0.35)).clamp(0.0, 1.0);
+                                let band_decay = (decay_factor * (1.0 + tilt * 0.35)).clamp(0.0, 1.0);
+                                low *= low_decay;
+                                band *= band_decay;
+                            }
+                            let tone_mix = filtered + tone_bipolar * (high - low) * 0.5;
+                            output[channel_idx][sample_idx] =
+                                input * (1.0 - ring_wet) + tone_mix * ring_wet;
+                            if !low.is_finite() || !band.is_finite() || !output[channel_idx][sample_idx].is_finite() {
+                                low = 0.0;
+                                band = 0.0;
+                                output[channel_idx][sample_idx] = input;
+                            }
+                            if channel_idx == 0 {
+                                phase += detune_rate;
+                                if phase >= 1.0 {
+                                    phase -= 1.0;
+                                }
+                            }
+                        }
+                        ring_track.ring_low[channel_idx]
+                            .store(low.to_bits(), Ordering::Relaxed);
+                        ring_track.ring_band[channel_idx]
+                            .store(band.to_bits(), Ordering::Relaxed);
+                    }
+                    ring_track
+                        .ring_detune_phase
+                        .store(phase.to_bits(), Ordering::Relaxed);
+                }
+            }
+        }
+
         // Apply global gain
         for channel_samples in buffer.iter_samples() {
             let gain = self.params.gain.smoothed.next();
 
             for sample in channel_samples {
                 *sample *= gain;
+            }
+        }
+
+        for channel_samples in buffer.iter_samples() {
+            for sample in channel_samples {
+                if !sample.is_finite() {
+                    *sample = 0.0;
+                }
             }
         }
 
@@ -2293,6 +2621,24 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].mosaic_rand_size.load(Ordering::Relaxed));
         let mosaic_sos =
             f32::from_bits(self.tracks[track_idx].mosaic_sos.load(Ordering::Relaxed));
+        let ring_cutoff =
+            f32::from_bits(self.tracks[track_idx].ring_cutoff.load(Ordering::Relaxed));
+        let ring_resonance =
+            f32::from_bits(self.tracks[track_idx].ring_resonance.load(Ordering::Relaxed));
+        let ring_decay =
+            f32::from_bits(self.tracks[track_idx].ring_decay.load(Ordering::Relaxed));
+        let ring_pitch =
+            f32::from_bits(self.tracks[track_idx].ring_pitch.load(Ordering::Relaxed));
+        let ring_tone =
+            f32::from_bits(self.tracks[track_idx].ring_tone.load(Ordering::Relaxed));
+        let ring_tilt =
+            f32::from_bits(self.tracks[track_idx].ring_tilt.load(Ordering::Relaxed));
+        let ring_slope =
+            f32::from_bits(self.tracks[track_idx].ring_slope.load(Ordering::Relaxed));
+        let ring_wet =
+            f32::from_bits(self.tracks[track_idx].ring_wet.load(Ordering::Relaxed));
+        let ring_detune =
+            f32::from_bits(self.tracks[track_idx].ring_detune.load(Ordering::Relaxed));
         let loop_start =
             f32::from_bits(self.tracks[track_idx].loop_start.load(Ordering::Relaxed));
         let loop_length =
@@ -2303,6 +2649,8 @@ impl SlintWindow {
             self.tracks[track_idx].loop_enabled.load(Ordering::Relaxed);
         let loop_mode = self.tracks[track_idx].loop_mode.load(Ordering::Relaxed);
         let mosaic_enabled = self.tracks[track_idx].mosaic_enabled.load(Ordering::Relaxed);
+        let ring_enabled = self.tracks[track_idx].ring_enabled.load(Ordering::Relaxed);
+        let ring_decay_mode = self.tracks[track_idx].ring_decay_mode.load(Ordering::Relaxed);
         let engine_loaded = self.tracks[track_idx].engine_type.load(Ordering::Relaxed) != 0;
 
         let play_pos = f32::from_bits(self.tracks[track_idx].play_pos.load(Ordering::Relaxed));
@@ -2379,12 +2727,23 @@ impl SlintWindow {
         self.ui.set_mosaic_rand_rate(mosaic_rand_rate);
         self.ui.set_mosaic_rand_size(mosaic_rand_size);
         self.ui.set_mosaic_sos(mosaic_sos);
+        self.ui.set_ring_cutoff(ring_cutoff);
+        self.ui.set_ring_resonance(ring_resonance);
+        self.ui.set_ring_decay(ring_decay);
+        self.ui.set_ring_pitch(ring_pitch);
+        self.ui.set_ring_tone(ring_tone);
+        self.ui.set_ring_tilt(ring_tilt);
+        self.ui.set_ring_slope(ring_slope);
+        self.ui.set_ring_wet(ring_wet);
+        self.ui.set_ring_detune(ring_detune);
         self.ui.set_loop_start(loop_start);
         self.ui.set_loop_length(loop_length);
         self.ui.set_loop_xfade(loop_xfade);
         self.ui.set_loop_enabled(loop_enabled);
         self.ui.set_loop_mode(loop_mode as i32);
         self.ui.set_mosaic_enabled(mosaic_enabled);
+        self.ui.set_ring_enabled(ring_enabled);
+        self.ui.set_ring_decay_mode(ring_decay_mode as i32);
         self.ui.set_engine_loaded(engine_loaded);
 
         self.ui.set_playhead_index(playhead_index);
@@ -2607,6 +2966,10 @@ fn initialize_ui(
         SharedString::from("Straight"),
         SharedString::from("Dotted"),
         SharedString::from("Triplet"),
+    ])));
+    ui.set_ring_decay_modes(ModelRc::new(VecModel::from(vec![
+        SharedString::from("Sustain"),
+        SharedString::from("Choke"),
     ])));
     ui.set_engine_types(ModelRc::new(VecModel::from(vec![
         SharedString::from("Tape"),
@@ -3138,6 +3501,129 @@ fn initialize_ui(
             let enabled = tracks_mosaic[track_idx].mosaic_enabled.load(Ordering::Relaxed);
             tracks_mosaic[track_idx]
                 .mosaic_enabled
+                .store(!enabled, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_cutoff_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_cutoff
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_resonance_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_resonance
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_decay_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_decay
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_decay_mode_selected(move |index| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let mode = index.clamp(0, 1) as u32;
+            tracks_ring[track_idx]
+                .ring_decay_mode
+                .store(mode, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_pitch_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_pitch
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_tone_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_tone
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_tilt_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_tilt
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_slope_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_slope
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_wet_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_wet
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_detune_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_detune
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_toggle_ring_enabled(move || {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let enabled = tracks_ring[track_idx].ring_enabled.load(Ordering::Relaxed);
+            tracks_ring[track_idx]
+                .ring_enabled
                 .store(!enabled, Ordering::Relaxed);
         }
     });

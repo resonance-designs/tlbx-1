@@ -133,6 +133,8 @@ export component GrainRustUI inherits Window {
     in-out property <float> tape-tempo: 120.0;
     in property <[string]> tape-rate-modes;
     in-out property <int> tape-rate-mode: 0;
+    in property <[string]> ring-decay-modes;
+    in-out property <int> ring-decay-mode: 0;
     in-out property <float> tape-rotate: 0.0;
     in-out property <float> tape-glide: 0.0;
     in-out property <float> tape-sos: 0.0;
@@ -153,6 +155,15 @@ export component GrainRustUI inherits Window {
     in-out property <float> mosaic-rand-rate: 0.0;
     in-out property <float> mosaic-rand-size: 0.0;
     in-out property <float> mosaic-sos: 0.0;
+    in-out property <float> ring-cutoff: 0.5;
+    in-out property <float> ring-resonance: 0.0;
+    in-out property <float> ring-decay: 0.0;
+    in-out property <float> ring-pitch: 0.5;
+    in-out property <float> ring-tone: 0.5;
+    in-out property <float> ring-tilt: 0.5;
+    in-out property <float> ring-slope: 0.5;
+    in-out property <float> ring-wet: 0.0;
+    in-out property <float> ring-detune: 0.0;
     in-out property <float> loop-start: 0.0;
     in-out property <float> loop-length: 1.0;
     in-out property <float> loop-xfade: 0.0;
@@ -172,6 +183,7 @@ export component GrainRustUI inherits Window {
     in-out property <int> engine-index: 0;
     in-out property <bool> engine-loaded: false;
     in-out property <bool> mosaic-enabled: true;
+    in-out property <bool> ring-enabled: false;
     in-out property <bool> show-engine-confirm: false;
     in property <string> engine-confirm-text;
 
@@ -217,6 +229,17 @@ export component GrainRustUI inherits Window {
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
     callback toggle-mosaic-enabled();
+    callback ring-cutoff-changed(value: float);
+    callback ring-resonance-changed(value: float);
+    callback ring-decay-changed(value: float);
+    callback ring-decay-mode-selected(index: int);
+    callback ring-pitch-changed(value: float);
+    callback ring-tone-changed(value: float);
+    callback ring-tilt-changed(value: float);
+    callback ring-slope-changed(value: float);
+    callback ring-wet-changed(value: float);
+    callback ring-detune-changed(value: float);
+    callback toggle-ring-enabled();
     callback save-sample();
     callback loop-start-changed(value: float);
     callback loop-length-changed(value: float);
@@ -704,183 +727,359 @@ export component GrainRustUI inherits Window {
                 }
             }
 
-            HorizontalLayout {
-                spacing: 16px;
-                width: parent.width;
+            VerticalLayout {
+                visible: root.mosaic-enabled;
+                spacing: 0px;
 
-                VerticalLayout {
-                    spacing: 6px;
-                    width: (parent.width - 16px) / 2;
+                HorizontalLayout {
+                    spacing: 16px;
+                    width: parent.width;
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Pitch"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-pitch;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-pitch = self.value;
-                                root.mosaic-pitch-changed(self.value);
+                    VerticalLayout {
+                        spacing: 6px;
+                        width: (parent.width - 16px) / 2;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Pitch"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-pitch;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-pitch = self.value;
+                                    root.mosaic-pitch-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Rate"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-rate;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-rate = self.value;
+                                    root.mosaic-rate-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Size"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-size;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-size = self.value;
+                                    root.mosaic-size-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Contour"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-contour;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-contour = self.value;
+                                    root.mosaic-contour-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Warp"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-warp;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-warp = self.value;
+                                    root.mosaic-warp-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Spray"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-spray;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-spray = self.value;
+                                    root.mosaic-spray-changed(self.value);
+                                }
                             }
                         }
                     }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-rate;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-rate = self.value;
-                                root.mosaic-rate-changed(self.value);
+                    VerticalLayout {
+                        spacing: 6px;
+                        width: (parent.width - 16px) / 2;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Pattern"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-pattern;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-pattern = self.value;
+                                    root.mosaic-pattern-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Size"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-size;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-size = self.value;
-                                root.mosaic-size-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Wet"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-wet;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-wet = self.value;
+                                    root.mosaic-wet-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Contour"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-contour;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-contour = self.value;
-                                root.mosaic-contour-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Detune"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-detune;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-detune = self.value;
+                                    root.mosaic-detune-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Warp"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-warp;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-warp = self.value;
-                                root.mosaic-warp-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Rand Rate"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-rand-rate;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-rand-rate = self.value;
+                                    root.mosaic-rand-rate-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Spray"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-spray;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-spray = self.value;
-                                root.mosaic-spray-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Rand Size"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-rand-size;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-rand-size = self.value;
+                                    root.mosaic-rand-size-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Mosaic SOS"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.mosaic-sos;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.mosaic-sos = self.value;
+                                    root.mosaic-sos-changed(self.value);
+                                }
                             }
                         }
                     }
                 }
+            }
 
-                VerticalLayout {
-                    spacing: 6px;
-                    width: (parent.width - 16px) / 2;
+            Rectangle {
+                width: parent.width;
+                height: 1px;
+                background: #2a2a35;
+            }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Pattern"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-pattern;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-pattern = self.value;
-                                root.mosaic-pattern-changed(self.value);
+            Text { text: "Ring Controls"; color: #e4e4ea; font-size: 14px; }
+            HorizontalLayout {
+                spacing: 8px;
+                Button {
+                    text: root.ring-enabled ? "Ring ON" : "Ring BYPASS";
+                    clicked => root.toggle-ring-enabled();
+                }
+            }
+
+            VerticalLayout {
+                visible: root.ring-enabled;
+                spacing: 0px;
+
+                HorizontalLayout {
+                    spacing: 16px;
+                    width: parent.width;
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        width: (parent.width - 16px) / 2;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Cutoff"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-cutoff;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-cutoff = self.value;
+                                    root.ring-cutoff-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Resonance"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-resonance;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-resonance = self.value;
+                                    root.ring-resonance-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Decay"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-decay;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-decay = self.value;
+                                    root.ring-decay-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Pitch"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-pitch;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-pitch = self.value;
+                                    root.ring-pitch-changed(self.value);
+                                }
                             }
                         }
                     }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Wet"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-wet;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-wet = self.value;
-                                root.mosaic-wet-changed(self.value);
+                    VerticalLayout {
+                        spacing: 6px;
+                        width: (parent.width - 16px) / 2;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Decay Mode"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            ComboBox {
+                                model: root.ring-decay-modes;
+                                current-index: root.ring-decay-mode;
+                                selected => { root.ring-decay-mode-selected(self.current-index); }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Detune"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-detune;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-detune = self.value;
-                                root.mosaic-detune-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Slope"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-slope;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-slope = self.value;
+                                    root.ring-slope-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Rand Rate"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-rand-rate;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-rand-rate = self.value;
-                                root.mosaic-rand-rate-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Tone"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-tone;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-tone = self.value;
+                                    root.ring-tone-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Rand Size"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-rand-size;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-rand-size = self.value;
-                                root.mosaic-rand-size-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Tilt"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-tilt;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-tilt = self.value;
+                                    root.ring-tilt-changed(self.value);
+                                }
                             }
                         }
-                    }
 
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Mosaic SOS"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
-                        Slider {
-                            value: root.mosaic-sos;
-                            minimum: 0;
-                            maximum: 1;
-                            changed => {
-                                root.mosaic-sos = self.value;
-                                root.mosaic-sos-changed(self.value);
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Wet"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-wet;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-wet = self.value;
+                                    root.ring-wet-changed(self.value);
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Detune"; color: #b9b9bf; font-size: 13px; width: 100px; vertical-alignment: center; }
+                            Slider {
+                                value: root.ring-detune;
+                                minimum: 0;
+                                maximum: 1;
+                                changed => {
+                                    root.ring-detune = self.value;
+                                    root.ring-detune-changed(self.value);
+                                }
                             }
                         }
                     }

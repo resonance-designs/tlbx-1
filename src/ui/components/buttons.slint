@@ -1,0 +1,71 @@
+import { Theme } from "../theme/index.slint";
+
+export component RDSSelectButton {
+    in property <string> label;
+    in property <bool> active;
+    callback clicked();
+
+    width: 80px;
+    height: 28px;
+
+    Rectangle {
+        width: 80px;
+        height: 28px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: Theme.active.radius_large;
+        border-color: @linear-gradient(180deg, #242424 0%, #161616 100%);
+        border-width: 1px;
+        drop-shadow-blur: root.active ? 8px : 8px;
+        drop-shadow-offset-y: root.active ? 2px : 6px;
+        drop-shadow-color: #000;
+
+        // Inner background rectangle to prevent bleed, inset by border width
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: root.active ? Theme.active.accent_secondary : Theme.active.background_main;
+            border-radius: Theme.active.radius_large - 3px;
+        }
+
+        Text {
+            text: root.label;
+            color: Theme.active.text_primary;
+            font-size: Theme.active.font_small;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        TouchArea {
+            width: parent.width;
+            height: parent.height;
+            clicked => root.clicked();
+        }
+    }
+}
+
+export component RDSSequencerCell {
+    in property <bool> active;
+    in property <bool> current;
+    callback clicked();
+
+    width: 20px;
+    height: 20px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: root.current ? Theme.active.text_primary : (root.active ? Theme.active.accent_primary : Theme.active.border_subtle);
+        border-radius: Theme.active.radius_small;
+        border-color: Theme.active.border_strong;
+        border-width: 1px;
+
+        TouchArea {
+            width: parent.width;
+            height: parent.height;
+            clicked => root.clicked();
+        }
+    }
+}

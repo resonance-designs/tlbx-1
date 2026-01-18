@@ -1,0 +1,148 @@
+import { Theme } from "../theme/index.slint";
+
+/*
+Component: RDSKnob
+Description: A rotary knob component that supports both bounded and infinite rotation modes, with optimized rendering for different backends.
+Public members:
+- renderer: string - "lo-fi" (default) for software rendering or "hi-fi" for hardware rendering
+    - IMPORTANT: This is dependent on your backend capabilities.
+        - If you use "hi-fi" on a software backend, it will fallback to "lo-fi" and you may see the UI render differently than expected
+- value: float - Current value
+- rotation-angle: angle - Current rotation angle
+- size: length - Size of the knob (width and height are bounded to this)
+- indicator-position: length - Distance from center to indicator (radius)
+- sensitivity: float - Adjust this to change rotation speed
+- scroll-sensitivity: float - Sensitivity for mouse scroll wheel
+- min-value: float - Minimum value (set equal to max-value for infinite mode - if not set, defaults to infinite)
+- max-value: float - Maximum value (set equal to min-value for infinite mode - if not set, defaults to infinite)
+- value-changed(float): callback - Triggered when the value changes via user interaction
+
+Example usage:
+- Basic bounded knob:
+    RDSKnob {
+        renderer: "hi-fi";
+        size: 64px;
+        indicator-position: 20px;
+        min-value: 0;
+        max-value: 1;
+        value-changed(v) => { root.gain = v; }
+    }
+*/
+
+export component RDSKnob inherits Rectangle {
+    // Public properties
+    in property <string> renderer: "lo-fi"; // "lo-fi" (default) or "hi-fi"
+    in-out property <float> value: 0;
+    in-out property <angle> rotation-angle: 0deg;
+    in-out property <length> size: 60px;
+    in-out property <length> indicator-position: 15px;
+    in-out property <float> sensitivity: 0.5;
+    in-out property <float> scroll-sensitivity: 1.0;
+
+    in-out property <float> min-value: 0;
+    in-out property <float> max-value: 0;
+
+    callback value-changed(float);
+
+    private property <length> drag-start-y: 0px;
+    private property <float> drag-start-value: 0;
+    private property <bool> is-infinite: root.min-value == root.max-value;
+
+    width: root.size;
+    height: root.size;
+
+    // --- HI-FI RENDERER (Gradients, Paths, Complex Borders) ---
+    if (root.renderer == "hi-fi") : Path {
+        width: 100%;
+        height: 100%;
+        stroke: @linear-gradient(180deg, Theme.active.border_strong 0%, Theme.active.background_main 100%);
+        stroke-width: 2px;
+        MoveTo { x: 50; y: 0; }
+        ArcTo { radius-x: 50; radius-y: 50; x: 50; y: 100; sweep: true; }
+        ArcTo { radius-x: 50; radius-y: 50; x: 50; y: 0; sweep: true; }
+    }
+    if (root.renderer == "hi-fi") : Rectangle {
+        width: root.size - 4px;
+        height: root.size - 4px;
+        x: 2px;
+        y: 2px;
+        background: @linear-gradient(180deg, Theme.active.background_raised 0%, Theme.active.background_main 100%);
+        border-radius: self.width / 2;
+        clip: true;
+        Rectangle {
+            width: root.size / 6;
+            height: root.size / 6;
+            x: (parent.width / 2 - self.width / 2) + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+            y: (parent.height / 2 - self.height / 2) + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+            background: @linear-gradient(180deg, Theme.active.background_main 0%, Theme.active.background_raised 100%);
+            border-radius: self.width / 2;
+            border-width: 1px;
+            border-color: Theme.active.border_strong;
+        }
+    }
+
+    // --- LO-FI RENDERER (Solid colors, Simplified shapes) ---
+    if (root.renderer != "hi-fi") : Rectangle {
+        width: 100%;
+        height: 100%;
+        border-radius: self.width / 2;
+        border-width: 2px;
+        border-color: Theme.active.border_strong;
+        background: transparent;
+    }
+    if (root.renderer != "hi-fi") : Rectangle {
+        width: root.size - 4px;
+        height: root.size - 4px;
+        x: 2px;
+        y: 2px;
+        background: Theme.active.background_raised;
+        border-radius: (root.size - 4px) / 2;
+        Rectangle {
+            width: root.size / 5;
+            height: root.size / 5;
+            x: ((root.size - 4px) / 2 - self.width / 2) + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+            y: ((root.size - 4px) / 2 - self.height / 2) + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+            background: Theme.active.accent_primary;
+            border-radius: self.width / 2;
+        }
+    }
+
+    // Touch area covers the entire component
+    touch := TouchArea {
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.drag-start-y = self.mouse-y;
+                root.drag-start-value = root.value;
+            }
+        }
+
+        moved => {
+            if (self.pressed) {
+                root.value = root.drag-start-value + (root.drag-start-y - self.mouse-y) / 1px * root.sensitivity;
+                if (!root.is-infinite) {
+                    root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+                }
+                if (root.is-infinite) {
+                    root.rotation-angle = root.value * 1deg;
+                } else {
+                    root.rotation-angle = -135deg + ((root.value - root.min-value) / (root.max-value - root.min-value)) * 270deg;
+                }
+                root.value-changed(root.value);
+            }
+        }
+
+        scroll-event(event) => {
+            root.value = root.value - (event.delta-y / 1px) * root.scroll-sensitivity;
+            if (!root.is-infinite) {
+                root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+            }
+            if (root.is-infinite) {
+                root.rotation-angle = root.value * 1deg;
+            } else {
+                root.rotation-angle = -135deg + ((root.value - root.min-value) / (root.max-value - root.min-value)) * 270deg;
+            }
+            root.value-changed(root.value);
+            return accept;
+        }
+    }
+}

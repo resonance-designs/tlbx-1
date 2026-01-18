@@ -7,8 +7,22 @@
  * Component: UI Definitions
  */
 
-import { Button, Slider, ComboBox, ScrollView } from "std-widgets.slint";
-import { RDSSelectButton, RDSSequencerCell, RDSVUMeter, RDSVertVUMeter, RDSCircleToggle } from "rds-components.slint";
+import {
+    Button,
+    Slider,
+    ComboBox,
+    ScrollView
+} from "std-widgets.slint";
+
+import {
+    RDSSelectButton,
+    RDSSequencerCell,
+    RDSVUMeter,
+    RDSVertVUMeter,
+    RDSCircleToggle,
+    RDSKnob,
+    RDSSlider
+} from "./components/index.slint";
 
 export component GrainRustUI inherits Window {
     in-out property <int> selected-track: 1;
@@ -314,14 +328,26 @@ export component GrainRustUI inherits Window {
 
             VerticalLayout {
                 spacing: 4px;
-                width: 320px;
-                Slider {
+                width: 80px;
+                alignment: center;
+                Text {
+                    text: "Master";
+                    color: #b9b9bf;
+                    font-size: 12px;
+                    horizontal-alignment: center;
+                }
+                RDSKnob {
+                    renderer: "hi-fi";
                     value: root.gain;
-                    minimum: 0;
-                    maximum: 1;
-                    changed => {
-                        root.gain = self.value;
-                        root.gain-changed(self.value);
+                    min-value: 0;
+                    max-value: 1;
+                    size: 64px;
+                    indicator-position: 20px;
+                    sensitivity: 0.01;
+                    scroll-sensitivity: 0.01;
+                    value-changed(v) => {
+                        root.gain = v;
+                        root.gain-changed(v);
                     }
                 }
             }
@@ -354,19 +380,20 @@ export component GrainRustUI inherits Window {
 
             HorizontalLayout {
                 spacing: 8px;
+                height: 28px;
                 for track[i] in [0, 1, 2, 3] : RDSSelectButton {
                     label: "Track " + (i + 1);
                     active: (i + 1) == root.selected-track;
                     clicked => { root.select-track(i + 1); }
                 }
-                Rectangle { width: 1px; height: 26px; background: #2a2a35; }
+                Rectangle { width: 1px; background: #2a2a35; }
                 ComboBox {
                     model: root.engine-types;
                     current-index: root.engine-index;
                     selected => { root.engine-index = self.current-index; }
                 }
                 Button { text: "Load Engine"; clicked => root.load-engine(); }
-                Rectangle { width: 1px; height: 26px; background: #2a2a35; }
+                Rectangle { width: 1px; background: #2a2a35; }
             Button { text: "Save Project"; clicked => root.save-project(); }
             Button { text: "Load Project"; clicked => root.load-project(); }
             Button { text: "Settings"; clicked => root.toggle-settings(); }

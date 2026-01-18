@@ -1,0 +1,17 @@
+// theme/theme_manager.slint
+import { Theme } from "default_theme.slint";
+import { LightTheme } from "light_theme.slint";
+import { DarkTheme } from "dark_theme.slint";
+
+export global ThemeManager {
+    // Helper to switch themes
+    callback switch_to_light();
+    callback switch_to_dark();
+
+    switch_to_light => {
+        Theme.active = LightTheme.values;
+    }
+    switch_to_dark => {
+        Theme.active = DarkTheme.values;
+    }
+}

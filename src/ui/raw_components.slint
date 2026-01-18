@@ -1,0 +1,914 @@
+import { Button, Slider, ComboBox, ScrollView } from "std-widgets.slint";
+
+component TrackButton {
+    in property <string> label;
+    in property <bool> active;
+    callback clicked();
+
+    width: 100px;
+    active: true;
+    height: 56px;
+    label: "Track 1";
+
+    Rectangle {
+        width: 80px;
+        height: 28px;
+        background: root.active ? @linear-gradient(180deg, #4A0D7A 0%, #161616 100%) : #1c1c22;
+        border-radius: 6px;
+        border-color: @linear-gradient(180deg, #242424 0%, #161616 100%);
+        border-width: 1px;
+        drop-shadow-blur: root.active ? 8px : 8px;
+        drop-shadow-offset-y: root.active ? 2px : 6px;
+        drop-shadow-color: #000;
+        Text {
+            text: root.label;
+            color: #f6f1ff;
+            font-size: 12px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        TouchArea {
+            clicked => root.clicked();
+        }
+    }
+}
+
+component VUMeter {
+    in property <float> level;
+    in property <color> fill-color: #00ff00;
+
+    width: 140px;
+    height: 10px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: #1a1a22;
+        border-radius: 4px;
+        border-color: #2a2a35;
+        border-width: 1px;
+
+        Rectangle {
+            width: Math.max(4px, root.level * parent.width);
+            height: parent.height;
+            background: root.fill-color;
+            border-radius: 4px;
+        }
+    }
+}
+
+component SequencerCell {
+    in property <bool> active;
+    in property <bool> current;
+    callback clicked();
+
+    width: 20px;
+    height: 20px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: root.current ? #ffffff : (root.active ? #c53bff : #2a2a35);
+        border-radius: 2px;
+        border-color: #3a3a45;
+        border-width: 1px;
+
+        TouchArea {
+            clicked => root.clicked();
+        }
+    }
+}
+component VerticalVUMeter {
+    in property <float> level;
+    in property <color> fill-color: #00ff00;
+
+    width: 12px;
+    height: 88px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: #1a1a22;
+        border-radius: 4px;
+        border-color: #2a2a35;
+        border-width: 1px;
+
+        Rectangle {
+            width: parent.width;
+            height: Math.max(2px, root.level * parent.height);
+            y: parent.height - self.height;
+            background: root.fill-color;
+            border-radius: 4px;
+        }
+    }
+}
+ 
+component VizToggle {
+    in property <bool> active;
+    callback clicked();
+
+    width: 14px;
+    height: 14px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: root.active ? #c53bff : #2a2a35;
+        border-radius: 999px;
+        border-color: root.active ? #e3c1ff : #3a3a45;
+        border-width: 1px;
+ 
+        TouchArea {
+            clicked => root.clicked();
+        }
+    }
+}
+
+// Knob Component
+export component Knob inherits Rectangle {
+    // Public properties
+    in-out property <float> value: 0; // Current value
+    in-out property <angle> rotation-angle: 0deg; // Current rotation angle
+    in-out property <length> size: 60px; // Size of the knob (width and height)
+    in-out property <length> indicator-position: 15px; // Distance from center to indicator (radius)
+    in-out property <float> sensitivity: 0.5; // Adjust this to change rotation speed
+    in-out property <float> scroll-sensitivity: 1.0; // Sensitivity for scroll wheel
+    
+    // Range properties - set min-value == max-value for infinite mode
+    in-out property <float> min-value: 0;
+    in-out property <float> max-value: 0; // 0 means infinite (or set equal to min-value)
+    
+    callback value-changed(float); // Callback when value changes
+    
+    // Private properties for drag tracking
+    private property <length> drag-start-y: 0px;
+    private property <float> drag-start-value: 0;
+    
+    // Helper property to check if infinite mode
+    private property <bool> is-infinite: root.min-value == root.max-value;
+    
+    width: root.size;
+    height: root.size;
+    background: @linear-gradient(180deg, #4B4B4B 0%, #202020 100%);
+    border-radius: root.width / 2;
+    border-width: 2px;
+    border-color: @linear-gradient(180deg, #606060 0%, #0E0E0E 100%);
+
+    // Position/value indicator - size scales with knob size
+    indicator := Rectangle {
+        width: root.size / 6; // Proportional to knob size
+        height: root.size / 6;
+        // Calculate position based on rotation angle and indicator-position
+        x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+        y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+        background: @linear-gradient(180deg, #202020 0%, #4B4B4B 100%);
+        border-radius: self.width / 2;
+        border-width: 1px;
+        border-color: @linear-gradient(180deg, #0E0E0E 0%, #606060 100%);
+    }
+    
+    // Touch area for interaction
+    touch := TouchArea {
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    root.drag-start-y = self.mouse-y;
+                    root.drag-start-value = root.value;
+                }
+            }
+        }
+        
+        moved => {
+            if (self.pressed) {
+                // Calculate delta from drag start (convert length to float by dividing by 1px)
+                root.value = root.drag-start-value + (root.drag-start-y - self.mouse-y) / 1px * root.sensitivity;
+                
+                // Clamp value if in bounded mode
+                if (!root.is-infinite) {
+                    root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+                }
+                
+                // Convert value to rotation angle
+                if (root.is-infinite) {
+                    // Infinite rotation
+                    root.rotation-angle = root.value * 1deg;
+                } else {
+                    // Bounded rotation: map value range to 270 degrees (typical for knobs)
+                    root.rotation-angle = -135deg + ((root.value - root.min-value) / (root.max-value - root.min-value)) * 270deg;
+                }
+                
+                // Emit callback
+                root.value-changed(root.value);
+            }
+        }
+        
+        scroll-event(event) => {
+            // Handle scroll wheel (convert delta-y from length to float)
+            root.value = root.value - (event.delta-y / 1px) * root.scroll-sensitivity;
+            
+            // Clamp value if in bounded mode
+            if (!root.is-infinite) {
+                root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+            }
+            
+            // Convert value to rotation angle
+            if (root.is-infinite) {
+                // Infinite rotation
+                root.rotation-angle = root.value * 1deg;
+            } else {
+                // Bounded rotation: map value range to 270 degrees
+                root.rotation-angle = -135deg + ((root.value - root.min-value) / (root.max-value - root.min-value)) * 270deg;
+            }
+            
+            // Emit callback
+            root.value-changed(root.value);
+            
+            return accept;
+        }
+    }
+}
+
+export component VertSlider inherits Rectangle {
+    // Public properties
+    in-out property <float> value: 0; // Current value
+    in-out property <float> min-value: 0;
+    in-out property <float> max-value: 127;
+    in-out property <string> size: "large"; // "small", "medium", or "large"
+    in-out property <string> orientation: "vertical"; // "vertical" or "horizontal"
+    
+    callback value-changed(float); // Callback when value changes
+    
+    // Private properties for drag tracking
+    private property <length> drag-start-pos: 0px;
+    private property <float> drag-start-value: 0;
+    private property <float> drag-sensitivity: 1.0; // Adjust drag sensitivity
+    private property <float> scroll-sensitivity: 1.0; // Adjust scroll sensitivity
+    
+    // Size scale factors
+    private property <float> scale: root.size == "small" ? 0.5 : (root.size == "medium" ? 0.75 : 1.0);
+    private property <bool> is-horizontal: root.orientation == "vertical";
+    
+    // Scaled dimensions
+    private property <length> base-width: 70px;
+    private property <length> base-height: 420px;
+    private property <length> scaled-travel: 300px * root.scale;
+    
+    width: root.is-horizontal ? root.base-height * root.scale : root.base-width * root.scale;
+    height: root.is-horizontal ? root.base-width * root.scale : root.base-height * root.scale;
+    
+    // Calculate button position based on value and orientation
+    private property <length> button-pos: (17.5px * root.scale) + (317.5px * root.scale - 17.5px * root.scale) * (1 - (root.value - root.min-value) / (root.max-value - root.min-value));
+    
+    markings-left := Rectangle {
+        x: root.is-horizontal ? 50px * root.scale : 1px * root.scale;
+        y: root.is-horizontal ? 1px * root.scale : 50px * root.scale;
+        width: root.is-horizontal ? 302px * root.scale : 25px * root.scale;
+        height: root.is-horizontal ? 25px * root.scale : 302px * root.scale;
+        
+        mark1 := Rectangle {
+            x: root.is-horizontal ? 0px : 0px;
+            y: root.is-horizontal ? 0px : 0px;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark2 := Rectangle {
+            x: root.is-horizontal ? 10px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 10px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark3 := Rectangle {
+            x: root.is-horizontal ? 20px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 20px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark4 := Rectangle {
+            x: root.is-horizontal ? 30px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 30px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark5 := Rectangle {
+            x: root.is-horizontal ? 40px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 40px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark6 := Rectangle {
+            x: root.is-horizontal ? 50px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 50px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark7 := Rectangle {
+            x: root.is-horizontal ? 60px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 60px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark8 := Rectangle {
+            x: root.is-horizontal ? 70px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 70px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark9 := Rectangle {
+            x: root.is-horizontal ? 80px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 80px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark10 := Rectangle {
+            x: root.is-horizontal ? 90px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 90px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark11 := Rectangle {
+            x: root.is-horizontal ? 100px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 100px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark12 := Rectangle {
+            x: root.is-horizontal ? 110px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 110px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark13 := Rectangle {
+            x: root.is-horizontal ? 120px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 120px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark14 := Rectangle {
+            x: root.is-horizontal ? 130px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 130px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark15 := Rectangle {
+            x: root.is-horizontal ? 140px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 140px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark16 := Rectangle {
+            x: root.is-horizontal ? 150px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 150px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark17 := Rectangle {
+            x: root.is-horizontal ? 160px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 160px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark18 := Rectangle {
+            x: root.is-horizontal ? 170px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 170px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark19 := Rectangle {
+            x: root.is-horizontal ? 180px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 180px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark20 := Rectangle {
+            x: root.is-horizontal ? 190px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 190px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark21 := Rectangle {
+            x: root.is-horizontal ? 200px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 200px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark22 := Rectangle {
+            x: root.is-horizontal ? 210px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 210px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark23 := Rectangle {
+            x: root.is-horizontal ? 220px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 220px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark24 := Rectangle {
+            x: root.is-horizontal ? 230px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 230px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark25 := Rectangle {
+            x: root.is-horizontal ? 240px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 240px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark26 := Rectangle {
+            x: root.is-horizontal ? 250px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 250px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark27 := Rectangle {
+            x: root.is-horizontal ? 260px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 260px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark28 := Rectangle {
+            x: root.is-horizontal ? 270px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 270px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark29 := Rectangle {
+            x: root.is-horizontal ? 280px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 280px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark30 := Rectangle {
+            x: root.is-horizontal ? 290px * root.scale : 10px * root.scale;
+            y: root.is-horizontal ? 10px * root.scale : 290px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark31 := Rectangle {
+            x: root.is-horizontal ? 300px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 300px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+    }
+    
+    markings-right := Rectangle {
+        x: root.is-horizontal ? 50px * root.scale : 44px * root.scale;
+        y: root.is-horizontal ? 44px * root.scale : 50px * root.scale;
+        width: root.is-horizontal ? 302px * root.scale : 25px * root.scale;
+        height: root.is-horizontal ? 25px * root.scale : 302px * root.scale;
+        
+        mark32 := Rectangle {
+            x: root.is-horizontal ? 0px : 0px;
+            y: root.is-horizontal ? 0px : 0px;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark33 := Rectangle {
+            x: root.is-horizontal ? 10px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 10px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark34 := Rectangle {
+            x: root.is-horizontal ? 20px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 20px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark35 := Rectangle {
+            x: root.is-horizontal ? 30px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 30px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark36 := Rectangle {
+            x: root.is-horizontal ? 40px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 40px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark37 := Rectangle {
+            x: root.is-horizontal ? 50px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 50px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark38 := Rectangle {
+            x: root.is-horizontal ? 60px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 60px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark39 := Rectangle {
+            x: root.is-horizontal ? 70px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 70px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark40 := Rectangle {
+            x: root.is-horizontal ? 80px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 80px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark41 := Rectangle {
+            x: root.is-horizontal ? 90px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 90px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark42 := Rectangle {
+            x: root.is-horizontal ? 100px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 100px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark43 := Rectangle {
+            x: root.is-horizontal ? 110px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 110px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark44 := Rectangle {
+            x: root.is-horizontal ? 120px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 120px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark45 := Rectangle {
+            x: root.is-horizontal ? 130px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 130px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark46 := Rectangle {
+            x: root.is-horizontal ? 140px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 140px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark47 := Rectangle {
+            x: root.is-horizontal ? 150px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 150px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark48 := Rectangle {
+            x: root.is-horizontal ? 160px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 160px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark49 := Rectangle {
+            x: root.is-horizontal ? 170px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 170px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark50 := Rectangle {
+            x: root.is-horizontal ? 180px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 180px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark51 := Rectangle {
+            x: root.is-horizontal ? 190px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 190px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark52 := Rectangle {
+            x: root.is-horizontal ? 200px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 200px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark53 := Rectangle {
+            x: root.is-horizontal ? 210px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 210px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark54 := Rectangle {
+            x: root.is-horizontal ? 220px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 220px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark55 := Rectangle {
+            x: root.is-horizontal ? 230px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 230px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark56 := Rectangle {
+            x: root.is-horizontal ? 240px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 240px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark57 := Rectangle {
+            x: root.is-horizontal ? 250px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 250px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark58 := Rectangle {
+            x: root.is-horizontal ? 260px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 260px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark59 := Rectangle {
+            x: root.is-horizontal ? 270px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 270px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark60 := Rectangle {
+            x: root.is-horizontal ? 280px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 280px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark61 := Rectangle {
+            x: root.is-horizontal ? 290px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 290px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 15px * root.scale;
+            height: root.is-horizontal ? 15px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+        mark62 := Rectangle {
+            x: root.is-horizontal ? 300px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 300px * root.scale;
+            width: root.is-horizontal ? 2px * root.scale : 25px * root.scale;
+            height: root.is-horizontal ? 25px * root.scale : 2px * root.scale;
+            background: #6e6e6e;
+        }
+    }
+
+    slider-range := Rectangle {
+        x: root.is-horizontal ? 50px * root.scale : 30px * root.scale;
+        y: root.is-horizontal ? 30px * root.scale : 50px * root.scale;
+        width: root.is-horizontal ? 320px * root.scale : 10px * root.scale;
+        height: root.is-horizontal ? 10px * root.scale : 320px * root.scale;
+        background: root.is-horizontal ? @linear-gradient(
+            90deg, 
+            #101010 0%, 
+            #202020 10%, 
+            #303030 20%, 
+            #404040 30%, 
+            #505050 40%, 
+            #606060 50%, 
+            #707070 60%, 
+            #808080 70%, 
+            #909090 80%, 
+            #9A9A9A 90%, 
+            #4B4B4B 100%) : @linear-gradient(
+            180deg, 
+            #101010 0%, 
+            #202020 10%, 
+            #303030 20%, 
+            #404040 30%, 
+            #505050 40%, 
+            #606060 50%, 
+            #707070 60%, 
+            #808080 70%, 
+            #909090 80%, 
+            #9A9A9A 90%, 
+            #4B4B4B 100%);
+        border-width: 2px * root.scale;
+        border-color: root.is-horizontal ? @linear-gradient(
+            90deg, 
+            #4B4B4B 0%, 
+            #9A9A9A 10%, 
+            #909090 20%, 
+            #808080 30%, 
+            #707070 40%, 
+            #606060 50%, 
+            #505050 60%, 
+            #404040 70%, 
+            #303030 80%, 
+            #202020 90%, 
+            #101010 100%) : @linear-gradient(
+            180deg, 
+            #4B4B4B 0%, 
+            #9A9A9A 10%, 
+            #909090 20%, 
+            #808080 30%, 
+            #707070 40%, 
+            #606060 50%, 
+            #505050 60%, 
+            #404040 70%, 
+            #303030 80%, 
+            #202020 90%, 
+            #101010 100%);
+        border-radius: 5px * root.scale;
+    }
+    
+    drag-button := Rectangle {
+        x: root.is-horizontal ? root.button-pos : 15px * root.scale;
+        y: root.is-horizontal ? 15px * root.scale : root.button-pos;
+        width: root.is-horizontal ? 70px * root.scale : 40px * root.scale;
+        height: root.is-horizontal ? 40px * root.scale : 70px * root.scale;
+        background: @linear-gradient(180deg, #202020 0%, #4B4B4B 100%);
+        border-color: @linear-gradient(180deg, #606060 0%, #0E0E0E 100%);
+        border-width: 3px * root.scale;
+        border-radius: 10px * root.scale;
+        drop-shadow-blur: 2px * root.scale;
+        drop-shadow-color: #000;
+        drop-shadow-offset-x: 2px * root.scale;
+        drop-shadow-offset-y: 2px * root.scale;
+        clip: true;
+        
+        grooves := Rectangle {
+            width: root.is-horizontal ? 45px * root.scale : 40px * root.scale;
+            height: root.is-horizontal ? 40px * root.scale : 45px * root.scale;
+            groove1 := Rectangle {
+                x: root.is-horizontal ? 0px : 0px;
+                y: root.is-horizontal ? 0px : 0px;
+                width: root.is-horizontal ? 2px * root.scale : 48px * root.scale;
+                height: root.is-horizontal ? 48px * root.scale : 2px * root.scale;
+                opacity: 0.8;
+                background: #424242;
+                drop-shadow-blur: 2px * root.scale;
+                drop-shadow-color: #000000;
+                drop-shadow-offset-x: root.is-horizontal ? 1px * root.scale : 0px;
+                drop-shadow-offset-y: root.is-horizontal ? 0px : 1px * root.scale;
+            }
+            groove2 := Rectangle {
+                x: root.is-horizontal ? 4px * root.scale : 0px;
+                y: root.is-horizontal ? 0px : 4px * root.scale;
+                width: root.is-horizontal ? 2px * root.scale : 40px * root.scale;
+                height: root.is-horizontal ? 40px * root.scale : 2px * root.scale;
+                background: #424242;
+                drop-shadow-blur: 2px * root.scale;
+                drop-shadow-color: #000000;
+                drop-shadow-offset-x: root.is-horizontal ? 1px * root.scale : 0px;
+                drop-shadow-offset-y: root.is-horizontal ? 0px : 1px * root.scale;
+            }
+            groove3 := Rectangle {
+                x: root.is-horizontal ? 8px * root.scale : 0px;
+                y: root.is-horizontal ? 0px : 8px * root.scale;
+                width: root.is-horizontal ? 2px * root.scale : 40px * root.scale;
+                height: root.is-horizontal ? 40px * root.scale : 2px * root.scale;
+                background: #424242;
+                drop-shadow-blur: 2px * root.scale;
+                drop-shadow-color: #000000;
+                drop-shadow-offset-x: root.is-horizontal ? 1px * root.scale : 0px;
+                drop-shadow-offset-y: root.is-horizontal ? 0px : 1px * root.scale;
+            }
+            groove4 := Rectangle {
+                x: root.is-horizontal ? 34px * root.scale : 0px;
+                y: root.is-horizontal ? 0px : 34px * root.scale;
+                width: root.is-horizontal ? 2px * root.scale : 40px * root.scale;
+                height: root.is-horizontal ? 40px * root.scale : 2px * root.scale;
+                background: #424242;
+                drop-shadow-blur: 2px * root.scale;
+                drop-shadow-color: #000000;
+                drop-shadow-offset-x: root.is-horizontal ? 1px * root.scale : 0px;
+                drop-shadow-offset-y: root.is-horizontal ? 0px : 1px * root.scale;
+            }
+            groove5 := Rectangle {
+                x: root.is-horizontal ? 38px * root.scale : 0px;
+                y: root.is-horizontal ? 0px : 38px * root.scale;
+                width: root.is-horizontal ? 2px * root.scale : 40px * root.scale;
+                height: root.is-horizontal ? 40px * root.scale : 2px * root.scale;
+                background: #424242;
+                drop-shadow-blur: 2px * root.scale;
+                drop-shadow-color: #000000;
+                drop-shadow-offset-x: root.is-horizontal ? 1px * root.scale : 0px;
+                drop-shadow-offset-y: root.is-horizontal ? 0px : 1px * root.scale;
+            }
+            groove6 := Rectangle {
+                x: root.is-horizontal ? 42px * root.scale : 0px;
+                y: root.is-horizontal ? 0px : 42px * root.scale;
+                width: root.is-horizontal ? 2px * root.scale : 40px * root.scale;
+                height: root.is-horizontal ? 40px * root.scale : 2px * root.scale;
+                background: #424242;
+                drop-shadow-blur: 2px * root.scale;
+                drop-shadow-color: #000000;
+                drop-shadow-offset-x: root.is-horizontal ? 1px * root.scale : 0px;
+                drop-shadow-offset-y: root.is-horizontal ? 0px : 1px * root.scale;
+            }
+        }
+        
+        drag-pointer := Rectangle {
+            x: root.is-horizontal ? 32.5px * root.scale : 0px;
+            y: root.is-horizontal ? 0px : 32.5px * root.scale;
+            width: root.is-horizontal ? 5px * root.scale : 40px * root.scale;
+            height: root.is-horizontal ? 40px * root.scale : 5px * root.scale;
+            background: #bcbcbc;
+        }
+        
+        // Touch area for dragging
+        touch := TouchArea {
+            width: parent.width;
+            height: parent.height;
+            
+            pointer-event(event) => {
+                if (event.button == PointerEventButton.left) {
+                    if (event.kind == PointerEventKind.down) {
+                        root.drag-start-pos = root.is-horizontal ? self.mouse-x : self.mouse-y;
+                        root.drag-start-value = root.value;
+                    }
+                }
+            }
+            
+            moved => {
+                if (self.pressed) {
+                    // Calculate new value based on drag
+                    if (root.is-horizontal) {
+                        // Horizontal: right increases value
+                        root.value = root.drag-start-value + ((self.mouse-x - root.drag-start-pos) / root.scaled-travel) * (root.max-value - root.min-value) * root.drag-sensitivity;
+                    } else {
+                        // Vertical: up increases value
+                        root.value = root.drag-start-value - ((self.mouse-y - root.drag-start-pos) / root.scaled-travel) * (root.max-value - root.min-value) * root.drag-sensitivity;
+                    }
+                    
+                    // Clamp value to range
+                    root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+                    
+                    // Emit callback
+                    root.value-changed(root.value);
+                }
+            }
+            
+            scroll-event(event) => {
+                // Handle scroll wheel (convert delta-y from length to float)
+                root.value = root.value - (event.delta-y / 1px) * root.scroll-sensitivity;
+                
+                // Clamp value to range
+                root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+                
+                // Emit callback
+                root.value-changed(root.value);
+                
+                return accept;
+            }
+        }
+    }
+}

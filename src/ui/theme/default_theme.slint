@@ -1,0 +1,7 @@
+// default_theme.slint
+import { RDSTheme } from "theme.slint";
+import { DarkTheme } from "dark_theme.slint";
+
+export global Theme {
+    in-out property <RDSTheme> active: DarkTheme.values;
+}

@@ -31,7 +31,6 @@ Example usage:
 
 export component RDSKnob inherits Rectangle {
     // Public properties
-    in property <string> renderer: "lo-fi"; // "lo-fi" (default) or "hi-fi"
     in-out property <float> value: 0;
     in-out property <angle> rotation-angle: 0deg;
     in-out property <length> size: 60px;
@@ -51,81 +50,22 @@ export component RDSKnob inherits Rectangle {
     width: root.size;
     height: root.size;
     background: transparent;
-    border-width: 0px;
-    // Explicitly set these on the root component
-    border-radius: root.size / 2;
-    clip: true;
 
-    // --- HI-FI RENDERER (Gradients, Clipping) ---
-    if (root.renderer == "hi-fi") : Rectangle {
+    Image {
         width: root.size;
         height: root.size;
-        
-        // Outer circular border using Path for guaranteed circularity
-        Path {
-            width: 100%;
-            height: 100%;
-            viewbox-width: 100;
-            viewbox-height: 100;
-            fill: @linear-gradient(180deg, Theme.active.border_strong 0%, Theme.active.background_main 100%);
-            MoveTo { x: 50; y: 0; }
-            ArcTo { radius-x: 50; radius-y: 50; x: 50; y: 100; sweep: true; }
-            ArcTo { radius-x: 50; radius-y: 50; x: 50; y: 0; sweep: true; }
-        }
-
-        // Main Knob Body
-        Path {
-            width: root.size - 2px;
-            height: root.size - 2px;
-            x: 1px;
-            y: 1px;
-            viewbox-width: 100;
-            viewbox-height: 100;
-            fill: @linear-gradient(180deg, Theme.active.background_raised 0%, Theme.active.background_main 100%);
-            MoveTo { x: 50; y: 0; }
-            ArcTo { radius-x: 50; radius-y: 50; x: 50; y: 100; sweep: true; }
-            ArcTo { radius-x: 50; radius-y: 50; x: 50; y: 0; sweep: true; }
-        }
-
-        // Indicator
-        Rectangle {
-            width: root.size / 6;
-            height: root.size / 6;
-            x: (root.size / 2 - self.width / 2) + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
-            y: (root.size / 2 - self.height / 2) + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
-            background: @linear-gradient(180deg, Theme.active.background_main 0%, Theme.active.background_raised 100%);
-            border-radius: self.width / 2;
-            border-width: 1px;
-            border-color: Theme.active.border_strong;
-        }
+        image-fit: contain;
+        source: @image-url("../assets/knob_body.svg");
     }
 
-    // --- LO-FI RENDERER (Solid colors, Simplified shapes) ---
-    if (root.renderer != "hi-fi") : Rectangle {
-        width: root.size;
-        height: root.size;
-        border-radius: root.size / 2;
-        border-width: 2px;
-        border-color: Theme.active.border_strong;
-        background: transparent;
-        clip: true;
-    }
-    if (root.renderer != "hi-fi") : Rectangle {
-        width: root.size - 4px;
-        height: root.size - 4px;
-        x: 2px;
-        y: 2px;
-        background: Theme.active.background_raised;
-        border-radius: (root.size - 4px) / 2;
-        clip: true;
-        Rectangle {
-            width: root.size / 5;
-            height: root.size / 5;
-            x: ((root.size - 4px) / 2 - self.width / 2) + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
-            y: ((root.size - 4px) / 2 - self.height / 2) + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
-            background: Theme.active.accent_primary;
-            border-radius: self.width / 2;
-        }
+    // Position/value indicator - size scales with knob size
+    indicator := Image {
+        width: root.size / 6;
+        height: root.size / 6;
+        x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+        y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+        image-fit: contain;
+        source: @image-url("../assets/knob_indicator.svg");
     }
 
     // Touch area covers the entire component

@@ -6108,4 +6108,3 @@ impl BaseWindowHandler for FigmaTestWindow {
         }
     }
 }
-

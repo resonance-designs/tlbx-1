@@ -55,7 +55,6 @@ export component TestingGrounds inherits Window {
                         RDSKnob {
                             size: 120px;
                             indicator-position: 40px;
-                            renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
                             min-value: 0;
                             max-value: 100;
                             value: 50;
@@ -69,7 +68,6 @@ export component TestingGrounds inherits Window {
                         RDSKnob {
                             size: 64px;
                             indicator-position: 20px;
-                            renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
                             min-value: 0;
                             max-value: 1;
                             value: 0.75;
@@ -83,7 +81,6 @@ export component TestingGrounds inherits Window {
                         RDSKnob {
                             size: 32px;
                             indicator-position: 10px;
-                            renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
                             min-value: -12;
                             max-value: 12;
                             value: 0;
@@ -97,7 +94,6 @@ export component TestingGrounds inherits Window {
                         RDSKnob {
                             size: 64px;
                             indicator-position: 20px;
-                            renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
                             // Infinite mode (min == max)
                         }
                         Text { text: "Infinite"; color: Theme.active.text_secondary; horizontal-alignment: center; }

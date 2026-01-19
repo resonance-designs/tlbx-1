@@ -339,9 +339,7 @@ export component GrainRustUI inherits Window {
                     font-size: 10px;
                     horizontal-alignment: center;
                 }
-                RDSKnob {
-                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                    value: root.master-filter;
+                RDSKnob {                    value: root.master-filter;
                     min-value: 0;
                     max-value: 1;
                     size: 40px;
@@ -365,9 +363,7 @@ export component GrainRustUI inherits Window {
                     font-size: 10px;
                     horizontal-alignment: center;
                 }
-                RDSKnob {
-                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                    value: root.master-comp;
+                RDSKnob {                    value: root.master-comp;
                     min-value: 0;
                     max-value: 1;
                     size: 40px;
@@ -391,9 +387,7 @@ export component GrainRustUI inherits Window {
                     font-size: 12px;
                     horizontal-alignment: center;
                 }
-                RDSKnob {
-                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                    value: root.gain;
+                RDSKnob {                    value: root.gain;
                     min-value: 0;
                     max-value: 1;
                     size: 64px;
@@ -417,9 +411,7 @@ export component GrainRustUI inherits Window {
                     font-size: 12px;
                     horizontal-alignment: center;
                 }
-                RDSKnob {
-                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                    value: root.tape-tempo;
+                RDSKnob {                    value: root.tape-tempo;
                     min-value: 20;
                     max-value: 240;
                     size: 48px;
@@ -659,9 +651,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.track-level;
+                            RDSKnob {                                value: root.track-level;
                                 min-value: 0;
                                 max-value: 1;
                                 size: 48px;
@@ -679,9 +669,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "Speed"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.tape-speed;
+                            RDSKnob {                                value: root.tape-speed;
                                 min-value: -4;
                                 max-value: 4;
                                 size: 48px;
@@ -699,9 +687,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "Rotate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.tape-rotate;
+                            RDSKnob {                                value: root.tape-rotate;
                                 min-value: 0;
                                 max-value: 1;
                                 size: 48px;
@@ -780,9 +766,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.loop-start;
+                            RDSKnob {                                value: root.loop-start;
                                 min-value: 0;
                                 max-value: 1;
                                 size: 48px;
@@ -800,9 +784,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "Length"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.loop-length;
+                            RDSKnob {                                value: root.loop-length;
                                 min-value: 0.01;
                                 max-value: 1;
                                 size: 48px;
@@ -820,9 +802,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "Glide"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.tape-glide;
+                            RDSKnob {                                value: root.tape-glide;
                                 min-value: 0;
                                 max-value: 1;
                                 size: 48px;
@@ -840,9 +820,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "SOS"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.tape-sos;
+                            RDSKnob {                                value: root.tape-sos;
                                 min-value: 0;
                                 max-value: 1;
                                 size: 48px;
@@ -860,9 +838,7 @@ export component GrainRustUI inherits Window {
                             spacing: 4px;
                             width: 60px;
                             Text { text: "XFade"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                value: root.loop-xfade;
+                            RDSKnob {                                value: root.loop-xfade;
                                 min-value: 0;
                                 max-value: 0.5;
                                 size: 48px;
@@ -922,9 +898,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-slot-a-level;
+                                RDSKnob {                                    value: root.animate-slot-a-level;
                                     min-value: 0; max-value: 1;
                                     size: 32px; indicator-position: 10px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -960,9 +934,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-slot-b-level;
+                                RDSKnob {                                    value: root.animate-slot-b-level;
                                     min-value: 0; max-value: 1;
                                     size: 32px; indicator-position: 10px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -998,9 +970,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-slot-c-level;
+                                RDSKnob {                                    value: root.animate-slot-c-level;
                                     min-value: 0; max-value: 1;
                                     size: 32px; indicator-position: 10px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1036,9 +1006,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-slot-d-level;
+                                RDSKnob {                                    value: root.animate-slot-d-level;
                                     min-value: 0; max-value: 1;
                                     size: 32px; indicator-position: 10px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1092,9 +1060,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 50px;
                                 Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-filter-cutoff;
+                                RDSKnob {                                    value: root.animate-filter-cutoff;
                                     min-value: 0; max-value: 1;
                                     size: 36px; indicator-position: 12px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1105,9 +1071,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 50px;
                                 Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-filter-resonance;
+                                RDSKnob {                                    value: root.animate-filter-resonance;
                                     min-value: 0; max-value: 1;
                                     size: 36px; indicator-position: 12px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1118,9 +1082,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 50px;
                                 Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-filter-drive;
+                                RDSKnob {                                    value: root.animate-filter-drive;
                                     min-value: 0; max-value: 1;
                                     size: 36px; indicator-position: 12px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1145,9 +1107,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 40px;
                                 Text { text: "A"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-amp-attack;
+                                RDSKnob {                                    value: root.animate-amp-attack;
                                     min-value: 0.01; max-value: 1;
                                     size: 28px; indicator-position: 8px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1158,9 +1118,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 40px;
                                 Text { text: "D"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-amp-decay;
+                                RDSKnob {                                    value: root.animate-amp-decay;
                                     min-value: 0.01; max-value: 1;
                                     size: 28px; indicator-position: 8px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1171,9 +1129,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 40px;
                                 Text { text: "S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-amp-sustain;
+                                RDSKnob {                                    value: root.animate-amp-sustain;
                                     min-value: 0; max-value: 1;
                                     size: 28px; indicator-position: 8px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1184,9 +1140,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 40px;
                                 Text { text: "R"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.animate-amp-release;
+                                RDSKnob {                                    value: root.animate-amp-release;
                                     min-value: 0.01; max-value: 1;
                                     size: 28px; indicator-position: 8px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1244,9 +1198,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-pitch;
+                                RDSKnob {                                    value: root.mosaic-pitch;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1257,9 +1209,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-rate;
+                                RDSKnob {                                    value: root.mosaic-rate;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1270,9 +1220,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Size"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-size;
+                                RDSKnob {                                    value: root.mosaic-size;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1283,9 +1231,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Contour"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-contour;
+                                RDSKnob {                                    value: root.mosaic-contour;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1296,9 +1242,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Warp"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-warp;
+                                RDSKnob {                                    value: root.mosaic-warp;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1309,9 +1253,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Spray"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-spray;
+                                RDSKnob {                                    value: root.mosaic-spray;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1326,9 +1268,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Pattern"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-pattern;
+                                RDSKnob {                                    value: root.mosaic-pattern;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1339,9 +1279,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Wet"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-wet;
+                                RDSKnob {                                    value: root.mosaic-wet;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1352,9 +1290,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Detune"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-detune;
+                                RDSKnob {                                    value: root.mosaic-detune;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1365,9 +1301,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Rand Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-rand-rate;
+                                RDSKnob {                                    value: root.mosaic-rand-rate;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1378,9 +1312,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Rand Size"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-rand-size;
+                                RDSKnob {                                    value: root.mosaic-rand-size;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1391,9 +1323,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "SOS"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.mosaic-sos;
+                                RDSKnob {                                    value: root.mosaic-sos;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1438,9 +1368,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-cutoff;
+                                RDSKnob {                                    value: root.ring-cutoff;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1451,9 +1379,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-resonance;
+                                RDSKnob {                                    value: root.ring-resonance;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1464,9 +1390,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-decay;
+                                RDSKnob {                                    value: root.ring-decay;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1477,9 +1401,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-pitch;
+                                RDSKnob {                                    value: root.ring-pitch;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1500,9 +1422,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Slope"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-slope;
+                                RDSKnob {                                    value: root.ring-slope;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1513,9 +1433,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-tone;
+                                RDSKnob {                                    value: root.ring-tone;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1530,9 +1448,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Tilt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-tilt;
+                                RDSKnob {                                    value: root.ring-tilt;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1543,9 +1459,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Wet"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-wet;
+                                RDSKnob {                                    value: root.ring-wet;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1556,9 +1470,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Detune"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-detune;
+                                RDSKnob {                                    value: root.ring-detune;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1569,9 +1481,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Waves"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-waves;
+                                RDSKnob {                                    value: root.ring-waves;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1582,9 +1492,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "W-Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-waves-rate;
+                                RDSKnob {                                    value: root.ring-waves-rate;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1595,9 +1503,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "Noise"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-noise;
+                                RDSKnob {                                    value: root.ring-noise;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1608,9 +1514,7 @@ export component GrainRustUI inherits Window {
                                 spacing: 4px;
                                 width: 60px;
                                 Text { text: "N-Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                                    value: root.ring-noise-rate;
+                                RDSKnob {                                    value: root.ring-noise-rate;
                                     min-value: 0; max-value: 1;
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
@@ -1691,9 +1595,7 @@ export component GrainRustUI inherits Window {
                     HorizontalLayout {
                         spacing: 8px;
                         Text { text: root.metronome-count-in-label; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                        RDSKnob {
-                            renderer: root.is-software-renderer ? "lo-fi" : "hi-fi";
-                            value: root.metronome-count-in;
+                        RDSKnob {                            value: root.metronome-count-in;
                             min-value: 0;
                             max-value: 8;
                             size: 32px;

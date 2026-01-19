@@ -165,6 +165,8 @@ struct Track {
     tape_overdub: AtomicBool,
     /// Loop start position as normalized 0..1.
     loop_start: AtomicU32,
+    /// Trigger start position as normalized 0..1.
+    trigger_start: AtomicU32,
     /// Loop length as normalized 0..1.
     loop_length: AtomicU32,
     /// Loop crossfade amount as normalized 0..0.5.
@@ -427,6 +429,7 @@ impl Default for Track {
             tape_monitor: AtomicBool::new(false),
             tape_overdub: AtomicBool::new(false),
             loop_start: AtomicU32::new(0.0f32.to_bits()),
+            trigger_start: AtomicU32::new(0.0f32.to_bits()),
             loop_length: AtomicU32::new(1.0f32.to_bits()),
             loop_xfade: AtomicU32::new(0.0f32.to_bits()),
             loop_enabled: AtomicBool::new(true),
@@ -808,6 +811,7 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.tape_monitor.store(false, Ordering::Relaxed);
     track.tape_overdub.store(false, Ordering::Relaxed);
     track.loop_start.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.trigger_start.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.loop_length.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.loop_xfade.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.loop_enabled.store(true, Ordering::Relaxed);
@@ -1629,6 +1633,7 @@ impl Plugin for GrainRust {
                         );
                     }
 
+                    let mut prev_play_pos;
                     for sample_idx in 0..num_buffer_samples {
                         let mut pos = play_pos as isize;
                         if pos < 0 || pos as usize >= num_samples {
@@ -1726,6 +1731,7 @@ impl Plugin for GrainRust {
                                 keylock_grain_b += step * hop;
                             }
                             let keylock_pos = keylock_grain_a + keylock_phase;
+                            prev_play_pos = play_pos;
                             play_pos = keylock_pos;
                             if loop_mode == 2 {
                                 if direction >= 0 && play_pos >= loop_end as f32 {
@@ -1739,16 +1745,16 @@ impl Plugin for GrainRust {
                             }
                             if loop_active && loop_end > loop_start {
                                 if loop_mode == 1 {
-                                    if direction > 0 && play_pos as usize >= loop_end {
+                                    if direction > 0 && play_pos >= loop_end as f32 && prev_play_pos < loop_end as f32 {
                                         direction = -1;
                                         play_pos = loop_end.saturating_sub(1) as f32;
-                                    } else if direction < 0 && play_pos <= loop_start as f32 {
+                                    } else if direction < 0 && play_pos <= loop_start as f32 && prev_play_pos > loop_start as f32 {
                                         direction = 1;
                                         play_pos = loop_start as f32;
                                     }
-                                } else if direction > 0 && play_pos as usize >= loop_end {
+                                } else if direction > 0 && play_pos >= loop_end as f32 && prev_play_pos < loop_end as f32 {
                                     play_pos = loop_start as f32;
-                                } else if direction < 0 && play_pos < loop_start as f32 {
+                                } else if direction < 0 && play_pos < loop_start as f32 && prev_play_pos >= loop_start as f32 {
                                     play_pos = loop_end.saturating_sub(1) as f32;
                                 }
                             }
@@ -1828,19 +1834,20 @@ impl Plugin for GrainRust {
                         }
 
                             let speed = smooth_speed + speed_step * sample_idx as f32;
+                            prev_play_pos = play_pos;
                             play_pos += direction as f32 * speed;
                             if loop_active && loop_end > loop_start {
                                 if loop_mode == 1 {
-                                    if direction > 0 && play_pos as usize >= loop_end {
+                                    if direction > 0 && play_pos >= loop_end as f32 && prev_play_pos < loop_end as f32 {
                                         direction = -1;
                                         play_pos = loop_end.saturating_sub(1) as f32;
-                                    } else if direction < 0 && play_pos <= loop_start as f32 {
+                                    } else if direction < 0 && play_pos <= loop_start as f32 && prev_play_pos > loop_start as f32 {
                                         direction = 1;
                                         play_pos = loop_start as f32;
                                     }
-                                } else if direction > 0 && play_pos as usize >= loop_end {
+                                } else if direction > 0 && play_pos >= loop_end as f32 && prev_play_pos < loop_end as f32 {
                                     play_pos = loop_start as f32;
-                                } else if direction < 0 && play_pos < loop_start as f32 {
+                                } else if direction < 0 && play_pos < loop_start as f32 && prev_play_pos >= loop_start as f32 {
                                     play_pos = loop_end.saturating_sub(1) as f32;
                                 }
                             }
@@ -2759,20 +2766,20 @@ fn wrap_loop_pos(
     if num_samples == 0 {
         return 0.0;
     }
-    if loop_active && loop_end > loop_start {
-        let loop_len = (loop_end - loop_start) as f32;
-        let start = loop_start as f32;
-        let end = loop_end as f32;
-        while pos < start {
-            pos += loop_len;
+    if pos < 0.0 {
+        if loop_active && loop_end > loop_start {
+            pos = (loop_end.saturating_sub(1)) as f32;
+        } else {
+            pos = 0.0;
         }
-        while pos >= end {
-            pos -= loop_len;
+    } else if pos as usize >= num_samples {
+        if loop_active && loop_end > loop_start {
+            pos = loop_start as f32;
+        } else {
+            pos = (num_samples.saturating_sub(1)) as f32;
         }
-        pos
-    } else {
-        pos.clamp(0.0, (num_samples - 1) as f32)
     }
+    pos
 }
 
 fn next_mosaic_rng(state: &mut u32) -> u32 {
@@ -3643,6 +3650,8 @@ impl SlintWindow {
             self.tracks[track_idx].ring_scale.load(Ordering::Relaxed);
         let loop_start =
             f32::from_bits(self.tracks[track_idx].loop_start.load(Ordering::Relaxed));
+        let trigger_start =
+            f32::from_bits(self.tracks[track_idx].trigger_start.load(Ordering::Relaxed));
         let loop_length =
             f32::from_bits(self.tracks[track_idx].loop_length.load(Ordering::Relaxed));
         let loop_xfade =
@@ -3820,6 +3829,7 @@ impl SlintWindow {
         self.ui.set_ring_noise_rate_mode(ring_noise_rate_mode as i32);
         self.ui.set_ring_scale(ring_scale as i32);
         self.ui.set_loop_start(loop_start);
+        self.ui.set_trigger_start(trigger_start);
         self.ui.set_loop_length(loop_length);
         self.ui.set_loop_xfade(loop_xfade);
         self.ui.set_loop_enabled(loop_enabled);
@@ -4117,6 +4127,7 @@ fn initialize_ui(
         SharedString::from("Oscilloscope"),
         SharedString::from("Spectrum"),
         SharedString::from("Vectorscope"),
+        SharedString::from("Off"),
     ])));
     ui.set_tape_rate_modes(ModelRc::new(VecModel::from(vec![
         SharedString::from("Free"),
@@ -4352,6 +4363,14 @@ fn initialize_ui(
             } else {
                 0.0
             };
+            let trigger_start_norm =
+                f32::from_bits(track.trigger_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
+            let trigger_start = if let Some(samples) = track.samples.try_lock() {
+                let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
+                (trigger_start_norm * len as f32) as f32
+            } else {
+                0.0
+            };
             let direction = if loop_mode == 3 { -1 } else { 1 };
             track.loop_dir.store(direction, Ordering::Relaxed);
             if loop_mode == 4 {
@@ -4368,13 +4387,13 @@ fn initialize_ui(
                             loop_start_usize + fastrand::usize(..(loop_end - loop_start_usize));
                         track.play_pos.store((rand_pos as f32).to_bits(), Ordering::Relaxed);
                     } else {
-                        track.play_pos.store(loop_start.to_bits(), Ordering::Relaxed);
+                        track.play_pos.store(trigger_start.to_bits(), Ordering::Relaxed);
                     }
                 } else {
-                    track.play_pos.store(loop_start.to_bits(), Ordering::Relaxed);
+                    track.play_pos.store(trigger_start.to_bits(), Ordering::Relaxed);
                 }
             } else {
-                track.play_pos.store(loop_start.to_bits(), Ordering::Relaxed);
+                track.play_pos.store(trigger_start.to_bits(), Ordering::Relaxed);
             }
             track
                 .loop_start_last
@@ -4407,6 +4426,110 @@ fn initialize_ui(
                 track.pending_play.store(false, Ordering::Relaxed);
                 track.count_in_remaining.store(0, Ordering::Relaxed);
                 track.is_playing.store(true, Ordering::Relaxed);
+            }
+        }
+    });
+
+    let tracks_audition = Arc::clone(tracks);
+    let params_audition = Arc::clone(params);
+    ui.on_audition_start({
+        let tracks = Arc::clone(&tracks_audition);
+        let params = Arc::clone(&params_audition);
+        move || {
+            let track_idx = params.selected_track.value().saturating_sub(1) as usize;
+            if track_idx >= NUM_TRACKS {
+                return;
+            }
+            let track = &tracks[track_idx];
+
+            let loop_enabled = track.loop_enabled.load(Ordering::Relaxed);
+            let loop_mode = track.loop_mode.load(Ordering::Relaxed);
+            let loop_start_norm =
+                f32::from_bits(track.loop_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
+            let rotate_norm =
+                f32::from_bits(track.tape_rotate.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+
+            let loop_start = if loop_enabled {
+                if let Some(samples) = track.samples.try_lock() {
+                    let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
+                    let base_start = (loop_start_norm * len as f32) as usize;
+                    let rotate_offset = (rotate_norm * len as f32) as usize;
+                    ((base_start + rotate_offset) % len.max(1)) as f32
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            };
+
+            let trigger_start_norm =
+                f32::from_bits(track.trigger_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
+            let trigger_start = if let Some(samples) = track.samples.try_lock() {
+                let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
+                (trigger_start_norm * len as f32) as f32
+            } else {
+                0.0
+            };
+
+            let direction = if loop_mode == 3 { -1 } else { 1 };
+            track.loop_dir.store(direction, Ordering::Relaxed);
+
+            if loop_mode == 4 {
+                if let Some(samples) = track.samples.try_lock() {
+                    let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
+                    let loop_len =
+                        (f32::from_bits(track.loop_length.load(Ordering::Relaxed)) * len as f32)
+                            as usize;
+                    let loop_len = loop_len.max(1);
+                    let loop_end = (loop_start as usize + loop_len).min(len).max(1);
+                    let loop_start_usize = loop_start as usize;
+                    if loop_end > loop_start_usize {
+                        let rand_pos =
+                            loop_start_usize + fastrand::usize(..(loop_end - loop_start_usize));
+                        track.play_pos.store((rand_pos as f32).to_bits(), Ordering::Relaxed);
+                    } else {
+                        track.play_pos.store(trigger_start.to_bits(), Ordering::Relaxed);
+                    }
+                } else {
+                    track.play_pos.store(trigger_start.to_bits(), Ordering::Relaxed);
+                }
+            } else {
+                track.play_pos.store(trigger_start.to_bits(), Ordering::Relaxed);
+            }
+
+            track
+                .loop_start_last
+                .store(loop_start as u32, Ordering::Relaxed);
+            let mut direction = if loop_mode == 3 { -1 } else { 1 };
+            if track.tape_reverse.load(Ordering::Relaxed) {
+                direction *= -1;
+            }
+            let start_pos = f32::from_bits(track.play_pos.load(Ordering::Relaxed));
+            track
+                .keylock_phase
+                .store(0.0f32.to_bits(), Ordering::Relaxed);
+            track
+                .keylock_grain_a
+                .store(start_pos.to_bits(), Ordering::Relaxed);
+            track.keylock_grain_b.store(
+                (start_pos + direction as f32 * KEYLOCK_GRAIN_HOP as f32).to_bits(),
+                Ordering::Relaxed,
+            );
+
+            track.pending_play.store(false, Ordering::Relaxed);
+            track.count_in_remaining.store(0, Ordering::Relaxed);
+            track.is_playing.store(true, Ordering::Relaxed);
+        }
+    });
+
+    ui.on_audition_end({
+        let tracks = Arc::clone(&tracks_audition);
+        let params = Arc::clone(&params_audition);
+        move || {
+            let track_idx = params.selected_track.value().saturating_sub(1) as usize;
+            if track_idx < NUM_TRACKS {
+                tracks[track_idx].is_playing.store(false, Ordering::Relaxed);
+                tracks[track_idx].pending_play.store(false, Ordering::Relaxed);
             }
         }
     });
@@ -4571,6 +4694,17 @@ fn initialize_ui(
         if track_idx < NUM_TRACKS {
             tracks_loop[track_idx]
                 .loop_start
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_trigger = Arc::clone(tracks);
+    let params_trigger = Arc::clone(params);
+    ui.on_trigger_start_changed(move |value| {
+        let track_idx = params_trigger.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_trigger[track_idx]
+                .trigger_start
                 .store(value.to_bits(), Ordering::Relaxed);
         }
     });

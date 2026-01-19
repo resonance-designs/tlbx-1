@@ -18,24 +18,27 @@ export component RDSSlider inherits Rectangle {
 
     // Size scale factors
     private property <float> scale: root.size == "small" ? 0.5 : (root.size == "medium" ? 0.75 : 1.0);
-    private property <bool> is-horizontal: root.orientation == "vertical";
+    private property <bool> is-horizontal: root.orientation == "horizontal";
 
     // Scaled dimensions
     private property <length> base-width: 70px;
     private property <length> base-height: 420px;
-    private property <length> scaled-travel: 300px * root.scale;
+    in-out property <length> height-override: 0px;
+    private property <length> effective-height: root.height-override > 0px ? root.height-override : root.base-height * root.scale;
+    private property <length> scaled-travel: (root.effective-height - 120px * root.scale);
 
-    width: root.is-horizontal ? root.base-height * root.scale : root.base-width * root.scale;
-    height: root.is-horizontal ? root.base-width * root.scale : root.base-height * root.scale;
+    width: root.is-horizontal ? root.effective-height : root.base-width * root.scale;
+    height: root.is-horizontal ? root.base-width * root.scale : root.effective-height;
+    clip: true;
 
     // Calculate button position based on value and orientation
-    private property <length> button-pos: (17.5px * root.scale) + (317.5px * root.scale - 17.5px * root.scale) * (1 - (root.value - root.min-value) / (root.max-value - root.min-value));
+    private property <length> button-pos: (17.5px * root.scale) + (root.effective-height - 102.5px * root.scale) * (1 - (root.value - root.min-value) / Math.max(0.01, root.max-value - root.min-value));
 
     markings-left := Rectangle {
         x: root.is-horizontal ? 50px * root.scale : 1px * root.scale;
         y: root.is-horizontal ? 1px * root.scale : 50px * root.scale;
-        width: root.is-horizontal ? 302px * root.scale : 25px * root.scale;
-        height: root.is-horizontal ? 25px * root.scale : 302px * root.scale;
+        width: root.is-horizontal ? root.effective-height - 100px * root.scale : 25px * root.scale;
+        height: root.is-horizontal ? 25px * root.scale : root.effective-height - 100px * root.scale;
 
         mark1 := Rectangle {
             x: root.is-horizontal ? 0px : 0px;
@@ -259,8 +262,8 @@ export component RDSSlider inherits Rectangle {
     markings-right := Rectangle {
         x: root.is-horizontal ? 50px * root.scale : 44px * root.scale;
         y: root.is-horizontal ? 44px * root.scale : 50px * root.scale;
-        width: root.is-horizontal ? 302px * root.scale : 25px * root.scale;
-        height: root.is-horizontal ? 25px * root.scale : 302px * root.scale;
+        width: root.is-horizontal ? root.effective-height - 100px * root.scale : 25px * root.scale;
+        height: root.is-horizontal ? 25px * root.scale : root.effective-height - 100px * root.scale;
 
         mark32 := Rectangle {
             x: root.is-horizontal ? 0px : 0px;
@@ -484,8 +487,8 @@ export component RDSSlider inherits Rectangle {
     slider-range := Rectangle {
         x: root.is-horizontal ? 50px * root.scale : 30px * root.scale;
         y: root.is-horizontal ? 30px * root.scale : 50px * root.scale;
-        width: root.is-horizontal ? 320px * root.scale : 10px * root.scale;
-        height: root.is-horizontal ? 10px * root.scale : 320px * root.scale;
+        width: root.is-horizontal ? root.effective-height - 100px * root.scale : 10px * root.scale;
+        height: root.is-horizontal ? 10px * root.scale : root.effective-height - 100px * root.scale;
         background: root.is-horizontal ? @linear-gradient(
             90deg,
             Theme.active.background_main 0%,

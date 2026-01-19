@@ -32,7 +32,7 @@ Example usage:
 export component RDSKnob inherits Rectangle {
     // Public properties
     in-out property <float> value: 0;
-    in-out property <angle> rotation-angle: 0deg;
+    property <angle> rotation-angle: root.is-infinite ? root.value * 1deg : -135deg + ((root.value - root.min-value) / Math.max(0.01, root.max-value - root.min-value)) * 270deg;
     in-out property <length> size: 60px;
     in-out property <length> indicator-position: 15px;
     in-out property <float> sensitivity: 0.5;
@@ -83,11 +83,6 @@ export component RDSKnob inherits Rectangle {
                 if (!root.is-infinite) {
                     root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
                 }
-                if (root.is-infinite) {
-                    root.rotation-angle = root.value * 1deg;
-                } else {
-                    root.rotation-angle = -135deg + ((root.value - root.min-value) / (root.max-value - root.min-value)) * 270deg;
-                }
                 root.value-changed(root.value);
             }
         }
@@ -96,11 +91,6 @@ export component RDSKnob inherits Rectangle {
             root.value = root.value - (event.delta-y / 1px) * root.scroll-sensitivity;
             if (!root.is-infinite) {
                 root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
-            }
-            if (root.is-infinite) {
-                root.rotation-angle = root.value * 1deg;
-            } else {
-                root.rotation-angle = -135deg + ((root.value - root.min-value) / (root.max-value - root.min-value)) * 270deg;
             }
             root.value-changed(root.value);
             return accept;

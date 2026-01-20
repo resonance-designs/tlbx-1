@@ -1618,112 +1618,134 @@ export component GrainRustUI inherits Window {
 
         }
 
-            Rectangle {
-                visible: root.show-settings;
-                width: parent.width;
-                background: #15151c;
-                border-color: #2a2a35;
-                border-width: 1px;
-                border-radius: 6px;
-                VerticalLayout {
-                    padding: 12px;
+        }
+    }
+
+    Rectangle {
+        visible: root.show-settings;
+        width: parent.width;
+        height: parent.height;
+        background: #00000080;
+
+        Rectangle {
+            width: Math.min(520px, parent.width - 40px);
+            height: Math.min(520px, parent.height - 40px);
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: #15151c;
+            border-color: #2a2a35;
+            border-width: 1px;
+            border-radius: 8px;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 10px;
+
+                HorizontalLayout {
                     spacing: 8px;
-
-                    Text { text: "Audio Settings"; color: #e4e4ea; font-size: 16px; }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Output device"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                        ComboBox {
-                            model: root.output-devices;
-                            current-index: root.output-device-index;
-                            selected => { root.output-device-selected(self.current-index); }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Input device"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                        ComboBox {
-                            model: root.input-devices;
-                            current-index: root.input-device-index;
-                            selected => { root.input-device-selected(self.current-index); }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Sample rate"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                        ComboBox {
-                            model: root.sample-rates;
-                            current-index: root.sample-rate-index;
-                            selected => { root.sample-rate-selected(self.current-index); }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: "Buffer size"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                        ComboBox {
-                            model: root.buffer-sizes;
-                            current-index: root.buffer-size-index;
-                            selected => { root.buffer-size-selected(self.current-index); }
-                        }
-                    }
-
-                    Text { text: "Metronome"; color: #e4e4ea; font-size: 15px; }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Button {
-                            text: root.metronome-enabled ? "Metronome On" : "Metronome Off";
-                            clicked => root.toggle-metronome();
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Text { text: root.metronome-count-in-label; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                        RDSKnob {                            value: root.metronome-count-in;
-                            min-value: 0;
-                            max-value: 8;
-                            size: 32px;
-                            indicator-position: 10px;
-                            sensitivity: 0.1;
-                            scroll-sensitivity: 0.1;
-                            value-changed(v) => {
-                                root.metronome-count-in = v;
-                                root.metronome-count-in-changed(v);
-                            }
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Button {
-                            text: root.metronome-count-playback ? "Count-In Playback On" : "Count-In Playback Off";
-                            clicked => root.toggle-metronome-count-playback();
-                        }
-                        Button {
-                            text: root.metronome-count-record ? "Count-In Record On" : "Count-In Record Off";
-                            clicked => root.toggle-metronome-count-record();
-                        }
-                    }
-
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Button { text: "Refresh Devices"; clicked => root.refresh-devices(); }
-                        Button { text: "Apply & Restart"; clicked => root.apply-settings(); }
-                    }
-
                     Text {
-                        text: root.settings-status;
-                        color: #d0a7ff;
-                        font-size: 12px;
+                        text: "Audio Settings";
+                        color: #e4e4ea;
+                        font-size: 16px;
+                        horizontal-stretch: 1;
+                    }
+                    Button {
+                        text: "Close";
+                        clicked => root.toggle-settings();
                     }
                 }
-            }
 
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Output device"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
+                    ComboBox {
+                        model: root.output-devices;
+                        current-index: root.output-device-index;
+                        selected => { root.output-device-selected(self.current-index); }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Input device"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
+                    ComboBox {
+                        model: root.input-devices;
+                        current-index: root.input-device-index;
+                        selected => { root.input-device-selected(self.current-index); }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Sample rate"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
+                    ComboBox {
+                        model: root.sample-rates;
+                        current-index: root.sample-rate-index;
+                        selected => { root.sample-rate-selected(self.current-index); }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Buffer size"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
+                    ComboBox {
+                        model: root.buffer-sizes;
+                        current-index: root.buffer-size-index;
+                        selected => { root.buffer-size-selected(self.current-index); }
+                    }
+                }
+
+                Text { text: "Metronome"; color: #e4e4ea; font-size: 15px; }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Button {
+                        text: root.metronome-enabled ? "Metronome On" : "Metronome Off";
+                        clicked => root.toggle-metronome();
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: root.metronome-count-in-label; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
+                    RDSKnob {                            value: root.metronome-count-in;
+                        min-value: 0;
+                        max-value: 8;
+                        size: 32px;
+                        indicator-position: 10px;
+                        sensitivity: 0.1;
+                        scroll-sensitivity: 0.1;
+                        value-changed(v) => {
+                            root.metronome-count-in = v;
+                            root.metronome-count-in-changed(v);
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Button {
+                        text: root.metronome-count-playback ? "Count-In Playback On" : "Count-In Playback Off";
+                        clicked => root.toggle-metronome-count-playback();
+                    }
+                    Button {
+                        text: root.metronome-count-record ? "Count-In Record On" : "Count-In Record Off";
+                        clicked => root.toggle-metronome-count-record();
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 8px;
+                    Button { text: "Refresh Devices"; clicked => root.refresh-devices(); }
+                    Button { text: "Apply & Restart"; clicked => root.apply-settings(); }
+                }
+
+                Text {
+                    text: root.settings-status;
+                    color: #d0a7ff;
+                    font-size: 12px;
+                }
+            }
         }
     }
 

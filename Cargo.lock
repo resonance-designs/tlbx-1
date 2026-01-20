@@ -2126,6 +2126,7 @@ dependencies = [
  "fastrand",
  "fundsp",
  "hound",
+ "keyboard-types 0.6.2",
  "mime_guess",
  "nih_plug",
  "parking_lot",

@@ -10,12 +10,16 @@ export component RDSCircleToggle {
     Rectangle {
         width: parent.width;
         height: parent.height;
-        background: root.active ? Theme.active.accent_primary : Theme.active.border_subtle;
+        background: root.active
+            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
+            : (ta.pressed ? Theme.active.border_strong : Theme.active.border_subtle);
         border-radius: 999px;
-        border-color: root.active ? Theme.active.accent_highlight : Theme.active.border_strong;
+        border-color: root.active
+            ? (ta.pressed ? Theme.active.accent_primary : Theme.active.accent_highlight)
+            : (ta.has-hover ? Theme.active.border_strong : Theme.active.border_strong);
         border-width: 1px;
 
-        TouchArea {
+        ta := TouchArea {
             width: parent.width;
             height: parent.height;
             clicked => root.clicked();

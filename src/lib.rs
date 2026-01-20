@@ -3,7 +3,16 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.4
+ * Version: 0.1.6
+ * Component: Core Logic
+ */
+
+/**
+ * GrainRust - A Rust-based granular audio sampler.
+ * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
+ * Author: Richard Bakos <info@resonancedesigns.dev>
+ * Website: https://resonancedesigns.dev
+ * Version: 0.1.6
  * Component: Core Logic
  */
 
@@ -86,7 +95,7 @@ fn default_window_size() -> baseview::Size {
     }
 }
 
-include!(concat!(env!("OUT_DIR"), "/all.rs"));
+include!(concat!(env!("OUT_DIR"), "/grainrust.rs"));
 
 struct Track {
     /// Audio data for the track. Each channel is a Vec of f32.
@@ -2185,6 +2194,15 @@ impl Plugin for GrainRust {
                         1.0 / (1.0 + (-contour_bipolar) * 4.0)
                     };
                     let env = base_env.powf(curve);
+                    let (left_gain, right_gain, other_gain) = if num_channels >= 2 {
+                        let pan = grain_pan.clamp(-1.0, 1.0);
+                        let angle = (pan + 1.0) * 0.25 * PI;
+                        let left = angle.cos();
+                        let right = angle.sin();
+                        (left, right, 0.5 * (left + right))
+                    } else {
+                        (1.0, 1.0, 1.0)
+                    };
                     for channel_idx in 0..num_channels {
                         let src_channel = if channel_idx < mosaic_buffer.len() {
                             channel_idx
@@ -2197,20 +2215,13 @@ impl Plugin for GrainRust {
                             read_pos,
                         );
                         let wet = mosaic_wet;
-                        let mut pan_gain = 1.0f32;
-                        if num_channels >= 2 {
-                            let pan = grain_pan.clamp(-1.0, 1.0);
-                            let angle = (pan + 1.0) * 0.25 * PI;
-                            let left = angle.cos();
-                            let right = angle.sin();
-                            if channel_idx == 0 {
-                                pan_gain = left;
-                            } else if channel_idx == 1 {
-                                pan_gain = right;
-                            } else {
-                                pan_gain = 0.5 * (left + right);
-                            }
-                        }
+                        let pan_gain = if channel_idx == 0 {
+                            left_gain
+                        } else if channel_idx == 1 {
+                            right_gain
+                        } else {
+                            other_gain
+                        };
                         output[channel_idx][sample_idx] +=
                             sample_value * env * MOSAIC_OUTPUT_GAIN * wet * pan_gain;
                     }
@@ -2602,39 +2613,39 @@ impl Plugin for GrainRust {
 
         // Master FX Chain
         let sr = self.sample_rate.load(Ordering::Relaxed) as f32;
-        let master_filter = self.params.master_filter.smoothed.next();
-        let master_comp = self.params.master_comp.smoothed.next();
-
-        // Calculate DJ Filter coefficients
-        let mut filter_type = 0; // 0=None, 1=HP, 2=LP
-        let mut f = 0.0f32;
-        let mut q = 0.707f32;
-
-        if master_filter < 0.49 {
-            filter_type = 1; // HP
-            let cutoff_hz = 20.0 + (1.0 - master_filter / 0.5) * 2000.0;
-            f = (PI * cutoff_hz / sr).tan();
-        } else if master_filter > 0.51 {
-            filter_type = 2; // LP
-            let cutoff_hz = 20000.0 - ((master_filter - 0.5) / 0.5) * 19000.0;
-            f = (PI * cutoff_hz / sr).tan();
-        }
-
-        let res_coeff = 1.0 / q;
-
-        // Compressor parameters
-        let threshold_db = -24.0 * master_comp;
-        let threshold = util::db_to_gain(threshold_db);
-        let ratio = 1.0 + master_comp * 10.0;
-        let attack_ms = 5.0;
-        let release_ms = 100.0;
-        let attack_coeff = (-1.0 / (attack_ms * sr / 1000.0)).exp();
-        let release_coeff = (-1.0 / (release_ms * sr / 1000.0)).exp();
-
         let num_channels = buffer.channels();
         let num_samples = buffer.samples();
 
         for sample_idx in 0..num_samples {
+            let master_filter = self.params.master_filter.smoothed.next();
+            let master_comp = self.params.master_comp.smoothed.next();
+
+            // Calculate DJ Filter coefficients
+            let mut filter_type = 0; // 0=None, 1=HP, 2=LP
+            let mut f = 0.0f32;
+            let q = 0.707f32;
+
+            if master_filter < 0.49 {
+                filter_type = 1; // HP
+                let cutoff_hz = 20.0 + (1.0 - master_filter / 0.5) * 2000.0;
+                f = (PI * cutoff_hz / sr).tan();
+            } else if master_filter > 0.51 {
+                filter_type = 2; // LP
+                let cutoff_hz = 20000.0 - ((master_filter - 0.5) / 0.5) * 19000.0;
+                f = (PI * cutoff_hz / sr).tan();
+            }
+
+            let res_coeff = 1.0 / q;
+
+            // Compressor parameters
+            let threshold_db = -24.0 * master_comp;
+            let threshold = util::db_to_gain(threshold_db);
+            let ratio = 1.0 + master_comp * 10.0;
+            let attack_ms = 5.0;
+            let release_ms = 100.0;
+            let attack_coeff = (-1.0 / (attack_ms * sr / 1000.0)).exp();
+            let release_coeff = (-1.0 / (release_ms * sr / 1000.0)).exp();
+
             let mut max_abs = 0.0f32;
             
             // Process Filter + Find Max for Compressor

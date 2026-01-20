@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.1.6] - 2026-01-19
+
 ## [0.1.5] - 2026-01-19
 
 - Reorganized UI layout with a consolidated 4x3 control grid for tape engine parameters

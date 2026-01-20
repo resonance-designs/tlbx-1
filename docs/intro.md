@@ -7,6 +7,8 @@ sidebar_position: 1
 
 This section is the home for Markdown-based developer docs. Add new files under `docs/` and they will appear in the Docusaurus site automatically.
 
+Recent UI changes include the extracted `TapeEngine` component (`src/ui/tape_engine.slint`) and lo‑fi knob rendering modes for performance-sensitive layouts.
+
 ## Build the Docs Site
 
 From the repo root:

@@ -10,7 +10,7 @@ GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4
 - Sample loading per track (wav/flac/mp3/ogg)
 - Global transport (play/stop all tracks)
 - Per-track level, mute, and loop controls (start/length/x-fade)
-- Engine loader per track (Tape)
+- Engine loader per track (Tape, Animate)
 - Post-tape Mosaic granular buffer with bypass toggle
 - Project save/load (JSON)
 - Standalone audio device settings (device, sample rate, buffer size)
@@ -94,9 +94,10 @@ Installers include the built documentation site under `documentation/` in the in
 - Loop Start/Length/XFade apply to the active track
 - Mosaic enable toggles the post-tape granular buffer per track
 - Save/Load Project stores track paths and loop/mix state
-- Settings panel is for standalone audio device configuration
+- Settings panel is a modal for standalone audio device configuration
 - The engine controls are hidden until an engine is loaded for the active track
 - Tape parameters are organized in a 4x3 grid for efficient control
+- Keyboard shortcuts (standalone): Space toggles Play/Stop, Escape closes modals
 
 ## Project Files
 

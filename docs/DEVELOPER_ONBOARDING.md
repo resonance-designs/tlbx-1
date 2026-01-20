@@ -63,5 +63,6 @@ Packaging expects these environment variables:
 
 - `src/` contains DSP + app code
 - `src/ui/` contains Slint UI definitions
+- `src/ui/tape_engine.slint` contains the Tape engine UI component
 - `docs/` contains Markdown developer docs
 - `docs-site/` contains the Docusaurus and Storybook tooling

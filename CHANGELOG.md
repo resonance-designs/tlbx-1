@@ -1,6 +1,10 @@
 # Changelog
 
-## [0.1.6] - 2026-01-19
+## [0.1.6] - 2026-01-20
+
+- Extracted Tape engine UI into `tape_engine.slint` for cleaner component structure
+- Added lo-fi knob rendering path for performance and new indicator styles (circle/line/carrot)
+- Settings panel now opens as a modal with Escape-to-close support in standalone
 
 ## [0.1.5] - 2026-01-19
 

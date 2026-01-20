@@ -4,6 +4,8 @@ import { Theme } from "../theme/index.slint";
 Component: RDSKnob
 Description: A rotary knob component that supports both bounded and infinite rotation modes, with optimized rendering for different backends.
 Public members:
+- indicator: string - "circle" (default), "line", or "carrot"
+- indicator-color: color - color for lo-fi indicators
 - value: float - Current value
 - rotation-angle: angle - Current rotation angle
 - size: length - Size of the knob (width and height are bounded to this)
@@ -33,6 +35,9 @@ export component RDSKnob inherits Rectangle {
     in-out property <length> indicator-position: 15px;
     in-out property <float> sensitivity: 0.5;
     in-out property <float> scroll-sensitivity: 1.0;
+    in-out property <string> renderer: "hi-fi";
+    in-out property <string> indicator: "circle";
+    in-out property <color> indicator-color: #b9b9bf;
 
     in-out property <float> min-value: 0;
     in-out property <float> max-value: 0;
@@ -47,7 +52,18 @@ export component RDSKnob inherits Rectangle {
     height: root.size;
     background: transparent;
 
+    Rectangle {
+        visible: root.renderer == "lo-fi";
+        width: root.size;
+        height: root.size;
+        background: #1c1c22;
+        border-radius: root.size / 2;
+        border-width: 2px;
+        border-color: #2f2f3a;
+    }
+
     Image {
+        visible: root.renderer != "lo-fi";
         width: root.size;
         height: root.size;
         image-fit: contain;
@@ -55,7 +71,40 @@ export component RDSKnob inherits Rectangle {
     }
 
     // Position/value indicator - size scales with knob size
-    indicator := Image {
+    indicator := Rectangle {
+        visible: root.renderer == "lo-fi" && root.indicator == "circle";
+        width: root.size / 6;
+        height: root.size / 6;
+        x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+        y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+        background: root.indicator-color;
+        border-radius: self.width / 2;
+        border-width: 1px;
+        border-color: #0e0e12;
+    }
+
+    Rectangle {
+        visible: root.indicator == "line";
+        width: 2px;
+        height: root.size / 4;
+        x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+        y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+        background: root.indicator-color;
+        border-radius: 1px;
+    }
+
+    Path {
+        visible: root.indicator == "carrot";
+        width: root.size / 5;
+        height: root.size / 5;
+        x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
+        y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
+        fill: root.indicator-color;
+        commands: "M 0 0 L 1 0 L 0.5 1 Z";
+    }
+
+    Image {
+        visible: root.renderer != "lo-fi" && root.indicator == "circle";
         width: root.size / 6;
         height: root.size / 6;
         x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;

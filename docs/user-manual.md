@@ -11,6 +11,7 @@ This manual covers the current GrainRust workflow as of the latest Mosaic update
 
 - **Play/Stop**: The global transport button in the header starts or stops all tracks simultaneously.
 - **Audition**: Located within the engine controls, this momentary button plays only the currently selected track while held down, allowing for quick checks without starting the entire project.
+- **Keyboard (standalone)**: Space toggles Play/Stop. Escape closes open modals.
 
 ## Tracks
 
@@ -23,6 +24,11 @@ This manual covers the current GrainRust workflow as of the latest Mosaic update
 - Use the **Audition** button for momentary playback of the selected track.
 - Use Tape controls for speed/tempo/loop/start/length/x‑fade/rotate and tape actions (reverse, freeze, keylock, monitor, overdub).
 
+## Animate Engine
+
+- Load the Animate engine per track via the Engine selector + Load Engine.
+- Animate displays its own slot controls and X‑Y pad when loaded.
+
 ## Mosaic Device
 
 - Mosaic runs after Tape and draws from a 4‑second buffer.
@@ -33,6 +39,7 @@ This manual covers the current GrainRust workflow as of the latest Mosaic update
 ## Audio Settings (Standalone)
 
 - Open Settings to choose output/input device, sample rate, and buffer size.
+- Settings open in a modal window and can be closed with Escape.
 
 ## Project Management
 

@@ -30,6 +30,7 @@ use baseview::{
     Event as BaseEvent, EventStatus as BaseEventStatus, Window as BaseWindow, WindowHandle,
     WindowHandler as BaseWindowHandler, WindowOpenOptions, WindowScalePolicy,
 };
+use keyboard_types::{Key, KeyState};
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use raw_window_handle_06 as raw_window_handle_06;
 use serde::{Deserialize, Serialize};
@@ -4113,7 +4114,30 @@ impl BaseWindowHandler for SlintWindow {
                 }
                 BaseEventStatus::Captured
             }
-            BaseEvent::Keyboard(_) => BaseEventStatus::Ignored,
+            BaseEvent::Keyboard(event) => {
+                if self.gui_context.plugin_api() == PluginApi::Standalone
+                    && event.state == KeyState::Down
+                    && !event.repeat
+                {
+                    match event.key {
+                        Key::Escape => {
+                            if self.ui.get_show_settings() {
+                                self.ui.set_show_settings(false);
+                            }
+                            if self.ui.get_show_engine_confirm() {
+                                self.ui.set_show_engine_confirm(false);
+                            }
+                            return BaseEventStatus::Captured;
+                        }
+                        Key::Character(ref ch) if ch == " " => {
+                            self.ui.invoke_toggle_play();
+                            return BaseEventStatus::Captured;
+                        }
+                        _ => {}
+                    }
+                }
+                BaseEventStatus::Ignored
+            }
         }
     }
 }

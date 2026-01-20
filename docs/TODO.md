@@ -25,6 +25,7 @@
 - [x] Implement tape device parameters: speed, tempo, start, length, rotate, x-fade
 - [x] Implement tape actions: load, monitor, overdub, record, save, reverse, freeze, keylock
 - [x] Add UI for tape page 1/2 parameters and action buttons
+- [x] Extract Tape UI into its own Slint component
 
 #### Phase 2: Granular Device (Mosaic)
 
@@ -74,3 +75,4 @@
 - [x] Add cross-platform packaging scripts (NSIS/pkgbuild/Linux staging)
 - [x] Bundle docs site with installers and expose in-app Docs link
 - [ ] Refine documentation
+- [x] Document modal settings, keyboard shortcuts, and lo-fi knob rendering

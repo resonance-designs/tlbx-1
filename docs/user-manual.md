@@ -13,6 +13,10 @@ This manual covers the current GrainRust workflow as of the latest Mosaic update
 - **Audition**: Located within the engine controls, this momentary button plays only the currently selected track while held down, allowing for quick checks without starting the entire project.
 - **Keyboard (standalone)**: Space toggles Play/Stop. Escape closes open modals.
 
+## Visualizers
+
+- Use the visualizer toggles to switch between oscilloscope, spectrum, and vectorscope.
+
 ## Tracks
 
 - Use the Track 1–4 buttons to select the active track.

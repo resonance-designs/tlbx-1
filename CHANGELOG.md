@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.7] - 2026-01-20
+
+- Consolidated visualizer and meter components into `viz.slint`
+- Split visualizers into dedicated oscilloscope/spectrum/vectorscope components
+- Renamed Waveform visualizer component to `RDSWaveformViz`
+
 ## [0.1.6] - 2026-01-20
 
 - Extracted Tape engine UI into `tape_engine.slint` for cleaner component structure

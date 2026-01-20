@@ -3,7 +3,16 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.6
+ * Version: 0.1.7
+ * Component: UI Definitions
+ */
+
+/**
+ * GrainRust - A Rust-based granular audio sampler.
+ * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
+ * Author: Richard Bakos <info@resonancedesigns.dev>
+ * Website: https://resonancedesigns.dev
+ * Version: 0.1.7
  * Component: UI Definitions
  */
 
@@ -29,7 +38,10 @@ import {
     RDSVertVUMeter,
     RDSSlider,
     RDSCircleToggle,
-    RDSKnob
+    RDSKnob,
+    RDSOscilloscopeViz,
+    RDSSpectrumViz,
+    RDSVectorscopeViz
 } from "./components/index.slint";
 
 import { TapeEngine } from "./tape_engine.slint";
@@ -514,43 +526,24 @@ export component GrainRustUI inherits Window {
                         border-radius: 4px;
                         clip: true;
 
-                        Rectangle {
+                        RDSOscilloscopeViz {
                             width: parent.width;
                             height: parent.height;
                             visible: root.visualizer-mode == 0;
-                            for sample[i] in root.oscilloscope : Rectangle {
-                                width: 2px;
-                                height: Math.max(2px, Math.abs(sample) * (parent.height - 4px));
-                                x: i * (parent.width / root.oscilloscope.length);
-                                y: (parent.height - self.height) / 2;
-                                background: #7dd3fc;
-                            }
+                            oscilloscope: root.oscilloscope;
                         }
-
-                        Rectangle {
+                        RDSSpectrumViz {
                             width: parent.width;
                             height: parent.height;
                             visible: root.visualizer-mode == 1;
-                            for mag[i] in root.spectrum : Rectangle {
-                                width: parent.width / root.spectrum.length;
-                                height: Math.max(2px, mag * (parent.height - 4px));
-                                x: i * (parent.width / root.spectrum.length);
-                                y: parent.height - self.height;
-                                background: #a78bfa;
-                            }
+                            spectrum: root.spectrum;
                         }
-
-                        Rectangle {
+                        RDSVectorscopeViz {
                             width: parent.width;
                             height: parent.height;
                             visible: root.visualizer-mode == 2;
-                            for xval[i] in root.vectorscope_x : Rectangle {
-                                width: 2px;
-                                height: 2px;
-                                x: ((xval * 0.5) + 0.5) * parent.width;
-                                y: ((root.vectorscope_y[i] * -0.5) + 0.5) * parent.height;
-                                background: #34d399;
-                            }
+                            vectorscope_x: root.vectorscope_x;
+                            vectorscope_y: root.vectorscope_y;
                         }
                     }
                 }

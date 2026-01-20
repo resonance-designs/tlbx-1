@@ -1,6 +1,6 @@
 # GrainRust
 
-Version: 0.1.6
+Version: 0.1.7
 
 GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
 
@@ -16,6 +16,7 @@ GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4
 - Standalone audio device settings (device, sample rate, buffer size)
 - Smoothed per-track level changes to reduce crackle
 - Scrollable UI when content exceeds the window height
+- Built-in visualizers (oscilloscope, spectrum, vectorscope)
 
 ## Build
 
@@ -98,6 +99,7 @@ Installers include the built documentation site under `documentation/` in the in
 - The engine controls are hidden until an engine is loaded for the active track
 - Tape parameters are organized in a 4x3 grid for efficient control
 - Keyboard shortcuts (standalone): Space toggles Play/Stop, Escape closes modals
+- Visualizer modes: oscilloscope, spectrum, vectorscope
 
 ## Project Files
 

@@ -213,6 +213,10 @@ struct Track {
     mosaic_wet: AtomicU32,
     /// Smoothed mosaic wet/dry.
     mosaic_wet_smooth: AtomicU32,
+    /// Mosaic spatial random pan amount.
+    mosaic_spatial: AtomicU32,
+    /// Smoothed mosaic spatial random pan amount.
+    mosaic_spatial_smooth: AtomicU32,
     /// Mosaic detune.
     mosaic_detune: AtomicU32,
     /// Smoothed mosaic detune.
@@ -245,6 +249,8 @@ struct Track {
     mosaic_grain_wait: AtomicU32,
     /// Mosaic pitch ratio for the active grain.
     mosaic_grain_pitch: AtomicU32,
+    /// Mosaic pan position for the active grain.
+    mosaic_grain_pan: AtomicU32,
     /// Mosaic RNG state for grain start selection.
     mosaic_rng_state: AtomicU32,
     /// Ring filter cutoff (normalized 0..1).
@@ -453,6 +459,8 @@ impl Default for Track {
             mosaic_pattern_smooth: AtomicU32::new(0.0f32.to_bits()),
             mosaic_wet: AtomicU32::new(0.0f32.to_bits()),
             mosaic_wet_smooth: AtomicU32::new(0.0f32.to_bits()),
+            mosaic_spatial: AtomicU32::new(0.0f32.to_bits()),
+            mosaic_spatial_smooth: AtomicU32::new(0.0f32.to_bits()),
             mosaic_detune: AtomicU32::new(0.0f32.to_bits()),
             mosaic_detune_smooth: AtomicU32::new(0.0f32.to_bits()),
             mosaic_rand_rate: AtomicU32::new(0.0f32.to_bits()),
@@ -472,6 +480,7 @@ impl Default for Track {
             mosaic_grain_len: AtomicU32::new(0),
             mosaic_grain_wait: AtomicU32::new(0),
             mosaic_grain_pitch: AtomicU32::new(1.0f32.to_bits()),
+            mosaic_grain_pan: AtomicU32::new(0.0f32.to_bits()),
             mosaic_rng_state: AtomicU32::new(0x1234_abcd),
             ring_cutoff: AtomicU32::new(0.5f32.to_bits()),
             ring_cutoff_smooth: AtomicU32::new(0.5f32.to_bits()),
@@ -834,6 +843,10 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.mosaic_pattern_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_wet.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_wet_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.mosaic_spatial.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .mosaic_spatial_smooth
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_detune.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_detune_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_rand_rate.store(0.0f32.to_bits(), Ordering::Relaxed);
@@ -849,6 +862,7 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.mosaic_grain_len.store(0, Ordering::Relaxed);
     track.mosaic_grain_wait.store(0, Ordering::Relaxed);
     track.mosaic_grain_pitch.store(1.0f32.to_bits(), Ordering::Relaxed);
+    track.mosaic_grain_pan.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_rng_state.store(0x1234_abcd, Ordering::Relaxed);
     track.ring_cutoff.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.ring_cutoff_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
@@ -1999,6 +2013,8 @@ impl Plugin for GrainRust {
                     f32::from_bits(track.mosaic_pattern.load(Ordering::Relaxed)).clamp(0.0, 1.0);
                 let target_wet =
                     f32::from_bits(track.mosaic_wet.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+                let target_spatial =
+                    f32::from_bits(track.mosaic_spatial.load(Ordering::Relaxed)).clamp(0.0, 1.0);
                 let target_detune =
                     f32::from_bits(track.mosaic_detune.load(Ordering::Relaxed)).clamp(0.0, 1.0);
                 let target_rand_rate =
@@ -2053,6 +2069,12 @@ impl Plugin for GrainRust {
                     num_buffer_samples,
                     sr as f32,
                 );
+                let mosaic_spatial = smooth_param(
+                    f32::from_bits(track.mosaic_spatial_smooth.load(Ordering::Relaxed)),
+                    target_spatial,
+                    num_buffer_samples,
+                    sr as f32,
+                );
                 let mosaic_detune = smooth_param(
                     f32::from_bits(track.mosaic_detune_smooth.load(Ordering::Relaxed)),
                     target_detune,
@@ -2096,6 +2118,9 @@ impl Plugin for GrainRust {
                     .mosaic_wet_smooth
                     .store(mosaic_wet.to_bits(), Ordering::Relaxed);
                 track
+                    .mosaic_spatial_smooth
+                    .store(mosaic_spatial.to_bits(), Ordering::Relaxed);
+                track
                     .mosaic_detune_smooth
                     .store(mosaic_detune.to_bits(), Ordering::Relaxed);
                 track
@@ -2122,6 +2147,8 @@ impl Plugin for GrainRust {
                     (track.mosaic_grain_start.load(Ordering::Relaxed) as usize) % mosaic_len;
                 let mut grain_pitch =
                     f32::from_bits(track.mosaic_grain_pitch.load(Ordering::Relaxed));
+                let mut grain_pan =
+                    f32::from_bits(track.mosaic_grain_pan.load(Ordering::Relaxed));
                 let mut rng_state = track.mosaic_rng_state.load(Ordering::Relaxed);
 
                 for sample_idx in 0..num_buffer_samples {
@@ -2156,6 +2183,8 @@ impl Plugin for GrainRust {
                         let detune_cents = detune * mosaic_detune * MOSAIC_DETUNE_CENTS;
                         grain_pitch =
                             base_pitch_ratio * 2.0f32.powf(detune_cents / 1200.0);
+                        let pan_rand = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
+                        grain_pan = (pan_rand * mosaic_spatial).clamp(-1.0, 1.0);
 
                         grain_pos = 0.0;
                     }
@@ -2180,8 +2209,22 @@ impl Plugin for GrainRust {
                             read_pos,
                         );
                         let wet = mosaic_wet;
+                        let mut pan_gain = 1.0f32;
+                        if num_channels >= 2 {
+                            let pan = grain_pan.clamp(-1.0, 1.0);
+                            let angle = (pan + 1.0) * 0.25 * PI;
+                            let left = angle.cos();
+                            let right = angle.sin();
+                            if channel_idx == 0 {
+                                pan_gain = left;
+                            } else if channel_idx == 1 {
+                                pan_gain = right;
+                            } else {
+                                pan_gain = 0.5 * (left + right);
+                            }
+                        }
                         output[channel_idx][sample_idx] +=
-                            sample_value * env * MOSAIC_OUTPUT_GAIN * wet;
+                            sample_value * env * MOSAIC_OUTPUT_GAIN * wet * pan_gain;
                     }
                     grain_pos += 1.0;
                 }
@@ -2201,6 +2244,9 @@ impl Plugin for GrainRust {
                 track
                     .mosaic_grain_pitch
                     .store(grain_pitch.to_bits(), Ordering::Relaxed);
+                track
+                    .mosaic_grain_pan
+                    .store(grain_pan.to_bits(), Ordering::Relaxed);
                 track
                     .mosaic_rng_state
                     .store(rng_state, Ordering::Relaxed);
@@ -3631,6 +3677,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].mosaic_pattern.load(Ordering::Relaxed));
         let mosaic_wet =
             f32::from_bits(self.tracks[track_idx].mosaic_wet.load(Ordering::Relaxed));
+        let mosaic_spatial =
+            f32::from_bits(self.tracks[track_idx].mosaic_spatial.load(Ordering::Relaxed));
         let mosaic_detune =
             f32::from_bits(self.tracks[track_idx].mosaic_detune.load(Ordering::Relaxed));
         let mosaic_rand_rate =
@@ -3831,6 +3879,7 @@ impl SlintWindow {
         self.ui.set_mosaic_spray(mosaic_spray);
         self.ui.set_mosaic_pattern(mosaic_pattern);
         self.ui.set_mosaic_wet(mosaic_wet);
+        self.ui.set_mosaic_spatial(mosaic_spatial);
         self.ui.set_mosaic_detune(mosaic_detune);
         self.ui.set_mosaic_rand_rate(mosaic_rand_rate);
         self.ui.set_mosaic_rand_size(mosaic_rand_size);
@@ -4941,6 +4990,17 @@ fn initialize_ui(
         if track_idx < NUM_TRACKS {
             tracks_mosaic[track_idx]
                 .mosaic_wet
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_mosaic = Arc::clone(tracks);
+    let params_mosaic = Arc::clone(params);
+    ui.on_mosaic_spatial_changed(move |value| {
+        let track_idx = params_mosaic.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_mosaic[track_idx]
+                .mosaic_spatial
                 .store(value.to_bits(), Ordering::Relaxed);
         }
     });

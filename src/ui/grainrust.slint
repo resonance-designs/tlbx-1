@@ -65,6 +65,7 @@ export component GrainRustUI inherits Window {
     in-out property <float> mosaic-pattern: 0.0;
     in-out property <float> mosaic-wet: 0.0;
     in-out property <float> mosaic-detune: 0.0;
+    in-out property <float> mosaic-spatial: 0.0;
     in-out property <float> mosaic-rand-rate: 0.0;
     in-out property <float> mosaic-rand-size: 0.0;
     in-out property <float> mosaic-sos: 0.0;
@@ -212,6 +213,7 @@ export component GrainRustUI inherits Window {
     callback mosaic-pattern-changed(value: float);
     callback mosaic-wet-changed(value: float);
     callback mosaic-detune-changed(value: float);
+    callback mosaic-spatial-changed(value: float);
     callback mosaic-rand-rate-changed(value: float);
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
@@ -1362,6 +1364,17 @@ export component GrainRustUI inherits Window {
                                     size: 48px; indicator-position: 15px;
                                     sensitivity: 0.01; scroll-sensitivity: 0.01;
                                     value-changed(v) => { root.mosaic-detune = v; root.mosaic-detune-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 60px;
+                                Text { text: "Spatial"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {                                    value: root.mosaic-spatial;
+                                    min-value: 0; max-value: 1;
+                                    size: 48px; indicator-position: 15px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.mosaic-spatial = v; root.mosaic-spatial-changed(v); }
                                 }
                             }
                             VerticalLayout {

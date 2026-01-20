@@ -86,7 +86,7 @@ fn default_window_size() -> baseview::Size {
     }
 }
 
-slint::include_modules!();
+include!(concat!(env!("OUT_DIR"), "/all.rs"));
 
 struct Track {
     /// Audio data for the track. Each channel is a Vec of f32.

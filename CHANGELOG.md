@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.10] - 2026-01-21
+
+- A little polish to the Tape-Deck UI.
+
 ## [0.1.9] - 2026-01-21
 
 - Added Animate engine UI component (`animate_engine.slint`)

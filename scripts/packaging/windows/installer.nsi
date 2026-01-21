@@ -1,7 +1,7 @@
 !include "MUI2.nsh"
 
 !define PRODUCT_NAME "TLBX-1"
-!define PRODUCT_VERSION "0.1.9"
+!define PRODUCT_VERSION "0.1.10"
 !define COMPANY_NAME "TLBX-1"
 
 !define STANDALONE_SRC "dist\\windows\\standalone\\tlbx-1.exe"

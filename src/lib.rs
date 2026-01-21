@@ -2071,7 +2071,7 @@ impl Plugin for TLBX1 {
                     let track_muted = track.is_muted.load(Ordering::Relaxed);
                     let tape_speed =
                         f32::from_bits(track.tape_speed.load(Ordering::Relaxed)).clamp(-4.0, 4.0);
-                    let tape_tempo = global_tempo;
+                    let tape_tempo = global_tempo.max(1.0);
                     let tape_rate_mode = track.tape_rate_mode.load(Ordering::Relaxed);
                     let tape_freeze = track.tape_freeze.load(Ordering::Relaxed);
                     let tape_reverse = track.tape_reverse.load(Ordering::Relaxed);
@@ -2083,27 +2083,6 @@ impl Plugin for TLBX1 {
                         f32::from_bits(track.level_smooth.load(Ordering::Relaxed));
                     let level_step = if num_buffer_samples > 0 {
                         (target_level - smooth_level) / num_buffer_samples as f32
-                    } else {
-                        0.0
-                    };
-                    let rate_factor = match tape_rate_mode {
-                        1 => 1.0,
-                        2 => 1.5,
-                        3 => 2.0 / 3.0,
-                        _ => 0.0,
-                    };
-                    let tempo_speed = if tape_rate_mode == 0 {
-                        tape_speed
-                    } else {
-                        (tape_tempo / 120.0) * rate_factor
-                    };
-                    let target_speed = if tape_freeze { 0.0 } else { tempo_speed };
-                    let glide =
-                        f32::from_bits(track.tape_glide.load(Ordering::Relaxed)).clamp(0.0, 1.0);
-                    let glide_factor = 1.0 + glide * 20.0;
-                    let speed_step = if num_buffer_samples > 0 {
-                        (target_speed - smooth_speed)
-                            / (num_buffer_samples as f32 * glide_factor)
                     } else {
                         0.0
                     };
@@ -2152,6 +2131,71 @@ impl Plugin for TLBX1 {
                     if tape_reverse {
                         direction *= -1;
                     }
+                    if tape_rate_mode == 1 && tape_speed < 0.0 {
+                        direction *= -1;
+                    }
+                    let rate_factor = match tape_rate_mode {
+                        1 => 1.0,
+                        2 => 1.5,
+                        3 => 2.0 / 3.0,
+                        _ => 0.0,
+                    };
+                    let (tempo_speed, straight_steps_per_loop) = match tape_rate_mode {
+                        0 => (tape_speed, None),
+                        1 => {
+                            let divisions = [
+                                1.0 / 64.0,
+                                1.0 / 32.0,
+                                1.0 / 16.0,
+                                1.0 / 8.0,
+                                1.0 / 4.0,
+                                1.0 / 2.0,
+                                1.0,
+                                2.0,
+                                4.0,
+                            ];
+                            let normalized = (tape_speed.abs() / 4.0).clamp(0.0, 1.0);
+                            let idx = ((divisions.len() - 1) as f32 * normalized).round() as usize;
+                            let bars = divisions[idx];
+                            let steps_per_loop = (bars * 16.0f32).max(1.0f32);
+                            let seconds_per_bar = (60.0 / tape_tempo) * 4.0;
+                            let target_seconds = (bars * seconds_per_bar).max(0.001);
+                            let speed = loop_len as f32
+                                / (target_seconds
+                                    * track.sample_rate.load(Ordering::Relaxed).max(1) as f32);
+                            (speed, Some(steps_per_loop))
+                        }
+                        _ => ((tape_tempo / 120.0) * rate_factor, None),
+                    };
+                    if let Some(steps_per_loop) = straight_steps_per_loop {
+                        if samples_per_step > 0.0 {
+                            let master_step_f =
+                                master_step as f32 + (master_phase / samples_per_step);
+                            let step_in_loop = master_step_f.rem_euclid(steps_per_loop);
+                            let phase = step_in_loop / steps_per_loop;
+                            play_pos = if direction >= 0 {
+                                loop_start as f32 + phase * loop_len as f32
+                            } else {
+                                loop_end.saturating_sub(1) as f32 - phase * loop_len as f32
+                            };
+                            if keylock_enabled {
+                                keylock_phase = 0.0;
+                                keylock_grain_a = play_pos;
+                                keylock_grain_b =
+                                    play_pos + direction as f32 * KEYLOCK_GRAIN_HOP as f32;
+                            }
+                        }
+                    }
+                    let target_speed = if tape_freeze { 0.0 } else { tempo_speed };
+                    let glide =
+                        f32::from_bits(track.tape_glide.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+                    let glide_factor = 1.0 + glide * 20.0;
+                    let speed_step = if num_buffer_samples > 0 {
+                        (target_speed - smooth_speed)
+                            / (num_buffer_samples as f32 * glide_factor)
+                    } else {
+                        0.0
+                    };
                     if loop_mode == 5 && loop_active {
                         let last_start = track.loop_start_last.load(Ordering::Relaxed) as usize;
                         if last_start != loop_start {

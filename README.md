@@ -1,6 +1,6 @@
 # TLBX-1
 
-Version: 0.1.7
+Version: 0.1.8
 
 TLBX-1 is a 4-track audio toolbox built in Rust. It features different audio engines, one of which is inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
 

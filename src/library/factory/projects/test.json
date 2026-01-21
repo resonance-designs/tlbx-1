@@ -24,7 +24,7 @@
       "loop_mode": 0
     },
     {
-      "sample_path": "C:\\Dev\\Projects\\mmibox\\src\\library\\mmistudios\\samples\\BD_8R8Long_ChromaST3_G1.wav",
+      "sample_path": "../kits/kit001/BD_8R8Long_ChromaST3_G1.wav",
       "level": 0.3418887,
       "muted": false,
       "tape_speed": 2.8523798,

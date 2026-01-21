@@ -9,7 +9,7 @@
 
 use nih_plug::prelude::*;
 use env_logger::Env;
-use tlbx_1::TLBX1;
+use tlbx1_core::TLBX1;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info"))

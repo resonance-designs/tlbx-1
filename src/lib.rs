@@ -7,24 +7,6 @@
  * Component: Core Logic
  */
 
-/**
- * TLBX-1 - A Rust-based audio toolbox.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.7
- * Component: Core Logic
- */
-
-/**
- * TLBX-1 - A Rust-based audio toolbox.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.6
- * Component: Core Logic
- */
-
 use nih_plug::prelude::*;
 use cpal::traits::{DeviceTrait, HostTrait};
 use parking_lot::Mutex;

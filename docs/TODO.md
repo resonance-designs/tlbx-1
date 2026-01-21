@@ -76,3 +76,4 @@
 - [x] Bundle docs site with installers and expose in-app Docs link
 - [ ] Refine documentation
 - [x] Document modal settings, keyboard shortcuts, and lo-fi knob rendering
+- [x] Document use of the Resonance Designs Slint UI Component Kit

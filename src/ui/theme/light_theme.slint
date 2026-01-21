@@ -1,10 +1,15 @@
 // theme/light_theme.slint
 import { RDSTheme } from "theme.slint";
 
+import "./assets/fonts/SourceSans3_Medium.ttf";
+import "./assets/fonts/DSEG7Classic_Reg.ttf";
+import "./assets/fonts/MaterialIcons_Regular.ttf";
+
 export global LightTheme {
     out property <RDSTheme> values: {
         background_main: #ffffff,
         background_raised: #f0f0f5,
+        background_hover: #e6e6ef,
         border_subtle: #e0e0e8,
         border_strong: #c0c0d0,
         text_primary: #1c1c22,
@@ -18,7 +23,15 @@ export global LightTheme {
         radius_small: 2px,
         radius_medium: 4px,
         radius_large: 6px,
+        font_body: "Source Sans 3",
+        font_readout: "DSEG7 Classic",
+        font_icons: "Material Icons",
         font_small: 12px,
-        font_medium: 14px
+        font_medium: 14px,
+        font_large: 16px,
+        ui_header_label_bg: #e06e26,
+        ui_header_label_txt: #1a1a22,
+        knob_body_svg: @image-url("./assets/svg/knob_body.svg"),
+        knob_indicator_svg: @image-url("./assets/svg/knob_indicator.svg")
     };
 }

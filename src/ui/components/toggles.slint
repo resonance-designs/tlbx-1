@@ -1,7 +1,5 @@
 import { Theme } from "../theme/index.slint";
 
-import "./assets/fonts/MaterialIcons_Regular.ttf";
-
 /*
 Component: RDSCircleToggle
 Description: A minimal circular toggle indicator.
@@ -72,7 +70,7 @@ export component RDSToggle {
         Text {
             text: root.active ? root.on-icon : root.off-icon;
             color: root.icon-color;
-            font-family: "Material Icons";
+            font-family: Theme.active.font_icons;
             font-size: root.icon-size;
             horizontal-alignment: center;
             vertical-alignment: center;

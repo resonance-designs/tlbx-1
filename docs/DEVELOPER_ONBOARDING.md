@@ -77,6 +77,13 @@ Packaging expects these environment variables:
 - `src/ui/` contains Slint UI definitions
 - `src/ui/tlbx1.slint` contains the main window UI definition
 - `src/ui/tape_engine.slint` contains the Tape engine UI component
+- `src/ui/animate_engine.slint` contains the Animate engine UI component
 - `src/ui/components/viz.slint` contains visualizer and meter components
+- `src/ui/components/` contains shared controls (RDS Slint UI Component Kit)
 - `docs/` contains Markdown developer docs
 - `docs-site/` contains the Docusaurus and Storybook tooling
+
+## UI Component Kit
+
+TLBX-1 uses the Resonance Designs Slint UI Component Kit for shared controls and theming:
+https://github.com/resonance-designs/rds-slint-ui-kit

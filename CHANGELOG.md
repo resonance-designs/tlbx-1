@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9] - 2026-01-21
+
+- Added Animate engine UI component (`animate_engine.slint`)
+- Introduced a custom RDSComboBox with a popup list
+- Theme updates for shared fonts and UI tokens
+- Documentation updates for UI components and kit usage
+
 ## [0.1.8] - 2026-01-20
 
 - Renamed the project to TLBX-1 across UI, packaging, and docs

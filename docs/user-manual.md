@@ -52,3 +52,4 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 ## Documentation
 
 - Use the Docs button to open the local documentation site (installed with the app).
+- UI controls are based on the Resonance Designs Slint UI Component Kit: https://github.com/resonance-designs/rds-slint-ui-kit

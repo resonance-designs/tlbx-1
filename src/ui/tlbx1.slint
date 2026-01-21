@@ -11,13 +11,12 @@ import "./assets/fonts/Quad_Light.otf";
 
 import {
     Button,
-    ComboBox,
     ScrollView
 } from "std-widgets.slint";
 
 import {
+    RDSHeaderLabel,
     RDSSelectButton,
-    RDSSequencerCell,
     RDSVUMeter,
     RDSVertVUMeter,
     RDSSlider,
@@ -25,12 +24,14 @@ import {
     RDSToggle,
     RDSKnob,
     RDSNumStepper,
+    RDSComboBox,
     RDSOscilloscopeViz,
     RDSSpectrumViz,
     RDSVectorscopeViz
 } from "./components/index.slint";
 
 import { TapeEngine } from "./tape_engine.slint";
+import { AnimateEngine } from "./animate_engine.slint";
 
 export component TLBX1UI inherits Window {
     in-out property <int> selected-track: 1;
@@ -552,7 +553,7 @@ export component TLBX1UI inherits Window {
                     clicked => { root.select-track(i + 1); }
                 }
                 Rectangle { width: 1px; background: #2a2a35; }
-                ComboBox {
+                RDSComboBox {
                     model: root.engine-types;
                     current-index: root.engine-index;
                     selected => { root.engine-index = self.current-index; }
@@ -567,464 +568,220 @@ export component TLBX1UI inherits Window {
         }
 
 
-        VerticalLayout {
+        Rectangle {
+            border-color: #e06e26;
+            border-width: 1px;
+            border-radius: 6px;
             visible: root.engine-loaded;
-            spacing: 8px;
             width: parent.width;
+            height: root.engine-loaded ? engine-content.preferred-height : 0px;
+            clip: true;
 
-            Text { 
-                text: root.active-engine-type == 1 ? "Tape Engine" : "Animate Engine"; 
-                color: #f0f0f2; 
-                font-size: 15px; 
-            }
-
-            TapeEngine {
-                visible: root.active-engine-type == 1;
+            engine-content := VerticalLayout {
+                spacing: 0px;
                 width: parent.width;
-                is-recording: root.is-recording;
-                track-level <=> root.track-level;
-                track-meter-left: root.track-meter-left;
-                track-meter-right: root.track-meter-right;
-                waveform: root.waveform;
-                waveform_time_labels: root.waveform_time_labels;
-                playhead-index: root.playhead-index;
-                tape-speed <=> root.tape-speed;
-                tape-rotate <=> root.tape-rotate;
-                trigger-start <=> root.trigger-start;
-                loop-start <=> root.loop-start;
-                loop-length <=> root.loop-length;
-                tape-glide <=> root.tape-glide;
-                tape-sos <=> root.tape-sos;
-                loop-xfade <=> root.loop-xfade;
-                tape-rate-modes: root.tape-rate-modes;
-                tape-rate-mode <=> root.tape-rate-mode;
-                loop-modes: root.loop-modes;
-                loop-mode <=> root.loop-mode;
-                track-muted <=> root.track-muted;
-                loop-enabled <=> root.loop-enabled;
-                tape-reverse <=> root.tape-reverse;
-                tape-freeze <=> root.tape-freeze;
-                tape-keylock <=> root.tape-keylock;
-                tape-monitor <=> root.tape-monitor;
-                tape-overdub <=> root.tape-overdub;
-                mosaic-enabled <=> root.mosaic-enabled;
-                mosaic-pitch <=> root.mosaic-pitch;
-                mosaic-rate <=> root.mosaic-rate;
-                mosaic-size <=> root.mosaic-size;
-                mosaic-contour <=> root.mosaic-contour;
-                mosaic-warp <=> root.mosaic-warp;
-                mosaic-spray <=> root.mosaic-spray;
-                mosaic-pattern <=> root.mosaic-pattern;
-                mosaic-wet <=> root.mosaic-wet;
-                mosaic-detune <=> root.mosaic-detune;
-                mosaic-spatial <=> root.mosaic-spatial;
-                mosaic-rand-rate <=> root.mosaic-rand-rate;
-                mosaic-rand-size <=> root.mosaic-rand-size;
-                mosaic-sos <=> root.mosaic-sos;
-                ring-enabled <=> root.ring-enabled;
-                ring-cutoff <=> root.ring-cutoff;
-                ring-resonance <=> root.ring-resonance;
-                ring-decay <=> root.ring-decay;
-                ring-pitch <=> root.ring-pitch;
-                ring-decay-modes: root.ring-decay-modes;
-                ring-decay-mode <=> root.ring-decay-mode;
-                ring-slope <=> root.ring-slope;
-                ring-tone <=> root.ring-tone;
-                ring-tilt <=> root.ring-tilt;
-                ring-wet <=> root.ring-wet;
-                ring-detune <=> root.ring-detune;
-                ring-waves <=> root.ring-waves;
-                ring-waves-rate <=> root.ring-waves-rate;
-                ring-noise <=> root.ring-noise;
-                ring-noise-rate <=> root.ring-noise-rate;
-                load-sample => root.load-sample();
-                save-sample => root.save-sample();
-                toggle-record => root.toggle-record();
-                audition-start => root.audition-start();
-                audition-end => root.audition-end();
-                track-level-changed(value) => { root.track-level-changed(value); }
-                tape-speed-changed(value) => { root.tape-speed-changed(value); }
-                tape-rotate-changed(value) => { root.tape-rotate-changed(value); }
-                trigger-start-changed(value) => { root.trigger-start-changed(value); }
-                loop-start-changed(value) => { root.loop-start-changed(value); }
-                loop-length-changed(value) => { root.loop-length-changed(value); }
-                tape-glide-changed(value) => { root.tape-glide-changed(value); }
-                tape-sos-changed(value) => { root.tape-sos-changed(value); }
-                loop-xfade-changed(value) => { root.loop-xfade-changed(value); }
-                tape-rate-mode-selected(index) => { root.tape-rate-mode-selected(index); }
-                loop-mode-selected(index) => { root.loop-mode-selected(index); }
-                toggle-track-mute => root.toggle-track-mute();
-                toggle-loop-enabled => root.toggle-loop-enabled();
-                toggle-tape-reverse => root.toggle-tape-reverse();
-                toggle-tape-freeze => root.toggle-tape-freeze();
-                toggle-tape-keylock => root.toggle-tape-keylock();
-                toggle-tape-monitor => root.toggle-tape-monitor();
-                toggle-tape-overdub => root.toggle-tape-overdub();
-                toggle-mosaic-enabled => root.toggle-mosaic-enabled();
-                mosaic-pitch-changed(value) => { root.mosaic-pitch-changed(value); }
-                mosaic-rate-changed(value) => { root.mosaic-rate-changed(value); }
-                mosaic-size-changed(value) => { root.mosaic-size-changed(value); }
-                mosaic-contour-changed(value) => { root.mosaic-contour-changed(value); }
-                mosaic-warp-changed(value) => { root.mosaic-warp-changed(value); }
-                mosaic-spray-changed(value) => { root.mosaic-spray-changed(value); }
-                mosaic-pattern-changed(value) => { root.mosaic-pattern-changed(value); }
-                mosaic-wet-changed(value) => { root.mosaic-wet-changed(value); }
-                mosaic-detune-changed(value) => { root.mosaic-detune-changed(value); }
-                mosaic-spatial-changed(value) => { root.mosaic-spatial-changed(value); }
-                mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
-                mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
-                mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
-                toggle-ring-enabled => root.toggle-ring-enabled();
-                ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
-                ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
-                ring-decay-changed(value) => { root.ring-decay-changed(value); }
-                ring-pitch-changed(value) => { root.ring-pitch-changed(value); }
-                ring-decay-mode-selected(index) => { root.ring-decay-mode-selected(index); }
-                ring-slope-changed(value) => { root.ring-slope-changed(value); }
-                ring-tone-changed(value) => { root.ring-tone-changed(value); }
-                ring-tilt-changed(value) => { root.ring-tilt-changed(value); }
-                ring-wet-changed(value) => { root.ring-wet-changed(value); }
-                ring-detune-changed(value) => { root.ring-detune-changed(value); }
-                ring-waves-changed(value) => { root.ring-waves-changed(value); }
-                ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
-                ring-noise-changed(value) => { root.ring-noise-changed(value); }
-                ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
-            }
 
-        VerticalLayout {
-            visible: root.active-engine-type == 2;
-                spacing: 12px;
-                Text { text: "Animate Engine"; color: #f0f0f2; font-size: 15px; }
-
-                HorizontalLayout {
-                    spacing: 16px;
+                tape-section := Rectangle {
                     width: parent.width;
+                    height: root.active-engine-type == 1 ? tape-content.preferred-height : 0px;
+                    clip: true;
+                    visible: root.active-engine-type == 1;
 
-                    // Slot controls
-                    VerticalLayout {
+                    tape-content := VerticalLayout {
                         spacing: 8px;
-                        width: (parent.width - 200px);
+                        width: parent.width;
 
-                        // Slot A
-                        HorizontalLayout {
-                            spacing: 8px;
-                            Text { text: "Slot A"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                            ComboBox {
-                                width: 100px;
-                                model: root.animate-slot-types;
-                                current-index: root.animate-slot-a-type;
-                                selected => { root.animate-slot-a-type = self.current-index; root.animate-slot-a-type-changed(self.current-index); }
-                            }
-                            ComboBox {
-                                width: 150px;
-                                model: root.animate-slot-a-type == 0 ? root.animate-wavetables : root.animate-samples;
-                                current-index: root.animate-slot-a-type == 0 ? root.animate-slot-a-wavetable : root.animate-slot-a-sample;
-                                selected => {
-                                    if (root.animate-slot-a-type == 0) {
-                                        root.animate-slot-a-wavetable = self.current-index;
-                                        root.animate-slot-a-wavetable-changed(self.current-index);
-                                    } else {
-                                        root.animate-slot-a-sample = self.current-index;
-                                        root.animate-slot-a-sample-changed(self.current-index);
-                                    }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-slot-a-level;
-                                    min-value: 0; max-value: 1;
-                                    size: 32px; indicator-position: 10px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-slot-a-level = v; root.animate-slot-a-level-changed(v); }
-                                }
-                            }
-                        }
-                        // Slot B
-                        HorizontalLayout {
-                            spacing: 8px;
-                            Text { text: "Slot B"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                            ComboBox {
-                                width: 100px;
-                                model: root.animate-slot-types;
-                                current-index: root.animate-slot-b-type;
-                                selected => { root.animate-slot-b-type = self.current-index; root.animate-slot-b-type-changed(self.current-index); }
-                            }
-                            ComboBox {
-                                width: 150px;
-                                model: root.animate-slot-b-type == 0 ? root.animate-wavetables : root.animate-samples;
-                                current-index: root.animate-slot-b-type == 0 ? root.animate-slot-b-wavetable : root.animate-slot-b-sample;
-                                selected => {
-                                    if (root.animate-slot-b-type == 0) {
-                                        root.animate-slot-b-wavetable = self.current-index;
-                                        root.animate-slot-b-wavetable-changed(self.current-index);
-                                    } else {
-                                        root.animate-slot-b-sample = self.current-index;
-                                        root.animate-slot-b-sample-changed(self.current-index);
-                                    }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-slot-b-level;
-                                    min-value: 0; max-value: 1;
-                                    size: 32px; indicator-position: 10px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-slot-b-level = v; root.animate-slot-b-level-changed(v); }
-                                }
-                            }
-                        }
-                        // Slot C
-                        HorizontalLayout {
-                            spacing: 8px;
-                            Text { text: "Slot C"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                            ComboBox {
-                                width: 100px;
-                                model: root.animate-slot-types;
-                                current-index: root.animate-slot-c-type;
-                                selected => { root.animate-slot-c-type = self.current-index; root.animate-slot-c-type-changed(self.current-index); }
-                            }
-                            ComboBox {
-                                width: 150px;
-                                model: root.animate-slot-c-type == 0 ? root.animate-wavetables : root.animate-samples;
-                                current-index: root.animate-slot-c-type == 0 ? root.animate-slot-c-wavetable : root.animate-slot-c-sample;
-                                selected => {
-                                    if (root.animate-slot-c-type == 0) {
-                                        root.animate-slot-c-wavetable = self.current-index;
-                                        root.animate-slot-c-wavetable-changed(self.current-index);
-                                    } else {
-                                        root.animate-slot-c-sample = self.current-index;
-                                        root.animate-slot-c-sample-changed(self.current-index);
-                                    }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-slot-c-level;
-                                    min-value: 0; max-value: 1;
-                                    size: 32px; indicator-position: 10px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-slot-c-level = v; root.animate-slot-c-level-changed(v); }
-                                }
-                            }
-                        }
-                        // Slot D
-                        HorizontalLayout {
-                            spacing: 8px;
-                            Text { text: "Slot D"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                            ComboBox {
-                                width: 100px;
-                                model: root.animate-slot-types;
-                                current-index: root.animate-slot-d-type;
-                                selected => { root.animate-slot-d-type = self.current-index; root.animate-slot-d-type-changed(self.current-index); }
-                            }
-                            ComboBox {
-                                width: 150px;
-                                model: root.animate-slot-d-type == 0 ? root.animate-wavetables : root.animate-samples;
-                                current-index: root.animate-slot-d-type == 0 ? root.animate-slot-d-wavetable : root.animate-slot-d-sample;
-                                selected => {
-                                    if (root.animate-slot-d-type == 0) {
-                                        root.animate-slot-d-wavetable = self.current-index;
-                                        root.animate-slot-d-wavetable-changed(self.current-index);
-                                    } else {
-                                        root.animate-slot-d-sample = self.current-index;
-                                        root.animate-slot-d-sample-changed(self.current-index);
-                                    }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-slot-d-level;
-                                    min-value: 0; max-value: 1;
-                                    size: 32px; indicator-position: 10px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-slot-d-level = v; root.animate-slot-d-level-changed(v); }
-                                }
-                            }
-                        }
-                    }
-
-                    // Vector XY pad
-                    Rectangle {
-                        width: 160px;
-                        height: 160px;
-                        background: #1a1a22;
-                        border-radius: 4px;
-                        border-color: #3a3a45;
-                        border-width: 1px;
-
-                        Rectangle {
-                            width: 12px; height: 12px;
-                            background: #c53bff;
-                            border-radius: 6px;
-                            x: root.animate-vector-x * (parent.width - 12px);
-                            y: (1.0 - root.animate-vector-y) * (parent.height - 12px);
-                        }
-
-                        TouchArea {
-                            moved => {
-                                root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
-                                root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
-                                root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
-                            }
-                            clicked => {
-                                root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
-                                root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
-                                root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
-                            }
+                        TapeEngine {
+                            width: parent.width;
+                            is-recording: root.is-recording;
+                            track-level <=> root.track-level;
+                            track-meter-left: root.track-meter-left;
+                            track-meter-right: root.track-meter-right;
+                            waveform: root.waveform;
+                            waveform_time_labels: root.waveform_time_labels;
+                            playhead-index: root.playhead-index;
+                            tape-speed <=> root.tape-speed;
+                            tape-rotate <=> root.tape-rotate;
+                            trigger-start <=> root.trigger-start;
+                            loop-start <=> root.loop-start;
+                            loop-length <=> root.loop-length;
+                            tape-glide <=> root.tape-glide;
+                            tape-sos <=> root.tape-sos;
+                            loop-xfade <=> root.loop-xfade;
+                            tape-rate-modes: root.tape-rate-modes;
+                            tape-rate-mode <=> root.tape-rate-mode;
+                            loop-modes: root.loop-modes;
+                            loop-mode <=> root.loop-mode;
+                            track-muted <=> root.track-muted;
+                            loop-enabled <=> root.loop-enabled;
+                            tape-reverse <=> root.tape-reverse;
+                            tape-freeze <=> root.tape-freeze;
+                            tape-keylock <=> root.tape-keylock;
+                            tape-monitor <=> root.tape-monitor;
+                            tape-overdub <=> root.tape-overdub;
+                            mosaic-enabled <=> root.mosaic-enabled;
+                            mosaic-pitch <=> root.mosaic-pitch;
+                            mosaic-rate <=> root.mosaic-rate;
+                            mosaic-size <=> root.mosaic-size;
+                            mosaic-contour <=> root.mosaic-contour;
+                            mosaic-warp <=> root.mosaic-warp;
+                            mosaic-spray <=> root.mosaic-spray;
+                            mosaic-pattern <=> root.mosaic-pattern;
+                            mosaic-wet <=> root.mosaic-wet;
+                            mosaic-detune <=> root.mosaic-detune;
+                            mosaic-spatial <=> root.mosaic-spatial;
+                            mosaic-rand-rate <=> root.mosaic-rand-rate;
+                            mosaic-rand-size <=> root.mosaic-rand-size;
+                            mosaic-sos <=> root.mosaic-sos;
+                            ring-enabled <=> root.ring-enabled;
+                            ring-cutoff <=> root.ring-cutoff;
+                            ring-resonance <=> root.ring-resonance;
+                            ring-decay <=> root.ring-decay;
+                            ring-pitch <=> root.ring-pitch;
+                            ring-decay-modes: root.ring-decay-modes;
+                            ring-decay-mode <=> root.ring-decay-mode;
+                            ring-slope <=> root.ring-slope;
+                            ring-tone <=> root.ring-tone;
+                            ring-tilt <=> root.ring-tilt;
+                            ring-wet <=> root.ring-wet;
+                            ring-detune <=> root.ring-detune;
+                            ring-waves <=> root.ring-waves;
+                            ring-waves-rate <=> root.ring-waves-rate;
+                            ring-noise <=> root.ring-noise;
+                            ring-noise-rate <=> root.ring-noise-rate;
+                            load-sample => root.load-sample();
+                            save-sample => root.save-sample();
+                            toggle-record => root.toggle-record();
+                            audition-start => root.audition-start();
+                            audition-end => root.audition-end();
+                            track-level-changed(value) => { root.track-level-changed(value); }
+                            tape-speed-changed(value) => { root.tape-speed-changed(value); }
+                            tape-rotate-changed(value) => { root.tape-rotate-changed(value); }
+                            trigger-start-changed(value) => { root.trigger-start-changed(value); }
+                            loop-start-changed(value) => { root.loop-start-changed(value); }
+                            loop-length-changed(value) => { root.loop-length-changed(value); }
+                            tape-glide-changed(value) => { root.tape-glide-changed(value); }
+                            tape-sos-changed(value) => { root.tape-sos-changed(value); }
+                            loop-xfade-changed(value) => { root.loop-xfade-changed(value); }
+                            tape-rate-mode-selected(index) => { root.tape-rate-mode-selected(index); }
+                            loop-mode-selected(index) => { root.loop-mode-selected(index); }
+                            toggle-track-mute => root.toggle-track-mute();
+                            toggle-loop-enabled => root.toggle-loop-enabled();
+                            toggle-tape-reverse => root.toggle-tape-reverse();
+                            toggle-tape-freeze => root.toggle-tape-freeze();
+                            toggle-tape-keylock => root.toggle-tape-keylock();
+                            toggle-tape-monitor => root.toggle-tape-monitor();
+                            toggle-tape-overdub => root.toggle-tape-overdub();
+                            toggle-mosaic-enabled => root.toggle-mosaic-enabled();
+                            mosaic-pitch-changed(value) => { root.mosaic-pitch-changed(value); }
+                            mosaic-rate-changed(value) => { root.mosaic-rate-changed(value); }
+                            mosaic-size-changed(value) => { root.mosaic-size-changed(value); }
+                            mosaic-contour-changed(value) => { root.mosaic-contour-changed(value); }
+                            mosaic-warp-changed(value) => { root.mosaic-warp-changed(value); }
+                            mosaic-spray-changed(value) => { root.mosaic-spray-changed(value); }
+                            mosaic-pattern-changed(value) => { root.mosaic-pattern-changed(value); }
+                            mosaic-wet-changed(value) => { root.mosaic-wet-changed(value); }
+                            mosaic-detune-changed(value) => { root.mosaic-detune-changed(value); }
+                            mosaic-spatial-changed(value) => { root.mosaic-spatial-changed(value); }
+                            mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
+                            mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
+                            mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
+                            toggle-ring-enabled => root.toggle-ring-enabled();
+                            ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
+                            ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
+                            ring-decay-changed(value) => { root.ring-decay-changed(value); }
+                            ring-pitch-changed(value) => { root.ring-pitch-changed(value); }
+                            ring-decay-mode-selected(index) => { root.ring-decay-mode-selected(index); }
+                            ring-slope-changed(value) => { root.ring-slope-changed(value); }
+                            ring-tone-changed(value) => { root.ring-tone-changed(value); }
+                            ring-tilt-changed(value) => { root.ring-tilt-changed(value); }
+                            ring-wet-changed(value) => { root.ring-wet-changed(value); }
+                            ring-detune-changed(value) => { root.ring-detune-changed(value); }
+                            ring-waves-changed(value) => { root.ring-waves-changed(value); }
+                            ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
+                            ring-noise-changed(value) => { root.ring-noise-changed(value); }
+                            ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
                         }
                     }
                 }
 
-                HorizontalLayout {
-                    spacing: 16px;
+                animate-section := Rectangle {
+                    width: parent.width;
+                    height: root.active-engine-type == 2 ? animate-content.preferred-height : 0px;
+                    clip: true;
+                    visible: root.active-engine-type == 2;
 
-                    VerticalLayout {
-                        spacing: 6px;
-                        Text { text: "Filter"; color: #e4e4ea; font-size: 14px; }
-                        HorizontalLayout {
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 50px;
-                                Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-filter-cutoff;
-                                    min-value: 0; max-value: 1;
-                                    size: 36px; indicator-position: 12px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-filter-cutoff = v; root.animate-filter-cutoff-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 50px;
-                                Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-filter-resonance;
-                                    min-value: 0; max-value: 1;
-                                    size: 36px; indicator-position: 12px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-filter-resonance = v; root.animate-filter-resonance-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 50px;
-                                Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-filter-drive;
-                                    min-value: 0; max-value: 1;
-                                    size: 36px; indicator-position: 12px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-filter-drive = v; root.animate-filter-drive-changed(v); }
-                                }
-                            }
-                            ComboBox {
-                                width: 100px;
-                                model: root.animate-filter-types;
-                                current-index: root.animate-filter-type;
-                                selected => { root.animate-filter-type = self.current-index; root.animate-filter-type-changed(self.current-index); }
-                            }
-                        }
-                    }
+                    animate-content := VerticalLayout {
+                        spacing: 12px;
+                        width: parent.width;
+                        Text { text: "Animate Engine"; color: #f0f0f2; font-size: 15px; }
 
-                    VerticalLayout {
-                        spacing: 6px;
-                        Text { text: "Amp Envelope"; color: #e4e4ea; font-size: 14px; }
-                        HorizontalLayout {
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 40px;
-                                Text { text: "A"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-amp-attack;
-                                    min-value: 0.01; max-value: 1;
-                                    size: 28px; indicator-position: 8px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-amp-attack = v; root.animate-amp-attack-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 40px;
-                                Text { text: "D"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-amp-decay;
-                                    min-value: 0.01; max-value: 1;
-                                    size: 28px; indicator-position: 8px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-amp-decay = v; root.animate-amp-decay-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 40px;
-                                Text { text: "S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-amp-sustain;
-                                    min-value: 0; max-value: 1;
-                                    size: 28px; indicator-position: 8px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-amp-sustain = v; root.animate-amp-sustain-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 40px;
-                                Text { text: "R"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.animate-amp-release;
-                                    min-value: 0.01; max-value: 1;
-                                    size: 28px; indicator-position: 8px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.animate-amp-release = v; root.animate-amp-release-changed(v); }
-                                }
-                            }
+                        AnimateEngine {
+                            width: parent.width;
+                            animate-slot-types: root.animate-slot-types;
+                            animate-slot-a-type <=> root.animate-slot-a-type;
+                            animate-slot-b-type <=> root.animate-slot-b-type;
+                            animate-slot-c-type <=> root.animate-slot-c-type;
+                            animate-slot-d-type <=> root.animate-slot-d-type;
+                            animate-wavetables: root.animate-wavetables;
+                            animate-slot-a-wavetable <=> root.animate-slot-a-wavetable;
+                            animate-slot-b-wavetable <=> root.animate-slot-b-wavetable;
+                            animate-slot-c-wavetable <=> root.animate-slot-c-wavetable;
+                            animate-slot-d-wavetable <=> root.animate-slot-d-wavetable;
+                            animate-samples: root.animate-samples;
+                            animate-slot-a-sample <=> root.animate-slot-a-sample;
+                            animate-slot-b-sample <=> root.animate-slot-b-sample;
+                            animate-slot-c-sample <=> root.animate-slot-c-sample;
+                            animate-slot-d-sample <=> root.animate-slot-d-sample;
+                            animate-slot-a-level <=> root.animate-slot-a-level;
+                            animate-slot-b-level <=> root.animate-slot-b-level;
+                            animate-slot-c-level <=> root.animate-slot-c-level;
+                            animate-slot-d-level <=> root.animate-slot-d-level;
+                            animate-vector-x <=> root.animate-vector-x;
+                            animate-vector-y <=> root.animate-vector-y;
+                            animate-filter-cutoff <=> root.animate-filter-cutoff;
+                            animate-filter-resonance <=> root.animate-filter-resonance;
+                            animate-filter-drive <=> root.animate-filter-drive;
+                            animate-filter-types: root.animate-filter-types;
+                            animate-filter-type <=> root.animate-filter-type;
+                            animate-amp-attack <=> root.animate-amp-attack;
+                            animate-amp-decay <=> root.animate-amp-decay;
+                            animate-amp-sustain <=> root.animate-amp-sustain;
+                            animate-amp-release <=> root.animate-amp-release;
+                            animate-sequencer-grid <=> root.animate-sequencer-grid;
+                            animate-sequencer-current-step: root.animate-sequencer-current-step;
+                            animate-slot-a-type-changed(index) => { root.animate-slot-a-type-changed(index); }
+                            animate-slot-b-type-changed(index) => { root.animate-slot-b-type-changed(index); }
+                            animate-slot-c-type-changed(index) => { root.animate-slot-c-type-changed(index); }
+                            animate-slot-d-type-changed(index) => { root.animate-slot-d-type-changed(index); }
+                            animate-slot-a-wavetable-changed(index) => { root.animate-slot-a-wavetable-changed(index); }
+                            animate-slot-b-wavetable-changed(index) => { root.animate-slot-b-wavetable-changed(index); }
+                            animate-slot-c-wavetable-changed(index) => { root.animate-slot-c-wavetable-changed(index); }
+                            animate-slot-d-wavetable-changed(index) => { root.animate-slot-d-wavetable-changed(index); }
+                            animate-slot-a-sample-changed(index) => { root.animate-slot-a-sample-changed(index); }
+                            animate-slot-b-sample-changed(index) => { root.animate-slot-b-sample-changed(index); }
+                            animate-slot-c-sample-changed(index) => { root.animate-slot-c-sample-changed(index); }
+                            animate-slot-d-sample-changed(index) => { root.animate-slot-d-sample-changed(index); }
+                            animate-slot-a-level-changed(value) => { root.animate-slot-a-level-changed(value); }
+                            animate-slot-b-level-changed(value) => { root.animate-slot-b-level-changed(value); }
+                            animate-slot-c-level-changed(value) => { root.animate-slot-c-level-changed(value); }
+                            animate-slot-d-level-changed(value) => { root.animate-slot-d-level-changed(value); }
+                            animate-vector-changed(x, y) => { root.animate-vector-changed(x, y); }
+                            animate-filter-cutoff-changed(value) => { root.animate-filter-cutoff-changed(value); }
+                            animate-filter-resonance-changed(value) => { root.animate-filter-resonance-changed(value); }
+                            animate-filter-drive-changed(value) => { root.animate-filter-drive-changed(value); }
+                            animate-filter-type-changed(index) => { root.animate-filter-type-changed(index); }
+                            animate-amp-attack-changed(value) => { root.animate-amp-attack-changed(value); }
+                            animate-amp-decay-changed(value) => { root.animate-amp-decay-changed(value); }
+                            animate-amp-sustain-changed(value) => { root.animate-amp-sustain-changed(value); }
+                            animate-amp-release-changed(value) => { root.animate-amp-release-changed(value); }
+                            animate-sequencer-grid-toggled(row, step) => { root.animate-sequencer-grid-toggled(row, step); }
                         }
                     }
                 }
-
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Sequencer"; color: #e4e4ea; font-size: 14px; }
-                    for r in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : HorizontalLayout {
-                        spacing: 2px;
-                        for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
-                            active: root.animate-sequencer-grid[r * 16 + s];
-                            current: s == root.animate-sequencer-current-step;
-                            clicked => { root.animate-sequencer-grid-toggled(r, s); }
-                        }
-                    }
-                }
-            }
-        }
-
-        }
     }
+}
+}
 
     Rectangle {
         visible: root.show-settings;
@@ -1063,7 +820,7 @@ export component TLBX1UI inherits Window {
                 HorizontalLayout {
                     spacing: 8px;
                     Text { text: "Output device"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                    ComboBox {
+                    RDSComboBox {
                         model: root.output-devices;
                         current-index: root.output-device-index;
                         selected => {
@@ -1076,7 +833,7 @@ export component TLBX1UI inherits Window {
                 HorizontalLayout {
                     spacing: 8px;
                     Text { text: "Input device"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                    ComboBox {
+                    RDSComboBox {
                         model: root.input-devices;
                         current-index: root.input-device-index;
                         selected => {
@@ -1089,7 +846,7 @@ export component TLBX1UI inherits Window {
                 HorizontalLayout {
                     spacing: 8px;
                     Text { text: "Sample rate"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                    ComboBox {
+                    RDSComboBox {
                         model: root.sample-rates;
                         current-index: root.sample-rate-index;
                         selected => {
@@ -1102,7 +859,7 @@ export component TLBX1UI inherits Window {
                 HorizontalLayout {
                     spacing: 8px;
                     Text { text: "Buffer size"; color: #9c9ca4; font-size: 13px; width: 110px; vertical-alignment: center; }
-                    ComboBox {
+                    RDSComboBox {
                         model: root.buffer-sizes;
                         current-index: root.buffer-size-index;
                         selected => {
@@ -1205,4 +962,5 @@ export component TLBX1UI inherits Window {
             }
         }
     }
+}
 }

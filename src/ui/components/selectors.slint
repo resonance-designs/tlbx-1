@@ -1,17 +1,15 @@
-import { Theme } from "../theme/index.slint";
+import { ScrollView } from "std-widgets.slint";
 
-import "./assets/fonts/DSEG7Classic_Reg.ttf";
-import "./assets/fonts/DSEG7Classic_Bold.ttf";
-import "./assets/fonts/MaterialIcons_Regular.ttf";
+import { Theme } from "../theme/index.slint";
 
 /*
 Component: StepperButton
 Description: Internal helper for stepper increment/decrement buttons.
 Public members:
-- text: string - Icon character from Material Icons font
+- text: string - String to use to generate the icon.
 - clicked(): callback - Triggered on click
 */
-component StepperButton inherits Rectangle {
+export component StepperButton inherits Rectangle {
     in property <string> text;
     callback clicked();
 
@@ -25,7 +23,7 @@ component StepperButton inherits Rectangle {
     Text {
         text: root.text;
         color: Theme.active.text_primary;
-        font-family: "Material Icons";
+        font-family: Theme.active.font_icons;
         font-size: 20px;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -44,17 +42,17 @@ Public members:
 - min-value: float - Minimum bounds
 - max-value: float - Maximum bounds
 - font-family: string - Font family for the readout
-- pad-digits: int - Number of leading zeros to pad to (default: 3)
+- pad-digits: int - Number of digits to pad to (default: 3, clamped to 3)
 - editing: bool - Whether currently in text input mode
 - drag-start-y: length - Internal state for drag tracking
 - drag-start-value: float - Internal state for drag tracking
 - value-changed(float): callback - Triggered when value is modified
 */
-component StepperReadout inherits Rectangle {
+export component StepperReadout inherits Rectangle {
     in-out property <float> value;
     in property <float> min-value;
     in property <float> max-value;
-    in property <string> font-family: "DSEG7 Classic";
+    in property <string> font-family: Theme.active.font_readout;
     in property <int> pad-digits: 3;
     in-out property <bool> editing;
     in-out property <length> drag-start-y;
@@ -62,10 +60,11 @@ component StepperReadout inherits Rectangle {
     callback value-changed(float);
 
     private property <int> rounded-value: Math.round(root.value);
+    private property <int> clamped-pad: Math.max(0, Math.min(3, root.pad-digits));
     private property <string> display-value:
         (root.rounded-value < 0 ? "-" : "") +
-        (root.pad-digits >= 3 && Math.abs(root.rounded-value) < 100 ? "0" : "") +
-        (root.pad-digits >= 2 && Math.abs(root.rounded-value) < 10 ? "0" : "") +
+        (root.clamped-pad >= 3 && Math.abs(root.rounded-value) < 100 ? "0" : "") +
+        (root.clamped-pad >= 2 && Math.abs(root.rounded-value) < 10 ? "0" : "") +
         Math.abs(root.rounded-value);
 
     width: 80px;
@@ -131,6 +130,149 @@ component StepperReadout inherits Rectangle {
 }
 
 /*
+Component: RDSComboBox
+Description: A custom dropdown with a styled trigger and popup list.
+
+Public members:
+- model: [string] - Items to show in the dropdown
+- current-index: int - Currently selected index
+- enabled: bool - Whether the control is interactive
+- background: color - Background color for the trigger
+- border-color: color - Border color for the trigger
+- border-width: length - Border width for the trigger
+- border-radius: length - Border radius for the trigger
+- text-color: color - Text color for the trigger
+- font-size: length - Text size for the trigger
+- font-family: string - Font family for the trigger
+- padding-horizontal: length - Left/right padding inside the trigger
+- padding-vertical: length - Top/bottom padding inside the trigger
+- item-height: length - Height of each row in the popup
+- max-visible-items: int - Max visible rows before scrolling
+- popup-background: color - Background color for the popup list
+- selected(int): callback - Triggered when selection changes
+*/
+export component RDSComboBox {
+    in property <[string]> model;
+    in-out property <int> current-index: 0;
+    in property <bool> enabled: true;
+
+    in property <color> background: Theme.active.background_main;
+    in property <color> border-color: Theme.active.border_strong;
+    in property <length> border-width: 1px;
+    in property <length> border-radius: Theme.active.radius_small;
+    in property <color> text-color: Theme.active.text_primary;
+    in property <length> font-size: Theme.active.font_small;
+    in property <string> font-family: Theme.active.font_body;
+    in property <length> padding-horizontal: 8px;
+    in property <length> padding-vertical: 4px;
+    in property <length> item-height: 28px;
+    in property <int> max-visible-items: 6;
+    in property <color> popup-background: Theme.active.background_raised;
+
+    callback selected(index: int);
+
+    width: 160px;
+    height: 30px;
+
+    private property <string> current-text:
+        (root.model.length > 0 && root.current-index >= 0 && root.current-index < root.model.length)
+        ? root.model[root.current-index]
+        : "";
+    private property <int> visible-items: Math.min(root.max-visible-items, root.model.length);
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: root.background;
+        border-color: root.border-color;
+        border-width: root.border-width;
+        border-radius: root.border-radius;
+        clip: true;
+
+        Text {
+            x: root.padding-horizontal;
+            y: root.padding-vertical;
+            width: Math.max(0px, parent.width - (root.padding-horizontal * 2) - 18px);
+            height: Math.max(0px, parent.height - (root.padding-vertical * 2));
+            text: root.current-text;
+            color: root.text-color;
+            font-size: root.font-size;
+            font-family: root.font-family;
+            vertical-alignment: center;
+            horizontal-alignment: left;
+        }
+
+        Text {
+            width: 18px;
+            height: parent.height;
+            x: parent.width - 22px;
+            text: "\u{e5cf}";
+            font-family: Theme.active.font_icons;
+            font-size: 18px;
+            color: root.text-color;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            opacity: root.enabled ? 1.0 : 0.5;
+        }
+
+        TouchArea {
+            enabled: root.enabled;
+            clicked => { popup.show(); }
+        }
+    }
+
+    popup := PopupWindow {
+        x: 0px;
+        y: root.height;
+        width: root.width;
+        height: root.visible-items * root.item-height;
+        close-policy: PopupClosePolicy.close-on-click;
+
+        Rectangle {
+            width: parent.width;
+            height: parent.height;
+            background: root.popup-background;
+            border-color: root.border-color;
+            border-width: root.border-width;
+            border-radius: root.border-radius;
+            clip: true;
+
+            ScrollView {
+                width: parent.width;
+                height: parent.height;
+
+                VerticalLayout {
+                    spacing: 0px;
+                    for item[index] in root.model : Rectangle {
+                        width: root.width;
+                        height: root.item-height;
+                        background: ta.has-hover ? Theme.active.background_hover : #00000000;
+                        Text {
+                            x: root.padding-horizontal;
+                            width: Math.max(0px, root.width - (root.padding-horizontal * 2));
+                            height: parent.height;
+                            text: item;
+                            color: root.text-color;
+                            font-size: root.font-size;
+                            font-family: root.font-family;
+                            vertical-alignment: center;
+                            horizontal-alignment: left;
+                        }
+                        ta := TouchArea {
+                            clicked => {
+                                root.current-index = index;
+                                root.selected(index);
+                                popup.close();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*
 Component: RDSNumStepper
 Description: A numeric stepper with forward/backwards buttons and an interactive readout.
 Supports button placement (top/bottom or left/right), mouse scroll, vertical drag,
@@ -141,10 +283,10 @@ Public members:
 - min-value: float - Minimum allowed value
 - max-value: float - Maximum allowed value
 - step: float - Step size for increment/decrement buttons
-- font-family: string - Font family for the readout (defaults to "DSEG7 Classic")
-- pad-digits: int - Number of leading zeros to pad to (default: 3)
+- font-family: string - Font family for the readout (defaults to theme readout font)
+- pad-digits: int - Number of digits to pad to (default: 3, clamped to 3)
 - button-tog: bool - Whether to show the increment/decrement buttons (default: false)
-- button-pos: string - "top-bottom" (default) or "left-right" for button arrangement
+- button-pos: string - "top-bottom" (default fallback) or "left-right" for button arrangement
 - value-changed(float): callback - Triggered when the value changes via any interaction
 */
 
@@ -153,13 +295,12 @@ export component RDSNumStepper {
     in property <float> min-value: 20;
     in property <float> max-value: 300;
     in property <float> step: 1;
-    in property <string> font-family: "DSEG7 Classic";
+    in property <string> font-family: Theme.active.font_readout;
     in property <int> pad-digits: 3;
     in property <bool> button-tog: true;
     in-out property <string> button-pos: "top-bottom"; // "top-bottom" or "left-right"
     callback value-changed(float);
 
-    private property <string> display-value: Math.round(root.value) + "";
     private property <bool> editing: false;
     private property <length> drag-start-y: 0px;
     private property <float> drag-start-value: 0;
@@ -208,7 +349,7 @@ export component RDSNumStepper {
             }
         }
 
-        if (button-pos == "top-bottom") : VerticalLayout {
+        if (button-pos != "left-right") : VerticalLayout {
             spacing: 4px;
             padding-top: 4px;
             padding-bottom: 4px;

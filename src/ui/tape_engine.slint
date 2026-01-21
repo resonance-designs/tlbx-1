@@ -1,13 +1,12 @@
-import {
-    Button,
-    ComboBox
-} from "std-widgets.slint";
+import { Button } from "std-widgets.slint";
 
 import {
+    RDSHeaderLabel,
     RDSSlider,
     RDSVertVUMeter,
     RDSKnob,
-    RDSWaveformViz
+    RDSWaveformViz,
+    RDSComboBox
 } from "./components/index.slint";
 
 export component TapeEngine {
@@ -135,13 +134,30 @@ export component TapeEngine {
     VerticalLayout {
         spacing: 8px;
         width: parent.width;
+        padding: 12px;
+
+        RDSHeaderLabel {
+            text: "Tape-Deck";
+            horizontal-alignment: left;
+            padding-horizontal: 12px;
+            padding-vertical: 6px;
+        }
 
         HorizontalLayout {
             spacing: 8px;
-            width: parent.width;
-            Button { text: "Load Sample"; clicked => root.load-sample(); }
-            Button { text: "Save Sample"; clicked => root.save-sample(); }
-            Button { text: root.is-recording ? "Stop Record" : "Record"; clicked => root.toggle-record(); }
+            width: parent.width - 100px;
+            Button {
+                text: "Load Sample";
+                clicked => root.load-sample();
+            }
+            Button {
+                text: "Save Sample";
+                clicked => root.save-sample();
+            }
+            Button {
+                text: root.is-recording ? "Stop Record" : "Record";
+                clicked => root.toggle-record();
+            }
             Rectangle {
                 width: 80px;
                 height: 28px;
@@ -374,7 +390,7 @@ export component TapeEngine {
                                 spacing: 2px;
                                 width: 130px;
                                 Text { text: "Rate Mode"; color: #b9b9bf; font-size: 10px; }
-                                ComboBox {
+                                RDSComboBox {
                                     height: 24px;
                                     model: root.tape-rate-modes;
                                     current-index: root.tape-rate-mode;
@@ -388,7 +404,7 @@ export component TapeEngine {
                                 spacing: 2px;
                                 width: 130px;
                                 Text { text: "Loop Mode"; color: #b9b9bf; font-size: 10px; }
-                                ComboBox {
+                                RDSComboBox {
                                     height: 24px;
                                     model: root.loop-modes;
                                     current-index: root.loop-mode;
@@ -697,7 +713,7 @@ export component TapeEngine {
                                 spacing: 4px;
                                 width: 100px;
                                 Text { text: "Decay Mode"; color: #b9b9bf; font-size: 11px; }
-                                ComboBox {
+                                RDSComboBox {
                                     model: root.ring-decay-modes;
                                     current-index: root.ring-decay-mode;
                                     selected => {

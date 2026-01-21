@@ -31,14 +31,14 @@ function readTargetDir(root) {
 const root = path.resolve(__dirname, '..');
 const targetDir = readTargetDir(root);
 const profile = 'debug';
-const exePath = path.join(targetDir, profile, 'grainrust.exe');
+const exePath = path.join(targetDir, profile, 'tlbx-1.exe');
 const depsDir = path.join(targetDir, profile, 'deps');
 const docsSite = path.join(root, 'docs-site');
 const docsBuild = path.join(docsSite, 'build');
 const docsDest = path.join(targetDir, profile, 'documentation');
 
 console.log(`Using target dir: ${targetDir}`);
-run('cargo', ['build', '--bin', 'grainrust'], { cwd: root });
+run('cargo', ['build', '--bin', 'tlbx-1'], { cwd: root });
 console.log('Cargo build complete.');
 
 console.log('Installing docs dependencies...');
@@ -56,7 +56,7 @@ console.log(`Docs deployed to ${docsDest}`);
 
 if (!fs.existsSync(exePath)) {
   const candidates = fs.existsSync(depsDir)
-    ? fs.readdirSync(depsDir).filter(name => name.startsWith('grainrust') && name.endsWith('.exe'))
+    ? fs.readdirSync(depsDir).filter(name => name.startsWith('tlbx-1') && name.endsWith('.exe'))
     : [];
   if (candidates.length === 0) {
     console.error(`Executable not found: ${exePath}`);

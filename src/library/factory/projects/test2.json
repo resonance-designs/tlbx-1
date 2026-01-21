@@ -3,7 +3,7 @@
   "global_tempo": 120.0,
   "tracks": [
     {
-      "sample_path": "C:\\Dev\\Projects\\grainrust\\src\\library\\factory\\samples\\misc\\guitar.mp3",
+      "sample_path": "C:\\Dev\\Projects\\tlbx-1\\src\\library\\factory\\samples\\misc\\guitar.mp3",
       "level": 1.0,
       "muted": false,
       "tape_speed": 1.0,

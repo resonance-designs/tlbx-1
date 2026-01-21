@@ -68,7 +68,7 @@ export component RDSKnob inherits Rectangle {
         width: root.size;
         height: root.size;
         image-fit: contain;
-        source: @image-url("../assets/knob_body.svg");
+        source: @image-url("../assets/svg/knob_body.svg");
     }
 
     // Position/value indicator - size scales with knob size
@@ -111,7 +111,7 @@ export component RDSKnob inherits Rectangle {
         x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
         y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
         image-fit: contain;
-        source: @image-url("../assets/knob_indicator.svg");
+        source: @image-url("../assets/svg/knob_indicator.svg");
     }
 
     // Touch area covers the entire component

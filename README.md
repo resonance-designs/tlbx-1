@@ -1,8 +1,8 @@
-# GrainRust
+# TLBX-1
 
 Version: 0.1.7
 
-GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
+TLBX-1 is a 4-track audio toolbox built in Rust. It features different audio engines, one of which is inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
 
 ## Features
 
@@ -10,12 +10,12 @@ GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4
 - Sample loading per track (wav/flac/mp3/ogg)
 - Global transport (play/stop all tracks)
 - Per-track level, mute, and loop controls (start/length/x-fade)
-- Engine loader per track (Tape, Animate)
+- Engine loader per track
+  - Engine 1: Tape-Deck (based on Torso S-4)
+  - Engine 2: Animate (based on Korg Wavestation)
 - Post-tape Mosaic granular buffer with bypass toggle
 - Project save/load (JSON)
 - Standalone audio device settings (device, sample rate, buffer size)
-- Smoothed per-track level changes to reduce crackle
-- Scrollable UI when content exceeds the window height
 - Built-in visualizers (oscilloscope, spectrum, vectorscope)
 
 ## Build
@@ -23,18 +23,30 @@ GrainRust is a 4-track granular sampler built in Rust, inspired by the Torso S-4
 ### Standalone
 
 ``` bash
-npm run grainrust:dev
+npm run tlbx:dev
 ```
 
 To run with backtraces enabled:
 
 ```bash
-npm run grainrust:dev-bt
+npm run tlbx:dev-bt
 ```
 
 ### Plugin
 
 Build a plugin binary using nih-plug (VST3/CLAP/etc.) depending on your local setup. See nih-plug documentation for details.
+
+## Logging
+
+Set `RUST_LOG` to control log verbosity (for example, to suppress decoder debug logs):
+
+```bash
+RUST_LOG=symphonia_core=warn
+```
+
+```powershell
+$env:RUST_LOG="symphonia_core=warn"
+```
 
 ## Documentation
 
@@ -59,7 +71,7 @@ npm run storybook
 ### Local Docs Deployment
 
 ```bash
-npm run grainrust:dev-docs
+npm run tlbx:dev-docs
 ```
 
 ## Packaging
@@ -73,12 +85,12 @@ This project builds a standalone app and a VST3 plugin. Installers are OS-specif
 ### Build installers/packages
 
 ```bash
-npm run grainrust:build
+npm run tlbx:build
 ```
 
 ### VST3 input path
 
-Set `GRAINRUST_VST3_PATH` to the built VST3 bundle before running `grainrust:build` on all platforms. On macOS also set `GRAINRUST_APP_PATH` to the `.app` bundle.
+Set `TLBX_VST3_PATH` to the built VST3 bundle before running `tlbx:build` on all platforms. On macOS also set `TLBX_APP_PATH` to the `.app` bundle.
 
 Installers include the built documentation site under `documentation/` in the install location.
 

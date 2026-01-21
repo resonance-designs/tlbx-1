@@ -1,29 +1,15 @@
 /**
- * GrainRust - A Rust-based granular audio sampler.
+ * TLBX-1 - A Rust-based audio toolbox.
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.7
+ * Version: 0.1.8
  * Component: UI Definitions
  */
 
-/**
- * GrainRust - A Rust-based granular audio sampler.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.7
- * Component: UI Definitions
- */
-
-/**
- * GrainRust - A Rust-based granular audio sampler.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.6
- * Component: UI Definitions
- */
+import "./assets/fonts/Quad_Light.otf";
+import "./assets/fonts/DSEG7Classic_Reg.ttf";
+import "./assets/fonts/DSEG7Classic_Bold.ttf";
 
 import {
     Button,
@@ -46,7 +32,7 @@ import {
 
 import { TapeEngine } from "./tape_engine.slint";
 
-export component GrainRustUI inherits Window {
+export component TLBX1UI inherits Window {
     in-out property <int> selected-track: 1;
     in-out property <bool> is-playing: false;
     in-out property <bool> is-recording: false;
@@ -352,210 +338,221 @@ export component GrainRustUI inherits Window {
                 width: parent.width;
                 spacing: 16px;
 
-            Text {
-                text: "GrainRust";
-                color: #f0f0f2;
-                font-size: 24px;
-                font-weight: 600;
-            }
-
-            VerticalLayout {
-                spacing: 4px;
-                width: 80px;
-                alignment: center;
-                Text {
-                    text: "Filter";
-                    color: #b9b9bf;
-                    font-size: 10px;
-                    horizontal-alignment: center;
-                }
-                RDSKnob {
-                    renderer: "lo-fi";
-                    value: root.master-filter;
-                    min-value: 0;
-                    max-value: 1;
-                    size: 40px;
-                    indicator-position: 12px;
-                    sensitivity: 0.01;
-                    scroll-sensitivity: 0.01;
-                    value-changed(v) => {
-                        root.master-filter = v;
-                        root.master-filter-changed(v);
-                    }
-                }
-            }
-
-            VerticalLayout {
-                spacing: 4px;
-                width: 80px;
-                alignment: center;
-                Text {
-                    text: "Comp";
-                    color: #b9b9bf;
-                    font-size: 10px;
-                    horizontal-alignment: center;
-                }
-                RDSKnob {
-                    renderer: "lo-fi";
-                    value: root.master-comp;
-                    min-value: 0;
-                    max-value: 1;
-                    size: 40px;
-                    indicator-position: 12px;
-                    sensitivity: 0.01;
-                    scroll-sensitivity: 0.01;
-                    value-changed(v) => {
-                        root.master-comp = v;
-                        root.master-comp-changed(v);
-                    }
-                }
-            }
-
-            VerticalLayout {
-                spacing: 4px;
-                width: 80px;
-                alignment: center;
-                Text {
-                    text: "Master";
-                    color: #b9b9bf;
-                    font-size: 12px;
-                    horizontal-alignment: center;
-                }
-                RDSKnob {
-                    renderer: "lo-fi";
-                    value: root.gain;
-                    min-value: 0;
-                    max-value: 1;
-                    size: 64px;
-                    indicator-position: 20px;
-                    sensitivity: 0.01;
-                    scroll-sensitivity: 0.01;
-                    value-changed(v) => {
-                        root.gain = v;
-                        root.gain-changed(v);
-                    }
-                }
-            }
-
-            VerticalLayout {
-                spacing: 4px;
-                width: 80px;
-                alignment: center;
-                Text {
-                    text: root.tempo-label;
-                    color: #b9b9bf;
-                    font-size: 12px;
-                    horizontal-alignment: center;
-                }
-                RDSKnob {
-                    renderer: "lo-fi";
-                    value: root.tape-tempo;
-                    min-value: 20;
-                    max-value: 240;
-                    size: 48px;
-                    indicator-position: 15px;
-                    sensitivity: 0.5;
-                    scroll-sensitivity: 0.5;
-                    value-changed(v) => {
-                        root.tape-tempo = v;
-                        root.tape-tempo-changed(v);
-                    }
-                }
-            }
-
-            VerticalLayout {
-                spacing: 4px;
-                width: 100px;
-                alignment: center;
-                Text {
-                    text: "Transport";
-                    color: #b9b9bf;
-                    font-size: 12px;
-                    horizontal-alignment: center;
-                }
-                HorizontalLayout {
-                    spacing: 8px;
-                    alignment: center;
-                    Button { 
-                        text: root.is-playing ? "Stop" : "Play"; 
-                        width: 70px;
-                        height: 32px;
-                        clicked => root.toggle-play(); 
-                    }
-                }
-            }
-
-            Rectangle {
-                width: 240px;
-                height: 80px;
-                background: #121216;
-                border-radius: 6px;
-                border-color: #2a2a35;
-                border-width: 1px;
                 VerticalLayout {
-                    padding: 4px;
-                    spacing: 4px;
-                    HorizontalLayout {
-                        spacing: 4px;
-                        RDSCircleToggle {
-                            active: root.visualizer-mode == 0;
-                            clicked => { root.visualizer-mode = 0; root.visualizer-mode-selected(0); }
-                        }
-                        RDSCircleToggle {
-                            active: root.visualizer-mode == 1;
-                            clicked => { root.visualizer-mode = 1; root.visualizer-mode-selected(1); }
-                        }
-                        RDSCircleToggle {
-                            active: root.visualizer-mode == 2;
-                            clicked => { root.visualizer-mode = 2; root.visualizer-mode-selected(2); }
-                        }
-                        RDSCircleToggle {
-                            active: root.visualizer-mode == 3;
-                            clicked => { root.visualizer-mode = 3; root.visualizer-mode-selected(3); }
-                        }
-                        Text {
-                            text: root.visualizer-modes[root.visualizer-mode];
-                            color: #b9b9bf;
-                            font-size: 10px;
-                        }
+                    padding-top: 12px;
+                    Text {
+                        text: "MMIStudios";
+                        font-family: "Quad Light";
+                        color: #f0f0f2;
+                        font-size: 48px;
+                        font-weight: 600;
                     }
-                    Rectangle {
-                        width: parent.width - 8px;
-                        height: parent.height - 24px;
-                        background: #0f0f14;
-                        border-radius: 4px;
-                        clip: true;
+                    Text {
+                        text: "TLBX-1";
+                        color: #f0f0f2;
+                        font-size: 16px;
+                        font-weight: 800;
+                        horizontal-alignment: right;
+                    }
+                }
 
-                        RDSOscilloscopeViz {
-                            width: parent.width;
-                            height: parent.height;
-                            visible: root.visualizer-mode == 0;
-                            oscilloscope: root.oscilloscope;
-                        }
-                        RDSSpectrumViz {
-                            width: parent.width;
-                            height: parent.height;
-                            visible: root.visualizer-mode == 1;
-                            spectrum: root.spectrum;
-                        }
-                        RDSVectorscopeViz {
-                            width: parent.width;
-                            height: parent.height;
-                            visible: root.visualizer-mode == 2;
-                            vectorscope_x: root.vectorscope_x;
-                            vectorscope_y: root.vectorscope_y;
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 80px;
+                    alignment: center;
+                    Text {
+                        text: "Filter";
+                        color: #b9b9bf;
+                        font-size: 10px;
+                        horizontal-alignment: center;
+                    }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.master-filter;
+                        min-value: 0;
+                        max-value: 1;
+                        size: 40px;
+                        indicator-position: 12px;
+                        sensitivity: 0.01;
+                        scroll-sensitivity: 0.01;
+                        value-changed(v) => {
+                            root.master-filter = v;
+                            root.master-filter-changed(v);
                         }
                     }
                 }
-            }
 
-            HorizontalLayout {
-                spacing: 4px;
-                alignment: center;
-                RDSVertVUMeter { level: root.meter-left; fill-color: #34d399; height: 80px; }
-                RDSVertVUMeter { level: root.meter-right; fill-color: #60a5fa; height: 80px; }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 80px;
+                    alignment: center;
+                    Text {
+                        text: "Comp";
+                        color: #b9b9bf;
+                        font-size: 10px;
+                        horizontal-alignment: center;
+                    }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.master-comp;
+                        min-value: 0;
+                        max-value: 1;
+                        size: 40px;
+                        indicator-position: 12px;
+                        sensitivity: 0.01;
+                        scroll-sensitivity: 0.01;
+                        value-changed(v) => {
+                            root.master-comp = v;
+                            root.master-comp-changed(v);
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 80px;
+                    alignment: center;
+                    Text {
+                        text: "Master";
+                        color: #b9b9bf;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                    }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.gain;
+                        min-value: 0;
+                        max-value: 1;
+                        size: 64px;
+                        indicator-position: 20px;
+                        sensitivity: 0.01;
+                        scroll-sensitivity: 0.01;
+                        value-changed(v) => {
+                            root.gain = v;
+                            root.gain-changed(v);
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 80px;
+                    alignment: center;
+                    Text {
+                        text: root.tempo-label;
+                        color: #b9b9bf;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                    }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.tape-tempo;
+                        min-value: 20;
+                        max-value: 240;
+                        size: 48px;
+                        indicator-position: 15px;
+                        sensitivity: 0.5;
+                        scroll-sensitivity: 0.5;
+                        value-changed(v) => {
+                            root.tape-tempo = v;
+                            root.tape-tempo-changed(v);
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 100px;
+                    alignment: center;
+                    Text {
+                        text: "Transport";
+                        color: #b9b9bf;
+                        font-size: 12px;
+                        horizontal-alignment: center;
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: center;
+                        Button {
+                            text: root.is-playing ? "Stop" : "Play";
+                            width: 70px;
+                            height: 32px;
+                            clicked => root.toggle-play();
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: 240px;
+                    height: 80px;
+                    background: #121216;
+                    border-radius: 6px;
+                    border-color: #2a2a35;
+                    border-width: 1px;
+                    VerticalLayout {
+                        padding: 4px;
+                        spacing: 4px;
+                        HorizontalLayout {
+                            spacing: 4px;
+                            RDSCircleToggle {
+                                active: root.visualizer-mode == 0;
+                                clicked => { root.visualizer-mode = 0; root.visualizer-mode-selected(0); }
+                            }
+                            RDSCircleToggle {
+                                active: root.visualizer-mode == 1;
+                                clicked => { root.visualizer-mode = 1; root.visualizer-mode-selected(1); }
+                            }
+                            RDSCircleToggle {
+                                active: root.visualizer-mode == 2;
+                                clicked => { root.visualizer-mode = 2; root.visualizer-mode-selected(2); }
+                            }
+                            RDSCircleToggle {
+                                active: root.visualizer-mode == 3;
+                                clicked => { root.visualizer-mode = 3; root.visualizer-mode-selected(3); }
+                            }
+                            Text {
+                                text: root.visualizer-modes[root.visualizer-mode];
+                                color: #b9b9bf;
+                                font-size: 10px;
+                            }
+                        }
+                        Rectangle {
+                            width: parent.width - 8px;
+                            height: parent.height - 24px;
+                            background: #0f0f14;
+                            border-radius: 4px;
+                            clip: true;
+
+                            RDSOscilloscopeViz {
+                                width: parent.width;
+                                height: parent.height;
+                                visible: root.visualizer-mode == 0;
+                                oscilloscope: root.oscilloscope;
+                            }
+                            RDSSpectrumViz {
+                                width: parent.width;
+                                height: parent.height;
+                                visible: root.visualizer-mode == 1;
+                                spectrum: root.spectrum;
+                            }
+                            RDSVectorscopeViz {
+                                width: parent.width;
+                                height: parent.height;
+                                visible: root.visualizer-mode == 2;
+                                vectorscope_x: root.vectorscope_x;
+                                vectorscope_y: root.vectorscope_y;
+                            }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 4px;
+                    alignment: center;
+                    RDSVertVUMeter { level: root.meter-left; fill-color: #34d399; height: 80px; }
+                    RDSVertVUMeter { level: root.meter-right; fill-color: #60a5fa; height: 80px; }
+                }
             }
-        }
 
             HorizontalLayout {
                 spacing: 8px;

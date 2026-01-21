@@ -10,11 +10,11 @@ mkdir -p "$DIST_DIR" "$PKG_DIR"
 
 "$ROOT_DIR"/cargo build --release
 
-APP_PATH="${GRAINRUST_APP_PATH:-}"
-VST3_PATH="${GRAINRUST_VST3_PATH:-}"
+APP_PATH="${TLBX_APP_PATH:-}"
+VST3_PATH="${TLBX_VST3_PATH:-}"
 
 if [[ -z "$APP_PATH" || -z "$VST3_PATH" ]]; then
-  echo "Set GRAINRUST_APP_PATH and GRAINRUST_VST3_PATH before running." >&2
+  echo "Set TLBX_APP_PATH and TLBX_VST3_PATH before running." >&2
   exit 1
 fi
 
@@ -37,46 +37,46 @@ else
   echo "Docs not found at $DOCS_DIR, continuing without bundled docs."
 fi
 
-APP_PKG="$PKG_DIR/GrainRust-App.pkg"
-VST3_PKG="$PKG_DIR/GrainRust-VST3.pkg"
+APP_PKG="$PKG_DIR/TLBX-1-App.pkg"
+VST3_PKG="$PKG_DIR/TLBX-1-VST3.pkg"
 
 pkgbuild \
   --root "$APP_PATH" \
-  --install-location "/Applications/GrainRust.app" \
-  --identifier "com.grainrust.app" \
+  --install-location "/Applications/TLBX-1.app" \
+  --identifier "com.tlbx-1.app" \
   --version "0.1.0" \
   "$APP_PKG"
 
 pkgbuild \
   --root "$VST3_PATH" \
-  --install-location "/Library/Audio/Plug-Ins/VST3/GrainRust.vst3" \
-  --identifier "com.grainrust.vst3" \
+  --install-location "/Library/Audio/Plug-Ins/VST3/TLBX-1.vst3" \
+  --identifier "com.tlbx-1.vst3" \
   --version "0.1.0" \
   "$VST3_PKG"
 
 cat > "$PKG_DIR/Distribution.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <installer-gui-script minSpecVersion="1">
-  <title>GrainRust</title>
+  <title>TLBX-1</title>
   <options customize="always"/>
   <choices-outline>
     <line choice="app_choice"/>
     <line choice="vst3_choice"/>
   </choices-outline>
   <choice id="app_choice" visible="true" start_selected="true">
-    <pkg-ref id="com.grainrust.app"/>
+    <pkg-ref id="com.tlbx-1.app"/>
   </choice>
   <choice id="vst3_choice" visible="true" start_selected="false">
-    <pkg-ref id="com.grainrust.vst3"/>
+    <pkg-ref id="com.tlbx-1.vst3"/>
   </choice>
-  <pkg-ref id="com.grainrust.app" version="0.1.0" auth="Root">GrainRust-App.pkg</pkg-ref>
-  <pkg-ref id="com.grainrust.vst3" version="0.1.0" auth="Root">GrainRust-VST3.pkg</pkg-ref>
+  <pkg-ref id="com.tlbx-1.app" version="0.1.0" auth="Root">TLBX-1-App.pkg</pkg-ref>
+  <pkg-ref id="com.tlbx-1.vst3" version="0.1.0" auth="Root">TLBX-1-VST3.pkg</pkg-ref>
 </installer-gui-script>
 XML
 
 productbuild \
   --distribution "$PKG_DIR/Distribution.xml" \
   --package-path "$PKG_DIR" \
-  "$DIST_DIR/GrainRust.pkg"
+  "$DIST_DIR/TLBX-1.pkg"
 
-printf '\nCreated %s\n' "$DIST_DIR/GrainRust.pkg"
+printf '\nCreated %s\n' "$DIST_DIR/TLBX-1.pkg"

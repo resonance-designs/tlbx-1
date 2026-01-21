@@ -1,5 +1,5 @@
 /**
- * GrainRust - A Rust-based granular audio sampler.
+ * TLBX-1 - A Rust-based audio toolbox.
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev

@@ -9,11 +9,11 @@ if [[ -z "$BIN_SRC" ]]; then
   exit 1
 fi
 
-install -Dm755 "$BIN_SRC" /usr/local/bin/grainrust
+install -Dm755 "$BIN_SRC" /usr/local/bin/tlbx-1
 
 if [[ -n "$VST3_SRC" ]]; then
   sudo mkdir -p /usr/lib/vst3
-  sudo cp -R "$VST3_SRC" /usr/lib/vst3/GrainRust.vst3
+  sudo cp -R "$VST3_SRC" /usr/lib/vst3/TLBX-1.vst3
 fi
 
-echo "Installed GrainRust."
+echo "Installed TLBX-1."

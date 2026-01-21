@@ -38,7 +38,7 @@ function writeReadmeVersion() {
   const readmePath = path.join(root, 'README.md');
   let text = fs.readFileSync(readmePath, 'utf8');
   if (!text.includes('Version:')) {
-    text = text.replace(/^#\s+GrainRust\s*$/m, `# GrainRust\n\nVersion: ${version}`);
+    text = text.replace(/^#\s+TLBX-1\s*$/m, `# TLBX-1\n\nVersion: ${version}`);
   } else {
     text = text.replace(/^Version:\s*.*$/m, `Version: ${version}`);
   }
@@ -52,6 +52,6 @@ writeReadmeVersion();
 writeHeader(path.join('src', 'main.rs'), 'Main Entry Point');
 writeHeader(path.join('src', 'lib.rs'), 'Core Logic');
 writeHeader('build.rs', 'Build Script');
-writeHeader(path.join('src', 'ui', 'grainrust.slint'), 'UI Definitions');
+writeHeader(path.join('src', 'ui', 'tlbx1.slint'), 'UI Definitions');
 
 console.log(`Synced version ${version}`);

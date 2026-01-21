@@ -8,7 +8,7 @@ mkdir -p "$DIST_DIR/bin" "$DIST_DIR/vst3"
 
 "$ROOT_DIR"/cargo build --release
 
-cp "$ROOT_DIR/target/release/grainrust" "$DIST_DIR/bin/grainrust"
+cp "$ROOT_DIR/target/release/tlbx-1" "$DIST_DIR/bin/tlbx-1"
 
 if [[ -d "$ROOT_DIR/docs-site/build" ]]; then
   mkdir -p "$DIST_DIR/documentation"
@@ -17,11 +17,11 @@ if [[ -d "$ROOT_DIR/docs-site/build" ]]; then
   cp -R "$ROOT_DIR/docs-site/build/." "$DIST_DIR/documentation"
 fi
 
-VST3_PATH="${GRAINRUST_VST3_PATH:-}"
+VST3_PATH="${TLBX_VST3_PATH:-}"
 if [[ -n "$VST3_PATH" && -d "$VST3_PATH" ]]; then
-  cp -R "$VST3_PATH" "$DIST_DIR/vst3/GrainRust.vst3"
+  cp -R "$VST3_PATH" "$DIST_DIR/vst3/TLBX-1.vst3"
 else
-  echo "GRAINRUST_VST3_PATH not set or not found; skipping VST3 staging."
+  echo "TLBX_VST3_PATH not set or not found; skipping VST3 staging."
 fi
 
 echo "Staged artifacts in $DIST_DIR"

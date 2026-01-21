@@ -29,7 +29,7 @@ npm run storybook
 Run the cross-platform packaging pipeline (OS-specific output):
 
 ```bash
-npm run grainrust:build
+npm run tlbx:build
 ```
 
 ## Version Sync
@@ -41,5 +41,5 @@ npm run version:sync
 ## Local Docs Deployment
 
 ```bash
-npm run grainrust:dev-docs
+npm run tlbx:dev-docs
 ```

@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # User Manual
 
-This manual covers the current GrainRust workflow as of the latest Mosaic update.
+This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 
 ## Transport
 

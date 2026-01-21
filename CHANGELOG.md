@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.8] - 2026-01-20
+
+- Renamed the project to TLBX-1 across UI, packaging, and docs
+- Updated plugin identifiers for TLBX-1 (VST3/CLAP)
+- Logging now respects `RUST_LOG` via env_logger init
+
 ## [0.1.7] - 2026-01-20
 
 - Consolidated visualizer and meter components into `viz.slint`

@@ -41,6 +41,38 @@ export component AnimateEngine {
     in-out property <float> animate-slot-d-coarse: 0.0;
     in-out property <float> animate-slot-d-fine: 0.0;
     in-out property <float> animate-slot-d-pan: 0.0;
+    in-out property <float> animate-slot-a-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-a-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-a-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-a-wt-lfo-sync: false;
+    in-out property <int> animate-slot-a-wt-lfo-division: 0;
+    in-out property <float> animate-slot-b-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-b-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-b-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-b-wt-lfo-sync: false;
+    in-out property <int> animate-slot-b-wt-lfo-division: 0;
+    in-out property <float> animate-slot-c-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-c-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-c-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-c-wt-lfo-sync: false;
+    in-out property <int> animate-slot-c-wt-lfo-division: 0;
+    in-out property <float> animate-slot-d-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-d-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-d-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-d-wt-lfo-sync: false;
+    in-out property <int> animate-slot-d-wt-lfo-division: 0;
+    in-out property <float> animate-slot-a-sample-start: 0.0;
+    in-out property <float> animate-slot-a-loop-start: 0.0;
+    in-out property <float> animate-slot-a-loop-end: 1.0;
+    in-out property <float> animate-slot-b-sample-start: 0.0;
+    in-out property <float> animate-slot-b-loop-start: 0.0;
+    in-out property <float> animate-slot-b-loop-end: 1.0;
+    in-out property <float> animate-slot-c-sample-start: 0.0;
+    in-out property <float> animate-slot-c-loop-start: 0.0;
+    in-out property <float> animate-slot-c-loop-end: 1.0;
+    in-out property <float> animate-slot-d-sample-start: 0.0;
+    in-out property <float> animate-slot-d-loop-start: 0.0;
+    in-out property <float> animate-slot-d-loop-end: 1.0;
 
     in-out property <float> animate-vector-x: 0.5;
     in-out property <float> animate-vector-y: 0.5;
@@ -102,6 +134,38 @@ export component AnimateEngine {
     callback animate-slot-d-coarse-changed(value: float);
     callback animate-slot-d-fine-changed(value: float);
     callback animate-slot-d-pan-changed(value: float);
+    callback animate-slot-a-wt-lfo-amount-changed(value: float);
+    callback animate-slot-a-wt-lfo-shape-changed(index: int);
+    callback animate-slot-a-wt-lfo-rate-changed(value: float);
+    callback animate-slot-a-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-a-wt-lfo-division-changed(index: int);
+    callback animate-slot-b-wt-lfo-amount-changed(value: float);
+    callback animate-slot-b-wt-lfo-shape-changed(index: int);
+    callback animate-slot-b-wt-lfo-rate-changed(value: float);
+    callback animate-slot-b-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-b-wt-lfo-division-changed(index: int);
+    callback animate-slot-c-wt-lfo-amount-changed(value: float);
+    callback animate-slot-c-wt-lfo-shape-changed(index: int);
+    callback animate-slot-c-wt-lfo-rate-changed(value: float);
+    callback animate-slot-c-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-c-wt-lfo-division-changed(index: int);
+    callback animate-slot-d-wt-lfo-amount-changed(value: float);
+    callback animate-slot-d-wt-lfo-shape-changed(index: int);
+    callback animate-slot-d-wt-lfo-rate-changed(value: float);
+    callback animate-slot-d-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-d-wt-lfo-division-changed(index: int);
+    callback animate-slot-a-sample-start-changed(value: float);
+    callback animate-slot-a-loop-start-changed(value: float);
+    callback animate-slot-a-loop-end-changed(value: float);
+    callback animate-slot-b-sample-start-changed(value: float);
+    callback animate-slot-b-loop-start-changed(value: float);
+    callback animate-slot-b-loop-end-changed(value: float);
+    callback animate-slot-c-sample-start-changed(value: float);
+    callback animate-slot-c-loop-start-changed(value: float);
+    callback animate-slot-c-loop-end-changed(value: float);
+    callback animate-slot-d-sample-start-changed(value: float);
+    callback animate-slot-d-loop-start-changed(value: float);
+    callback animate-slot-d-loop-end-changed(value: float);
 
     callback animate-vector-changed(x: float, y: float);
     callback animate-lfo-x-waveform-changed(index: int);
@@ -225,6 +289,104 @@ export component AnimateEngine {
                         }
                     }
                 }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-a-type == 0;
+                    Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 120px;
+                        model: root.animate-lfo-waveforms;
+                        current-index: root.animate-slot-a-wt-lfo-shape;
+                        selected => { root.animate-slot-a-wt-lfo-shape = self.current-index; root.animate-slot-a-wt-lfo-shape-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSCircleToggle {
+                            active: root.animate-slot-a-wt-lfo-sync;
+                            clicked => { root.animate-slot-a-wt-lfo-sync = !root.animate-slot-a-wt-lfo-sync; root.animate-slot-a-wt-lfo-sync-changed(root.animate-slot-a-wt-lfo-sync); }
+                        }
+                    }
+                    RDSComboBox {
+                        width: 120px;
+                        visible: root.animate-slot-a-wt-lfo-sync;
+                        model: root.animate-lfo-divisions;
+                        current-index: root.animate-slot-a-wt-lfo-division;
+                        selected => { root.animate-slot-a-wt-lfo-division = self.current-index; root.animate-slot-a-wt-lfo-division-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        visible: !root.animate-slot-a-wt-lfo-sync;
+                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-a-wt-lfo-rate;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-a-wt-lfo-rate = v; root.animate-slot-a-wt-lfo-rate-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Amt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-a-wt-lfo-amount;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-a-wt-lfo-amount = v; root.animate-slot-a-wt-lfo-amount-changed(v); }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-a-type == 1;
+                    Text { text: "Sample"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-a-sample-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-a-sample-start = v; root.animate-slot-a-sample-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-a-loop-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-a-loop-start = v; root.animate-slot-a-loop-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-a-loop-end;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-a-loop-end = v; root.animate-slot-a-loop-end-changed(v); }
+                        }
+                    }
+                }
                 // Slot B
                 HorizontalLayout {
                     spacing: 8px;
@@ -299,6 +461,104 @@ export component AnimateEngine {
                             size: 28px; indicator-position: 8px;
                             sensitivity: 0.01; scroll-sensitivity: 0.01;
                             value-changed(v) => { root.animate-slot-b-pan = v; root.animate-slot-b-pan-changed(v); }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-b-type == 0;
+                    Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 120px;
+                        model: root.animate-lfo-waveforms;
+                        current-index: root.animate-slot-b-wt-lfo-shape;
+                        selected => { root.animate-slot-b-wt-lfo-shape = self.current-index; root.animate-slot-b-wt-lfo-shape-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSCircleToggle {
+                            active: root.animate-slot-b-wt-lfo-sync;
+                            clicked => { root.animate-slot-b-wt-lfo-sync = !root.animate-slot-b-wt-lfo-sync; root.animate-slot-b-wt-lfo-sync-changed(root.animate-slot-b-wt-lfo-sync); }
+                        }
+                    }
+                    RDSComboBox {
+                        width: 120px;
+                        visible: root.animate-slot-b-wt-lfo-sync;
+                        model: root.animate-lfo-divisions;
+                        current-index: root.animate-slot-b-wt-lfo-division;
+                        selected => { root.animate-slot-b-wt-lfo-division = self.current-index; root.animate-slot-b-wt-lfo-division-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        visible: !root.animate-slot-b-wt-lfo-sync;
+                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-b-wt-lfo-rate;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-b-wt-lfo-rate = v; root.animate-slot-b-wt-lfo-rate-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Amt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-b-wt-lfo-amount;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-b-wt-lfo-amount = v; root.animate-slot-b-wt-lfo-amount-changed(v); }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-b-type == 1;
+                    Text { text: "Sample"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-b-sample-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-b-sample-start = v; root.animate-slot-b-sample-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-b-loop-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-b-loop-start = v; root.animate-slot-b-loop-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-b-loop-end;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-b-loop-end = v; root.animate-slot-b-loop-end-changed(v); }
                         }
                     }
                 }
@@ -379,6 +639,104 @@ export component AnimateEngine {
                         }
                     }
                 }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-c-type == 0;
+                    Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 120px;
+                        model: root.animate-lfo-waveforms;
+                        current-index: root.animate-slot-c-wt-lfo-shape;
+                        selected => { root.animate-slot-c-wt-lfo-shape = self.current-index; root.animate-slot-c-wt-lfo-shape-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSCircleToggle {
+                            active: root.animate-slot-c-wt-lfo-sync;
+                            clicked => { root.animate-slot-c-wt-lfo-sync = !root.animate-slot-c-wt-lfo-sync; root.animate-slot-c-wt-lfo-sync-changed(root.animate-slot-c-wt-lfo-sync); }
+                        }
+                    }
+                    RDSComboBox {
+                        width: 120px;
+                        visible: root.animate-slot-c-wt-lfo-sync;
+                        model: root.animate-lfo-divisions;
+                        current-index: root.animate-slot-c-wt-lfo-division;
+                        selected => { root.animate-slot-c-wt-lfo-division = self.current-index; root.animate-slot-c-wt-lfo-division-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        visible: !root.animate-slot-c-wt-lfo-sync;
+                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-c-wt-lfo-rate;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-c-wt-lfo-rate = v; root.animate-slot-c-wt-lfo-rate-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Amt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-c-wt-lfo-amount;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-c-wt-lfo-amount = v; root.animate-slot-c-wt-lfo-amount-changed(v); }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-c-type == 1;
+                    Text { text: "Sample"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-c-sample-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-c-sample-start = v; root.animate-slot-c-sample-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-c-loop-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-c-loop-start = v; root.animate-slot-c-loop-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-c-loop-end;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-c-loop-end = v; root.animate-slot-c-loop-end-changed(v); }
+                        }
+                    }
+                }
                 // Slot D
                 HorizontalLayout {
                     spacing: 8px;
@@ -453,6 +811,104 @@ export component AnimateEngine {
                             size: 28px; indicator-position: 8px;
                             sensitivity: 0.01; scroll-sensitivity: 0.01;
                             value-changed(v) => { root.animate-slot-d-pan = v; root.animate-slot-d-pan-changed(v); }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-d-type == 0;
+                    Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 120px;
+                        model: root.animate-lfo-waveforms;
+                        current-index: root.animate-slot-d-wt-lfo-shape;
+                        selected => { root.animate-slot-d-wt-lfo-shape = self.current-index; root.animate-slot-d-wt-lfo-shape-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSCircleToggle {
+                            active: root.animate-slot-d-wt-lfo-sync;
+                            clicked => { root.animate-slot-d-wt-lfo-sync = !root.animate-slot-d-wt-lfo-sync; root.animate-slot-d-wt-lfo-sync-changed(root.animate-slot-d-wt-lfo-sync); }
+                        }
+                    }
+                    RDSComboBox {
+                        width: 120px;
+                        visible: root.animate-slot-d-wt-lfo-sync;
+                        model: root.animate-lfo-divisions;
+                        current-index: root.animate-slot-d-wt-lfo-division;
+                        selected => { root.animate-slot-d-wt-lfo-division = self.current-index; root.animate-slot-d-wt-lfo-division-changed(self.current-index); }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        visible: !root.animate-slot-d-wt-lfo-sync;
+                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-d-wt-lfo-rate;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-d-wt-lfo-rate = v; root.animate-slot-d-wt-lfo-rate-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Amt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-d-wt-lfo-amount;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-d-wt-lfo-amount = v; root.animate-slot-d-wt-lfo-amount-changed(v); }
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    visible: root.animate-slot-d-type == 1;
+                    Text { text: "Sample"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-d-sample-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-d-sample-start = v; root.animate-slot-d-sample-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-d-loop-start;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-d-loop-start = v; root.animate-slot-d-loop-start-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-d-loop-end;
+                            min-value: 0.0; max-value: 1.0;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                            value-changed(v) => { root.animate-slot-d-loop-end = v; root.animate-slot-d-loop-end-changed(v); }
                         }
                     }
                 }

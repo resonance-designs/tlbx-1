@@ -161,6 +161,38 @@ export component TLBX1UI inherits Window {
     in-out property <float> animate-slot-d-fine: 0.0;
     in-out property <float> animate-slot-d-level: 1.0;
     in-out property <float> animate-slot-d-pan: 0.0;
+    in-out property <float> animate-slot-a-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-a-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-a-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-a-wt-lfo-sync: false;
+    in-out property <int> animate-slot-a-wt-lfo-division: 0;
+    in-out property <float> animate-slot-b-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-b-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-b-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-b-wt-lfo-sync: false;
+    in-out property <int> animate-slot-b-wt-lfo-division: 0;
+    in-out property <float> animate-slot-c-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-c-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-c-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-c-wt-lfo-sync: false;
+    in-out property <int> animate-slot-c-wt-lfo-division: 0;
+    in-out property <float> animate-slot-d-wt-lfo-amount: 0.0;
+    in-out property <int> animate-slot-d-wt-lfo-shape: 0;
+    in-out property <float> animate-slot-d-wt-lfo-rate: 0.5;
+    in-out property <bool> animate-slot-d-wt-lfo-sync: false;
+    in-out property <int> animate-slot-d-wt-lfo-division: 0;
+    in-out property <float> animate-slot-a-sample-start: 0.0;
+    in-out property <float> animate-slot-a-loop-start: 0.0;
+    in-out property <float> animate-slot-a-loop-end: 1.0;
+    in-out property <float> animate-slot-b-sample-start: 0.0;
+    in-out property <float> animate-slot-b-loop-start: 0.0;
+    in-out property <float> animate-slot-b-loop-end: 1.0;
+    in-out property <float> animate-slot-c-sample-start: 0.0;
+    in-out property <float> animate-slot-c-loop-start: 0.0;
+    in-out property <float> animate-slot-c-loop-end: 1.0;
+    in-out property <float> animate-slot-d-sample-start: 0.0;
+    in-out property <float> animate-slot-d-loop-start: 0.0;
+    in-out property <float> animate-slot-d-loop-end: 1.0;
 
     in-out property <float> animate-vector-x: 0.5;
     in-out property <float> animate-vector-y: 0.5;
@@ -320,6 +352,38 @@ export component TLBX1UI inherits Window {
     callback animate-slot-d-fine-changed(value: float);
     callback animate-slot-d-level-changed(value: float);
     callback animate-slot-d-pan-changed(value: float);
+    callback animate-slot-a-wt-lfo-amount-changed(value: float);
+    callback animate-slot-a-wt-lfo-shape-changed(index: int);
+    callback animate-slot-a-wt-lfo-rate-changed(value: float);
+    callback animate-slot-a-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-a-wt-lfo-division-changed(index: int);
+    callback animate-slot-b-wt-lfo-amount-changed(value: float);
+    callback animate-slot-b-wt-lfo-shape-changed(index: int);
+    callback animate-slot-b-wt-lfo-rate-changed(value: float);
+    callback animate-slot-b-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-b-wt-lfo-division-changed(index: int);
+    callback animate-slot-c-wt-lfo-amount-changed(value: float);
+    callback animate-slot-c-wt-lfo-shape-changed(index: int);
+    callback animate-slot-c-wt-lfo-rate-changed(value: float);
+    callback animate-slot-c-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-c-wt-lfo-division-changed(index: int);
+    callback animate-slot-d-wt-lfo-amount-changed(value: float);
+    callback animate-slot-d-wt-lfo-shape-changed(index: int);
+    callback animate-slot-d-wt-lfo-rate-changed(value: float);
+    callback animate-slot-d-wt-lfo-sync-changed(value: bool);
+    callback animate-slot-d-wt-lfo-division-changed(index: int);
+    callback animate-slot-a-sample-start-changed(value: float);
+    callback animate-slot-a-loop-start-changed(value: float);
+    callback animate-slot-a-loop-end-changed(value: float);
+    callback animate-slot-b-sample-start-changed(value: float);
+    callback animate-slot-b-loop-start-changed(value: float);
+    callback animate-slot-b-loop-end-changed(value: float);
+    callback animate-slot-c-sample-start-changed(value: float);
+    callback animate-slot-c-loop-start-changed(value: float);
+    callback animate-slot-c-loop-end-changed(value: float);
+    callback animate-slot-d-sample-start-changed(value: float);
+    callback animate-slot-d-loop-start-changed(value: float);
+    callback animate-slot-d-loop-end-changed(value: float);
 
     callback animate-vector-changed(x: float, y: float);
     callback animate-lfo-x-waveform-changed(index: int);
@@ -770,6 +834,38 @@ export component TLBX1UI inherits Window {
                             animate-slot-d-coarse <=> root.animate-slot-d-coarse;
                             animate-slot-d-fine <=> root.animate-slot-d-fine;
                             animate-slot-d-pan <=> root.animate-slot-d-pan;
+                            animate-slot-a-wt-lfo-amount <=> root.animate-slot-a-wt-lfo-amount;
+                            animate-slot-a-wt-lfo-shape <=> root.animate-slot-a-wt-lfo-shape;
+                            animate-slot-a-wt-lfo-rate <=> root.animate-slot-a-wt-lfo-rate;
+                            animate-slot-a-wt-lfo-sync <=> root.animate-slot-a-wt-lfo-sync;
+                            animate-slot-a-wt-lfo-division <=> root.animate-slot-a-wt-lfo-division;
+                            animate-slot-b-wt-lfo-amount <=> root.animate-slot-b-wt-lfo-amount;
+                            animate-slot-b-wt-lfo-shape <=> root.animate-slot-b-wt-lfo-shape;
+                            animate-slot-b-wt-lfo-rate <=> root.animate-slot-b-wt-lfo-rate;
+                            animate-slot-b-wt-lfo-sync <=> root.animate-slot-b-wt-lfo-sync;
+                            animate-slot-b-wt-lfo-division <=> root.animate-slot-b-wt-lfo-division;
+                            animate-slot-c-wt-lfo-amount <=> root.animate-slot-c-wt-lfo-amount;
+                            animate-slot-c-wt-lfo-shape <=> root.animate-slot-c-wt-lfo-shape;
+                            animate-slot-c-wt-lfo-rate <=> root.animate-slot-c-wt-lfo-rate;
+                            animate-slot-c-wt-lfo-sync <=> root.animate-slot-c-wt-lfo-sync;
+                            animate-slot-c-wt-lfo-division <=> root.animate-slot-c-wt-lfo-division;
+                            animate-slot-d-wt-lfo-amount <=> root.animate-slot-d-wt-lfo-amount;
+                            animate-slot-d-wt-lfo-shape <=> root.animate-slot-d-wt-lfo-shape;
+                            animate-slot-d-wt-lfo-rate <=> root.animate-slot-d-wt-lfo-rate;
+                            animate-slot-d-wt-lfo-sync <=> root.animate-slot-d-wt-lfo-sync;
+                            animate-slot-d-wt-lfo-division <=> root.animate-slot-d-wt-lfo-division;
+                            animate-slot-a-sample-start <=> root.animate-slot-a-sample-start;
+                            animate-slot-a-loop-start <=> root.animate-slot-a-loop-start;
+                            animate-slot-a-loop-end <=> root.animate-slot-a-loop-end;
+                            animate-slot-b-sample-start <=> root.animate-slot-b-sample-start;
+                            animate-slot-b-loop-start <=> root.animate-slot-b-loop-start;
+                            animate-slot-b-loop-end <=> root.animate-slot-b-loop-end;
+                            animate-slot-c-sample-start <=> root.animate-slot-c-sample-start;
+                            animate-slot-c-loop-start <=> root.animate-slot-c-loop-start;
+                            animate-slot-c-loop-end <=> root.animate-slot-c-loop-end;
+                            animate-slot-d-sample-start <=> root.animate-slot-d-sample-start;
+                            animate-slot-d-loop-start <=> root.animate-slot-d-loop-start;
+                            animate-slot-d-loop-end <=> root.animate-slot-d-loop-end;
                             animate-vector-x <=> root.animate-vector-x;
                             animate-vector-y <=> root.animate-vector-y;
                             animate-lfo-waveforms: root.animate-lfo-waveforms;
@@ -823,6 +919,38 @@ export component TLBX1UI inherits Window {
                             animate-slot-d-coarse-changed(value) => { root.animate-slot-d-coarse-changed(value); }
                             animate-slot-d-fine-changed(value) => { root.animate-slot-d-fine-changed(value); }
                             animate-slot-d-pan-changed(value) => { root.animate-slot-d-pan-changed(value); }
+                            animate-slot-a-wt-lfo-amount-changed(value) => { root.animate-slot-a-wt-lfo-amount-changed(value); }
+                            animate-slot-a-wt-lfo-shape-changed(index) => { root.animate-slot-a-wt-lfo-shape-changed(index); }
+                            animate-slot-a-wt-lfo-rate-changed(value) => { root.animate-slot-a-wt-lfo-rate-changed(value); }
+                            animate-slot-a-wt-lfo-sync-changed(value) => { root.animate-slot-a-wt-lfo-sync-changed(value); }
+                            animate-slot-a-wt-lfo-division-changed(index) => { root.animate-slot-a-wt-lfo-division-changed(index); }
+                            animate-slot-b-wt-lfo-amount-changed(value) => { root.animate-slot-b-wt-lfo-amount-changed(value); }
+                            animate-slot-b-wt-lfo-shape-changed(index) => { root.animate-slot-b-wt-lfo-shape-changed(index); }
+                            animate-slot-b-wt-lfo-rate-changed(value) => { root.animate-slot-b-wt-lfo-rate-changed(value); }
+                            animate-slot-b-wt-lfo-sync-changed(value) => { root.animate-slot-b-wt-lfo-sync-changed(value); }
+                            animate-slot-b-wt-lfo-division-changed(index) => { root.animate-slot-b-wt-lfo-division-changed(index); }
+                            animate-slot-c-wt-lfo-amount-changed(value) => { root.animate-slot-c-wt-lfo-amount-changed(value); }
+                            animate-slot-c-wt-lfo-shape-changed(index) => { root.animate-slot-c-wt-lfo-shape-changed(index); }
+                            animate-slot-c-wt-lfo-rate-changed(value) => { root.animate-slot-c-wt-lfo-rate-changed(value); }
+                            animate-slot-c-wt-lfo-sync-changed(value) => { root.animate-slot-c-wt-lfo-sync-changed(value); }
+                            animate-slot-c-wt-lfo-division-changed(index) => { root.animate-slot-c-wt-lfo-division-changed(index); }
+                            animate-slot-d-wt-lfo-amount-changed(value) => { root.animate-slot-d-wt-lfo-amount-changed(value); }
+                            animate-slot-d-wt-lfo-shape-changed(index) => { root.animate-slot-d-wt-lfo-shape-changed(index); }
+                            animate-slot-d-wt-lfo-rate-changed(value) => { root.animate-slot-d-wt-lfo-rate-changed(value); }
+                            animate-slot-d-wt-lfo-sync-changed(value) => { root.animate-slot-d-wt-lfo-sync-changed(value); }
+                            animate-slot-d-wt-lfo-division-changed(index) => { root.animate-slot-d-wt-lfo-division-changed(index); }
+                            animate-slot-a-sample-start-changed(value) => { root.animate-slot-a-sample-start-changed(value); }
+                            animate-slot-a-loop-start-changed(value) => { root.animate-slot-a-loop-start-changed(value); }
+                            animate-slot-a-loop-end-changed(value) => { root.animate-slot-a-loop-end-changed(value); }
+                            animate-slot-b-sample-start-changed(value) => { root.animate-slot-b-sample-start-changed(value); }
+                            animate-slot-b-loop-start-changed(value) => { root.animate-slot-b-loop-start-changed(value); }
+                            animate-slot-b-loop-end-changed(value) => { root.animate-slot-b-loop-end-changed(value); }
+                            animate-slot-c-sample-start-changed(value) => { root.animate-slot-c-sample-start-changed(value); }
+                            animate-slot-c-loop-start-changed(value) => { root.animate-slot-c-loop-start-changed(value); }
+                            animate-slot-c-loop-end-changed(value) => { root.animate-slot-c-loop-end-changed(value); }
+                            animate-slot-d-sample-start-changed(value) => { root.animate-slot-d-sample-start-changed(value); }
+                            animate-slot-d-loop-start-changed(value) => { root.animate-slot-d-loop-start-changed(value); }
+                            animate-slot-d-loop-end-changed(value) => { root.animate-slot-d-loop-end-changed(value); }
                             animate-vector-changed(x, y) => { root.animate-vector-changed(x, y); }
                             animate-lfo-x-waveform-changed(index) => { root.animate-lfo-x-waveform-changed(index); }
                             animate-lfo-x-sync-changed(value) => { root.animate-lfo-x-sync-changed(value); }

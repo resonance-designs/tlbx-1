@@ -1,0 +1,407 @@
+import { RDSKnob, RDSSequencerCell, RDSComboBox } from "./components/index.slint";
+
+export component AnimateEngine {
+    in property <[string]> animate-slot-types;
+    in-out property <int> animate-slot-a-type: 0;
+    in-out property <int> animate-slot-b-type: 0;
+    in-out property <int> animate-slot-c-type: 0;
+    in-out property <int> animate-slot-d-type: 0;
+
+    in property <[string]> animate-wavetables;
+    in-out property <int> animate-slot-a-wavetable: 0;
+    in-out property <int> animate-slot-b-wavetable: 0;
+    in-out property <int> animate-slot-c-wavetable: 0;
+    in-out property <int> animate-slot-d-wavetable: 0;
+
+    in property <[string]> animate-samples;
+    in-out property <int> animate-slot-a-sample: 0;
+    in-out property <int> animate-slot-b-sample: 0;
+    in-out property <int> animate-slot-c-sample: 0;
+    in-out property <int> animate-slot-d-sample: 0;
+
+    in-out property <float> animate-slot-a-level: 1.0;
+    in-out property <float> animate-slot-b-level: 1.0;
+    in-out property <float> animate-slot-c-level: 1.0;
+    in-out property <float> animate-slot-d-level: 1.0;
+
+    in-out property <float> animate-vector-x: 0.5;
+    in-out property <float> animate-vector-y: 0.5;
+
+    in-out property <float> animate-filter-cutoff: 0.5;
+    in-out property <float> animate-filter-resonance: 0.5;
+    in-out property <float> animate-filter-drive: 0.5;
+    in property <[string]> animate-filter-types;
+    in-out property <int> animate-filter-type: 0;
+
+    in-out property <float> animate-amp-attack: 0.01;
+    in-out property <float> animate-amp-decay: 0.1;
+    in-out property <float> animate-amp-sustain: 0.8;
+    in-out property <float> animate-amp-release: 0.3;
+
+    in-out property <[bool]> animate-sequencer-grid;
+    in property <int> animate-sequencer-current-step: -1;
+
+    callback animate-slot-a-type-changed(index: int);
+    callback animate-slot-b-type-changed(index: int);
+    callback animate-slot-c-type-changed(index: int);
+    callback animate-slot-d-type-changed(index: int);
+
+    callback animate-slot-a-wavetable-changed(index: int);
+    callback animate-slot-b-wavetable-changed(index: int);
+    callback animate-slot-c-wavetable-changed(index: int);
+    callback animate-slot-d-wavetable-changed(index: int);
+
+    callback animate-slot-a-sample-changed(index: int);
+    callback animate-slot-b-sample-changed(index: int);
+    callback animate-slot-c-sample-changed(index: int);
+    callback animate-slot-d-sample-changed(index: int);
+
+    callback animate-slot-a-level-changed(value: float);
+    callback animate-slot-b-level-changed(value: float);
+    callback animate-slot-c-level-changed(value: float);
+    callback animate-slot-d-level-changed(value: float);
+
+    callback animate-vector-changed(x: float, y: float);
+
+    callback animate-filter-cutoff-changed(value: float);
+    callback animate-filter-resonance-changed(value: float);
+    callback animate-filter-drive-changed(value: float);
+    callback animate-filter-type-changed(index: int);
+
+    callback animate-amp-attack-changed(value: float);
+    callback animate-amp-decay-changed(value: float);
+    callback animate-amp-sustain-changed(value: float);
+    callback animate-amp-release-changed(value: float);
+
+    callback animate-sequencer-grid-toggled(row: int, step: int);
+
+    VerticalLayout {
+        spacing: 12px;
+        width: parent.width;
+
+        HorizontalLayout {
+            spacing: 16px;
+            width: parent.width;
+
+            // Slot controls
+            VerticalLayout {
+                spacing: 8px;
+                width: (parent.width - 200px);
+
+                // Slot A
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Slot A"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 100px;
+                        model: root.animate-slot-types;
+                        current-index: root.animate-slot-a-type;
+                        selected => { root.animate-slot-a-type = self.current-index; root.animate-slot-a-type-changed(self.current-index); }
+                    }
+                    RDSComboBox {
+                        width: 150px;
+                        model: root.animate-slot-a-type == 0 ? root.animate-wavetables : root.animate-samples;
+                        current-index: root.animate-slot-a-type == 0 ? root.animate-slot-a-wavetable : root.animate-slot-a-sample;
+                        selected => {
+                            if (root.animate-slot-a-type == 0) {
+                                root.animate-slot-a-wavetable = self.current-index;
+                                root.animate-slot-a-wavetable-changed(self.current-index);
+                            } else {
+                                root.animate-slot-a-sample = self.current-index;
+                                root.animate-slot-a-sample-changed(self.current-index);
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 60px;
+                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-a-level;
+                            min-value: 0; max-value: 1;
+                            size: 32px; indicator-position: 10px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-a-level = v; root.animate-slot-a-level-changed(v); }
+                        }
+                    }
+                }
+                // Slot B
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Slot B"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 100px;
+                        model: root.animate-slot-types;
+                        current-index: root.animate-slot-b-type;
+                        selected => { root.animate-slot-b-type = self.current-index; root.animate-slot-b-type-changed(self.current-index); }
+                    }
+                    RDSComboBox {
+                        width: 150px;
+                        model: root.animate-slot-b-type == 0 ? root.animate-wavetables : root.animate-samples;
+                        current-index: root.animate-slot-b-type == 0 ? root.animate-slot-b-wavetable : root.animate-slot-b-sample;
+                        selected => {
+                            if (root.animate-slot-b-type == 0) {
+                                root.animate-slot-b-wavetable = self.current-index;
+                                root.animate-slot-b-wavetable-changed(self.current-index);
+                            } else {
+                                root.animate-slot-b-sample = self.current-index;
+                                root.animate-slot-b-sample-changed(self.current-index);
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 60px;
+                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-b-level;
+                            min-value: 0; max-value: 1;
+                            size: 32px; indicator-position: 10px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-b-level = v; root.animate-slot-b-level-changed(v); }
+                        }
+                    }
+                }
+                // Slot C
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Slot C"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 100px;
+                        model: root.animate-slot-types;
+                        current-index: root.animate-slot-c-type;
+                        selected => { root.animate-slot-c-type = self.current-index; root.animate-slot-c-type-changed(self.current-index); }
+                    }
+                    RDSComboBox {
+                        width: 150px;
+                        model: root.animate-slot-c-type == 0 ? root.animate-wavetables : root.animate-samples;
+                        current-index: root.animate-slot-c-type == 0 ? root.animate-slot-c-wavetable : root.animate-slot-c-sample;
+                        selected => {
+                            if (root.animate-slot-c-type == 0) {
+                                root.animate-slot-c-wavetable = self.current-index;
+                                root.animate-slot-c-wavetable-changed(self.current-index);
+                            } else {
+                                root.animate-slot-c-sample = self.current-index;
+                                root.animate-slot-c-sample-changed(self.current-index);
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 60px;
+                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-c-level;
+                            min-value: 0; max-value: 1;
+                            size: 32px; indicator-position: 10px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-c-level = v; root.animate-slot-c-level-changed(v); }
+                        }
+                    }
+                }
+                // Slot D
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text { text: "Slot D"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
+                    RDSComboBox {
+                        width: 100px;
+                        model: root.animate-slot-types;
+                        current-index: root.animate-slot-d-type;
+                        selected => { root.animate-slot-d-type = self.current-index; root.animate-slot-d-type-changed(self.current-index); }
+                    }
+                    RDSComboBox {
+                        width: 150px;
+                        model: root.animate-slot-d-type == 0 ? root.animate-wavetables : root.animate-samples;
+                        current-index: root.animate-slot-d-type == 0 ? root.animate-slot-d-wavetable : root.animate-slot-d-sample;
+                        selected => {
+                            if (root.animate-slot-d-type == 0) {
+                                root.animate-slot-d-wavetable = self.current-index;
+                                root.animate-slot-d-wavetable-changed(self.current-index);
+                            } else {
+                                root.animate-slot-d-sample = self.current-index;
+                                root.animate-slot-d-sample-changed(self.current-index);
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 60px;
+                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-slot-d-level;
+                            min-value: 0; max-value: 1;
+                            size: 32px; indicator-position: 10px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-slot-d-level = v; root.animate-slot-d-level-changed(v); }
+                        }
+                    }
+                }
+            }
+
+            // Vector XY pad
+            Rectangle {
+                width: 160px;
+                height: 160px;
+                background: #1a1a22;
+                border-radius: 4px;
+                border-color: #3a3a45;
+                border-width: 1px;
+
+                Rectangle {
+                    width: 12px; height: 12px;
+                    background: #c53bff;
+                    border-radius: 6px;
+                    x: root.animate-vector-x * (parent.width - 12px);
+                    y: (1.0 - root.animate-vector-y) * (parent.height - 12px);
+                }
+
+                TouchArea {
+                    moved => {
+                        root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
+                        root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
+                        root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
+                    }
+                    clicked => {
+                        root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
+                        root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
+                        root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 16px;
+
+            VerticalLayout {
+                spacing: 6px;
+                Text { text: "Filter"; color: #e4e4ea; font-size: 14px; }
+                HorizontalLayout {
+                    spacing: 12px;
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-filter-cutoff;
+                            min-value: 0; max-value: 1;
+                            size: 36px; indicator-position: 12px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-filter-cutoff = v; root.animate-filter-cutoff-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-filter-resonance;
+                            min-value: 0; max-value: 1;
+                            size: 36px; indicator-position: 12px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-filter-resonance = v; root.animate-filter-resonance-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 50px;
+                        Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-filter-drive;
+                            min-value: 0; max-value: 1;
+                            size: 36px; indicator-position: 12px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-filter-drive = v; root.animate-filter-drive-changed(v); }
+                        }
+                    }
+                    RDSComboBox {
+                        width: 100px;
+                        model: root.animate-filter-types;
+                        current-index: root.animate-filter-type;
+                        selected => { root.animate-filter-type = self.current-index; root.animate-filter-type-changed(self.current-index); }
+                    }
+                }
+            }
+
+            VerticalLayout {
+                spacing: 6px;
+                Text { text: "Amp Envelope"; color: #e4e4ea; font-size: 14px; }
+                HorizontalLayout {
+                    spacing: 12px;
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 40px;
+                        Text { text: "A"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-amp-attack;
+                            min-value: 0.01; max-value: 1;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-amp-attack = v; root.animate-amp-attack-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 40px;
+                        Text { text: "D"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-amp-decay;
+                            min-value: 0.01; max-value: 1;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-amp-decay = v; root.animate-amp-decay-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 40px;
+                        Text { text: "S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-amp-sustain;
+                            min-value: 0; max-value: 1;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-amp-sustain = v; root.animate-amp-sustain-changed(v); }
+                        }
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        width: 40px;
+                        Text { text: "R"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                        RDSKnob {
+                            renderer: "lo-fi";
+                            value: root.animate-amp-release;
+                            min-value: 0.01; max-value: 1;
+                            size: 28px; indicator-position: 8px;
+                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            value-changed(v) => { root.animate-amp-release = v; root.animate-amp-release-changed(v); }
+                        }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            spacing: 4px;
+            Text { text: "Sequencer"; color: #e4e4ea; font-size: 14px; }
+            for r in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : HorizontalLayout {
+                spacing: 2px;
+                for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
+                    active: root.animate-sequencer-grid[r * 16 + s];
+                    current: s == root.animate-sequencer-current-step;
+                    clicked => { root.animate-sequencer-grid-toggled(r, s); }
+                }
+            }
+        }
+    }
+}

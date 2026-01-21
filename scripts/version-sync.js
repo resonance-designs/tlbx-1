@@ -37,10 +37,11 @@ function writePackageVersion(filePath) {
 function writeReadmeVersion() {
   const readmePath = path.join(root, 'README.md');
   let text = fs.readFileSync(readmePath, 'utf8');
-  if (!text.includes('Version:')) {
-    text = text.replace(/^#\s+TLBX-1\s*$/m, `# TLBX-1\n\nVersion: ${version}`);
+  const badgeLine = `![Static Badge](https://img.shields.io/badge/Version-${version}-orange)`;
+  if (text.includes('![Static Badge]')) {
+    text = text.replace(/^!\[Static Badge\]\(https:\/\/img\.shields\.io\/badge\/Version-[^)]+\)$/m, badgeLine);
   } else {
-    text = text.replace(/^Version:\s*.*$/m, `Version: ${version}`);
+    text = text.replace(/^#\s+TLBX-1\s*$/m, `# TLBX-1\n\n${badgeLine}`);
   }
   fs.writeFileSync(readmePath, text, 'utf8');
 }

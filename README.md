@@ -1,18 +1,19 @@
 # TLBX-1
 
-Version: 0.1.8
+![Static Badge](https://img.shields.io/badge/Version-0.1.10-orange)
 
 TLBX-1 is a 4-track audio toolbox built in Rust. It features different audio engines, one of which is inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
+The UI is built with Slint in combination with the [Resonance Designs Slint UI Component Kit](https://github.com/resonance-designs/rds-slint-ui-kit).
 
 ## Features
 
 - 4 stereo tracks with per-track playback
-- Sample loading per track (wav/flac/mp3/ogg)
 - Global transport (play/stop all tracks)
 - Per-track level, mute, and loop controls (start/length/x-fade)
 - Engine loader per track
   - Engine 1: Tape-Deck (based on Torso S-4)
   - Engine 2: Animate (based on Korg Wavestation)
+- RDS Slint UI Component Kit for shared UI controls and theming
 - Post-tape Mosaic granular buffer with bypass toggle
 - Project save/load (JSON)
 - Standalone audio device settings (device, sample rate, buffer size)

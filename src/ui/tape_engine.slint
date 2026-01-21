@@ -1,13 +1,12 @@
-import {
-    Button,
-    ComboBox
-} from "std-widgets.slint";
+import { Button } from "std-widgets.slint";
 
 import {
+    RDSHeaderLabel,
     RDSSlider,
     RDSVertVUMeter,
     RDSKnob,
-    RDSWaveformViz
+    RDSWaveformViz,
+    RDSComboBox
 } from "./components/index.slint";
 
 export component TapeEngine {
@@ -135,13 +134,30 @@ export component TapeEngine {
     VerticalLayout {
         spacing: 8px;
         width: parent.width;
+        padding: 12px;
+
+        RDSHeaderLabel {
+            text: "Tape-Deck";
+            horizontal-alignment: left;
+            padding-horizontal: 12px;
+            padding-vertical: 6px;
+        }
 
         HorizontalLayout {
             spacing: 8px;
-            width: parent.width;
-            Button { text: "Load Sample"; clicked => root.load-sample(); }
-            Button { text: "Save Sample"; clicked => root.save-sample(); }
-            Button { text: root.is-recording ? "Stop Record" : "Record"; clicked => root.toggle-record(); }
+            width: parent.width - 100px;
+            Button {
+                text: "Load Sample";
+                clicked => root.load-sample();
+            }
+            Button {
+                text: "Save Sample";
+                clicked => root.save-sample();
+            }
+            Button {
+                text: root.is-recording ? "Stop Record" : "Record";
+                clicked => root.toggle-record();
+            }
             Rectangle {
                 width: 80px;
                 height: 28px;
@@ -207,7 +223,7 @@ export component TapeEngine {
             }
 
             Rectangle {
-                width: 300px;
+                width: 286px;
                 height: 200px;
                 background: #121216;
                 border-radius: 6px;
@@ -216,44 +232,9 @@ export component TapeEngine {
 
                 GridLayout {
                     padding: 12px;
-                    spacing: 8px;
+                    spacing-horizontal: 28px;
+                    spacing-vertical: 10px;
                     Row {
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "Speed"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.tape-speed;
-                                min-value: -4;
-                                max-value: 4;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.05;
-                                scroll-sensitivity: 0.05;
-                                value-changed(v) => {
-                                    root.tape-speed = v;
-                                    root.tape-speed-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "Rotate"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.tape-rotate;
-                                min-value: 0;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.tape-rotate = v;
-                                    root.tape-rotate-changed(v);
-                                }
-                            }
-                        }
                         VerticalLayout {
                             spacing: 4px;
                             Text { text: "T.Start"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
@@ -290,8 +271,6 @@ export component TapeEngine {
                                 }
                             }
                         }
-                    }
-                    Row {
                         VerticalLayout {
                             spacing: 4px;
                             Text { text: "Length"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
@@ -307,6 +286,44 @@ export component TapeEngine {
                                 value-changed(v) => {
                                     root.loop-length = v;
                                     root.loop-length-changed(v);
+                                }
+                            }
+                        }
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Rotate"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                            RDSKnob {
+                                renderer: "lo-fi";
+                                value: root.tape-rotate;
+                                min-value: 0;
+                                max-value: 1;
+                                size: 44px;
+                                indicator-position: 14px;
+                                sensitivity: 0.01;
+                                scroll-sensitivity: 0.01;
+                                value-changed(v) => {
+                                    root.tape-rotate = v;
+                                    root.tape-rotate-changed(v);
+                                }
+                            }
+                        }
+                    }
+                    Row {
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Speed"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                            RDSKnob {
+                                renderer: "lo-fi";
+                                value: root.tape-speed;
+                                min-value: -4;
+                                max-value: 4;
+                                size: 44px;
+                                indicator-position: 14px;
+                                sensitivity: 0.05;
+                                scroll-sensitivity: 0.05;
+                                value-changed(v) => {
+                                    root.tape-speed = v;
+                                    root.tape-speed-changed(v);
                                 }
                             }
                         }
@@ -374,7 +391,8 @@ export component TapeEngine {
                                 spacing: 2px;
                                 width: 130px;
                                 Text { text: "Rate Mode"; color: #b9b9bf; font-size: 10px; }
-                                ComboBox {
+                                RDSComboBox {
+                                    width: 100px;
                                     height: 24px;
                                     model: root.tape-rate-modes;
                                     current-index: root.tape-rate-mode;
@@ -388,7 +406,8 @@ export component TapeEngine {
                                 spacing: 2px;
                                 width: 130px;
                                 Text { text: "Loop Mode"; color: #b9b9bf; font-size: 10px; }
-                                ComboBox {
+                                RDSComboBox {
+                                    width: 100px;
                                     height: 24px;
                                     model: root.loop-modes;
                                     current-index: root.loop-mode;
@@ -697,7 +716,8 @@ export component TapeEngine {
                                 spacing: 4px;
                                 width: 100px;
                                 Text { text: "Decay Mode"; color: #b9b9bf; font-size: 11px; }
-                                ComboBox {
+                                RDSComboBox {
+                                    width: 100px;
                                     model: root.ring-decay-modes;
                                     current-index: root.ring-decay-mode;
                                     selected => {

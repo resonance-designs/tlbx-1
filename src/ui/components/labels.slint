@@ -1,0 +1,30 @@
+import { Theme } from "../theme/index.slint";
+
+export component RDSHeaderLabel {
+    in property <string> text;
+    in property <TextVerticalAlignment> vertical-alignment: center;
+    in property <TextHorizontalAlignment> horizontal-alignment: center;
+    in property <length> padding-horizontal: 8px;
+    in property <length> padding-vertical: 4px;
+
+    width: 100%;
+    height: 30px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: Theme.active.ui_header_label_bg;
+        border-radius: Theme.active.radius_large;
+        Text {
+            x: root.padding-horizontal;
+            y: root.padding-vertical;
+            width: Math.max(0px, parent.width - (root.padding-horizontal * 2));
+            height: Math.max(0px, parent.height - (root.padding-vertical * 2));
+            text: root.text;
+            color: Theme.active.ui_header_label_txt;
+            font-size: Theme.active.font_large;
+            horizontal-alignment: root.horizontal-alignment;
+            vertical-alignment: root.vertical-alignment;
+        }
+    }
+}

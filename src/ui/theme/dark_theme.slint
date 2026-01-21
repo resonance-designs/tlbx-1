@@ -1,14 +1,19 @@
 // theme/dark_theme.slint
 import { RDSTheme } from "theme.slint";
 
+import "./assets/fonts/SourceSans3_Medium.ttf";
+import "./assets/fonts/DSEG7Classic_Reg.ttf";
+import "./assets/fonts/MaterialIcons_Regular.ttf";
+
 export global DarkTheme {
     out property <RDSTheme> values: {
-        background_main: #1c1c22,
+        background_main: #1a1a22,
         background_raised: #2a2a35,
+        background_hover: #242432,
         border_subtle: #2a2a35,
         border_strong: #3a3a45,
         text_primary: #f6f1ff,
-        text_secondary: #b8b2c7,
+        text_secondary: #b9b9bf,
         accent_primary: #c53bff,
         accent_secondary: #4A0D7A,
         accent_highlight: #e3c1ff,
@@ -18,7 +23,15 @@ export global DarkTheme {
         radius_small: 2px,
         radius_medium: 4px,
         radius_large: 6px,
+        font_body: "Source Sans 3",
+        font_readout: "DSEG7 Classic",
+        font_icons: "Material Icons",
         font_small: 12px,
-        font_medium: 14px
+        font_medium: 14px,
+        font_large: 16px,
+        ui_header_label_bg: #e06e26,
+        ui_header_label_txt: #1a1a22,
+        knob_body_svg: @image-url("./assets/svg/knob_body.svg"),
+        knob_indicator_svg: @image-url("./assets/svg/knob_indicator.svg")
     };
 }

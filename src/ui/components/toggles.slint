@@ -1,5 +1,15 @@
 import { Theme } from "../theme/index.slint";
 
+import "./assets/fonts/MaterialIcons_Regular.ttf";
+
+/*
+Component: RDSCircleToggle
+Description: A minimal circular toggle indicator.
+Public members:
+- active: bool - Current toggle state
+- clicked(): callback - Triggered when the toggle is clicked
+*/
+
 export component RDSCircleToggle {
     in property <bool> active;
     callback clicked();
@@ -18,6 +28,55 @@ export component RDSCircleToggle {
             ? (ta.pressed ? Theme.active.accent_primary : Theme.active.accent_highlight)
             : (ta.has-hover ? Theme.active.border_subtle : Theme.active.border_strong);
         border-width: 1px;
+
+        ta := TouchArea {
+            width: parent.width;
+            height: parent.height;
+            clicked => root.clicked();
+        }
+    }
+}
+
+/*
+Component: RDSToggle
+Description: A toggle button that displays different icons based on its state.
+Public members:
+- active: bool - Current toggle state
+- on-icon: string - Material Icon character/name to display when active
+- off-icon: string - Material Icon character/name to display when inactive
+- icon-color: color - Color of the icon
+- icon-size: length - Size of the icon
+- clicked(): callback - Triggered when the toggle is clicked
+*/
+export component RDSToggle {
+    in-out property <bool> active;
+    in property <string> on-icon: "stop";
+    in property <string> off-icon: "play_arrow";
+    in property <color> icon-color: Theme.active.text_primary;
+    in property <length> icon-size: 20px;
+    callback clicked();
+
+    width: 44px;
+    height: 32px;
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        clip: true;
+        border-radius: Theme.active.radius_small;
+        border-color: root.active ? Theme.active.accent_primary : Theme.active.border_strong;
+        border-width: 1px;
+        background: root.active
+            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
+            : (ta.pressed ? Theme.active.border_strong : (ta.has-hover ? Theme.active.background_raised : Theme.active.background_main));
+
+        Text {
+            text: root.active ? root.on-icon : root.off-icon;
+            color: root.icon-color;
+            font-family: "Material Icons";
+            font-size: root.icon-size;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
 
         ta := TouchArea {
             width: parent.width;

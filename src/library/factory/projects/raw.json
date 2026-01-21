@@ -3,7 +3,7 @@
   "global_tempo": 93.04114,
   "tracks": [
     {
-      "sample_path": "C:\\Dev\\Projects\\tlbx-1\\src\\library\\factory\\samples\\orchstrings\\Alesis-S4-Plus-TremStrngs-C4.wav",
+      "sample_path": "../samples/orchstrings/Alesis-S4-Plus-TremStrngs-C4.wav",
       "level": 0.63997936,
       "muted": false,
       "tape_speed": 2.8388429,
@@ -24,7 +24,7 @@
       "loop_mode": 1
     },
     {
-      "sample_path": "C:\\Dev\\Projects\\tlbx-1\\src\\library\\factory\\samples\\orchstrings\\E-Mu-Proteus-FX-PizzStr-C4.wav",
+      "sample_path": "../samples/orchstrings/E-Mu-Proteus-FX-PizzStr-C4.wav",
       "level": 0.0,
       "muted": false,
       "tape_speed": 3.2539186,

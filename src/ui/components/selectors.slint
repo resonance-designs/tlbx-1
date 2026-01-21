@@ -1,0 +1,248 @@
+import { Theme } from "../theme/index.slint";
+
+import "./assets/fonts/DSEG7Classic_Reg.ttf";
+import "./assets/fonts/DSEG7Classic_Bold.ttf";
+import "./assets/fonts/MaterialIcons_Regular.ttf";
+
+/*
+Component: StepperButton
+Description: Internal helper for stepper increment/decrement buttons.
+Public members:
+- text: string - Icon character from Material Icons font
+- clicked(): callback - Triggered on click
+*/
+component StepperButton inherits Rectangle {
+    in property <string> text;
+    callback clicked();
+
+    width: 24px;
+    height: 24px;
+    border-radius: Theme.active.radius_small;
+    border-color: Theme.active.border_strong;
+    border-width: 1px;
+    background: touch.pressed ? Theme.active.accent_secondary : Theme.active.background_main;
+
+    Text {
+        text: root.text;
+        color: Theme.active.text_primary;
+        font-family: "Material Icons";
+        font-size: 20px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+/*
+Component: StepperReadout
+Description: Internal helper for the interactive readout supporting drag, scroll and edit.
+Public members:
+- value: float - Current value
+- min-value: float - Minimum bounds
+- max-value: float - Maximum bounds
+- font-family: string - Font family for the readout
+- pad-digits: int - Number of leading zeros to pad to (default: 3)
+- editing: bool - Whether currently in text input mode
+- drag-start-y: length - Internal state for drag tracking
+- drag-start-value: float - Internal state for drag tracking
+- value-changed(float): callback - Triggered when value is modified
+*/
+component StepperReadout inherits Rectangle {
+    in-out property <float> value;
+    in property <float> min-value;
+    in property <float> max-value;
+    in property <string> font-family: "DSEG7 Classic";
+    in property <int> pad-digits: 3;
+    in-out property <bool> editing;
+    in-out property <length> drag-start-y;
+    in-out property <float> drag-start-value;
+    callback value-changed(float);
+
+    private property <int> rounded-value: Math.round(root.value);
+    private property <string> display-value:
+        (root.rounded-value < 0 ? "-" : "") +
+        (root.pad-digits >= 3 && Math.abs(root.rounded-value) < 100 ? "0" : "") +
+        (root.pad-digits >= 2 && Math.abs(root.rounded-value) < 10 ? "0" : "") +
+        Math.abs(root.rounded-value);
+
+    width: 80px;
+    height: 40px;
+    clip: true;
+    border-radius: Theme.active.radius_medium;
+    border-color: Theme.active.border_strong;
+    border-width: 1px;
+    background: root.editing ? Theme.active.background_raised : Theme.active.background_main;
+
+    if (!root.editing) : Text {
+        text: root.display-value;
+        color: #34D399;
+        font-family: root.font-family;
+        font-size: 26px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    if (root.editing) : TextInput {
+        text: root.display-value;
+        color: Theme.active.text_primary;
+        font-family: root.font-family;
+        font-size: Theme.active.font_medium;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accepted => {
+            root.value = self.text.to-float();
+            root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+            root.editing = false;
+            root.value-changed(root.value);
+        }
+    }
+
+    TouchArea {
+        visible: !root.editing;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.drag-start-y = self.mouse-y;
+                root.drag-start-value = root.value;
+            }
+        }
+
+        double-clicked => {
+            root.editing = true;
+        }
+
+        moved => {
+            if (self.pressed) {
+                root.value = root.drag-start-value + (root.drag-start-y - self.mouse-y) / 1px;
+                root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+                root.value-changed(root.value);
+            }
+        }
+
+        scroll-event(event) => {
+            root.value = root.value + (event.delta-y / 1px) * 0.1;
+            root.value = Math.max(root.min-value, Math.min(root.max-value, root.value));
+            root.value-changed(root.value);
+            return accept;
+        }
+    }
+}
+
+/*
+Component: RDSNumStepper
+Description: A numeric stepper with forward/backwards buttons and an interactive readout.
+Supports button placement (top/bottom or left/right), mouse scroll, vertical drag,
+and double-click to type manual values.
+
+Public members:
+- value: float - Current numeric value
+- min-value: float - Minimum allowed value
+- max-value: float - Maximum allowed value
+- step: float - Step size for increment/decrement buttons
+- font-family: string - Font family for the readout (defaults to "DSEG7 Classic")
+- pad-digits: int - Number of leading zeros to pad to (default: 3)
+- button-tog: bool - Whether to show the increment/decrement buttons (default: false)
+- button-pos: string - "top-bottom" (default) or "left-right" for button arrangement
+- value-changed(float): callback - Triggered when the value changes via any interaction
+*/
+
+export component RDSNumStepper {
+    in-out property <float> value: 120;
+    in property <float> min-value: 20;
+    in property <float> max-value: 300;
+    in property <float> step: 1;
+    in property <string> font-family: "DSEG7 Classic";
+    in property <int> pad-digits: 3;
+    in property <bool> button-tog: true;
+    in-out property <string> button-pos: "top-bottom"; // "top-bottom" or "left-right"
+    callback value-changed(float);
+
+    private property <string> display-value: Math.round(root.value) + "";
+    private property <bool> editing: false;
+    private property <length> drag-start-y: 0px;
+    private property <float> drag-start-value: 0;
+
+    width: button-pos == "left-right" ? (button-tog ? 160px : 100px) : 80px;
+    height: button-pos == "left-right" ? 40px : (button-tog ? 110px : 60px);
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+
+        if (button-pos == "left-right") : HorizontalLayout {
+            spacing: 6px;
+            padding-left: 8px;
+            padding-right: 8px;
+            alignment: center;
+
+            if (root.button-tog) : StepperButton {
+                y: parent.height / 4.5;
+                text: "\u{e5cb}"; // keyboard_arrow_left
+                clicked => {
+                    root.value = Math.max(root.min-value, root.value - root.step);
+                    root.value-changed(root.value);
+                }
+            }
+
+            StepperReadout {
+                value <=> root.value;
+                min-value: root.min-value;
+                max-value: root.max-value;
+                font-family: root.font-family;
+                pad-digits: root.pad-digits;
+                editing <=> root.editing;
+                drag-start-y <=> root.drag-start-y;
+                drag-start-value <=> root.drag-start-value;
+                value-changed(v) => { root.value-changed(v); }
+            }
+
+            if (root.button-tog) : StepperButton {
+                y: parent.height / 4.5;
+                text: "\u{e5cc}"; // keyboard_arrow_right
+                clicked => {
+                    root.value = Math.min(root.max-value, root.value + root.step);
+                    root.value-changed(root.value);
+                }
+            }
+        }
+
+        if (button-pos == "top-bottom") : VerticalLayout {
+            spacing: 4px;
+            padding-top: 4px;
+            padding-bottom: 4px;
+            alignment: center;
+
+            if (root.button-tog) : StepperButton {
+                x: parent.width / 3;
+                text: "\u{e316}"; // keyboard_arrow_up
+                clicked => {
+                    root.value = Math.min(root.max-value, root.value + root.step);
+                    root.value-changed(root.value);
+                }
+            }
+
+            StepperReadout {
+                value <=> root.value;
+                min-value: root.min-value;
+                max-value: root.max-value;
+                font-family: root.font-family;
+                pad-digits: root.pad-digits;
+                editing <=> root.editing;
+                drag-start-y <=> root.drag-start-y;
+                drag-start-value <=> root.drag-start-value;
+                value-changed(v) => { root.value-changed(v); }
+            }
+
+            if (root.button-tog) : StepperButton {
+                x: parent.width / 3;
+                text: "\u{e313}"; // keyboard_arrow_down
+                clicked => {
+                    root.value = Math.max(root.min-value, root.value - root.step);
+                    root.value-changed(root.value);
+                }
+            }
+        }
+    }
+}

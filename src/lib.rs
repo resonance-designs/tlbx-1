@@ -7,24 +7,6 @@
  * Component: Core Logic
  */
 
-/**
- * TLBX-1 - A Rust-based audio toolbox.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.7
- * Component: Core Logic
- */
-
-/**
- * TLBX-1 - A Rust-based audio toolbox.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.6
- * Component: Core Logic
- */
-
 use nih_plug::prelude::*;
 use cpal::traits::{DeviceTrait, HostTrait};
 use parking_lot::Mutex;
@@ -1641,17 +1623,6 @@ impl Plugin for TLBX1 {
                         track
                             .loop_start_last
                             .store(loop_start as u32, Ordering::Relaxed);
-                    }
-
-                    if !track.debug_logged.swap(true, Ordering::Relaxed) {
-                        let first_sample = samples.get(0).and_then(|ch| ch.get(0)).cloned().unwrap_or(0.0);
-                        nih_log!(
-                            "Playback debug: output_ch={}, buffer_samples={}, sample_len={}, first_sample={}",
-                            output.len(),
-                            num_buffer_samples,
-                            num_samples,
-                            first_sample
-                        );
                     }
 
                     let mut prev_play_pos;

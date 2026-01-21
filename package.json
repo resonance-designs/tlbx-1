@@ -5,7 +5,11 @@
   "description": "Project tooling for docs and scripting",
   "scripts": {
     "tlbx:dev": "cargo run",
+    "tlbx:dev-opengl": "cargo run --features renderer-opengl",
+    "tlbx:dev-vulkan": "cargo run --features renderer-vulkan",
     "tlbx:dev-bt": "set RUST_BACKTRACE=1&& cargo run",
+    "tlbx:dev-bt-opengl": "set RUST_BACKTRACE=1&& cargo run --features renderer-opengl",
+    "tlbx:dev-bt-vulkan": "set RUST_BACKTRACE=1&& cargo run --features renderer-vulkan",
     "tlbx:build": "node scripts/packaging/build.js",
     "tlbx:dev-docs": "node scripts/deploy-docs.js",
     "tlbx:dev-all": "node scripts/dev-build-run.js",

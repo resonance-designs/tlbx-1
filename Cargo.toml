@@ -4,6 +4,7 @@ version = "0.1.8"
 edition = "2024"
 
 [lib]
+name = "tlbx1_core"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

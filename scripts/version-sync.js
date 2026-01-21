@@ -45,9 +45,20 @@ function writeReadmeVersion() {
   fs.writeFileSync(readmePath, text, 'utf8');
 }
 
+function writeNsisVersion() {
+  const nsisPath = path.join(root, 'scripts', 'packaging', 'windows', 'installer.nsi');
+  let text = fs.readFileSync(nsisPath, 'utf8');
+  text = text.replace(
+    /^!define\s+PRODUCT_VERSION\s+"[^"]*"\s*$/m,
+    `!define PRODUCT_VERSION "${version}"`
+  );
+  fs.writeFileSync(nsisPath, text, 'utf8');
+}
+
 writePackageVersion('package.json');
 writePackageVersion(path.join('docs-site', 'package.json'));
 writeReadmeVersion();
+writeNsisVersion();
 
 writeHeader(path.join('src', 'main.rs'), 'Main Entry Point');
 writeHeader(path.join('src', 'lib.rs'), 'Core Logic');

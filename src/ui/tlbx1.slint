@@ -8,8 +8,6 @@
  */
 
 import "./assets/fonts/Quad_Light.otf";
-import "./assets/fonts/DSEG7Classic_Reg.ttf";
-import "./assets/fonts/DSEG7Classic_Bold.ttf";
 
 import {
     Button,
@@ -24,7 +22,9 @@ import {
     RDSVertVUMeter,
     RDSSlider,
     RDSCircleToggle,
+    RDSToggle,
     RDSKnob,
+    RDSNumStepper,
     RDSOscilloscopeViz,
     RDSSpectrumViz,
     RDSVectorscopeViz
@@ -358,59 +358,25 @@ export component TLBX1UI inherits Window {
 
                 VerticalLayout {
                     spacing: 4px;
-                    width: 80px;
+                    width: 160px;
                     alignment: center;
-                    Text {
-                        text: "Filter";
-                        color: #b9b9bf;
-                        font-size: 10px;
-                        horizontal-alignment: center;
-                    }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.master-filter;
-                        min-value: 0;
-                        max-value: 1;
-                        size: 40px;
-                        indicator-position: 12px;
-                        sensitivity: 0.01;
-                        scroll-sensitivity: 0.01;
+                    RDSNumStepper {
+                        value: root.tape-tempo;
+                        min-value: 20;
+                        max-value: 240;
+                        button-pos: "left-right";
+                        button-tog: true;
+                        step: 1;
                         value-changed(v) => {
-                            root.master-filter = v;
-                            root.master-filter-changed(v);
+                            root.tape-tempo = v;
+                            root.tape-tempo-changed(v);
                         }
                     }
                 }
 
                 VerticalLayout {
                     spacing: 4px;
-                    width: 80px;
-                    alignment: center;
-                    Text {
-                        text: "Comp";
-                        color: #b9b9bf;
-                        font-size: 10px;
-                        horizontal-alignment: center;
-                    }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.master-comp;
-                        min-value: 0;
-                        max-value: 1;
-                        size: 40px;
-                        indicator-position: 12px;
-                        sensitivity: 0.01;
-                        scroll-sensitivity: 0.01;
-                        value-changed(v) => {
-                            root.master-comp = v;
-                            root.master-comp-changed(v);
-                        }
-                    }
-                }
-
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 80px;
+                    width: 64px;
                     alignment: center;
                     Text {
                         text: "Master";
@@ -436,26 +402,52 @@ export component TLBX1UI inherits Window {
 
                 VerticalLayout {
                     spacing: 4px;
-                    width: 80px;
+                    width: 40px;
                     alignment: center;
                     Text {
-                        text: root.tempo-label;
+                        text: "Filter";
                         color: #b9b9bf;
-                        font-size: 12px;
+                        font-size: 10px;
                         horizontal-alignment: center;
                     }
                     RDSKnob {
                         renderer: "lo-fi";
-                        value: root.tape-tempo;
-                        min-value: 20;
-                        max-value: 240;
-                        size: 48px;
-                        indicator-position: 15px;
-                        sensitivity: 0.5;
-                        scroll-sensitivity: 0.5;
+                        value: root.master-filter;
+                        min-value: 0;
+                        max-value: 1;
+                        size: 40px;
+                        indicator-position: 12px;
+                        sensitivity: 0.01;
+                        scroll-sensitivity: 0.01;
                         value-changed(v) => {
-                            root.tape-tempo = v;
-                            root.tape-tempo-changed(v);
+                            root.master-filter = v;
+                            root.master-filter-changed(v);
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 40px;
+                    alignment: center;
+                    Text {
+                        text: "Comp";
+                        color: #b9b9bf;
+                        font-size: 10px;
+                        horizontal-alignment: center;
+                    }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.master-comp;
+                        min-value: 0;
+                        max-value: 1;
+                        size: 40px;
+                        indicator-position: 12px;
+                        sensitivity: 0.01;
+                        scroll-sensitivity: 0.01;
+                        value-changed(v) => {
+                            root.master-comp = v;
+                            root.master-comp-changed(v);
                         }
                     }
                 }
@@ -464,19 +456,16 @@ export component TLBX1UI inherits Window {
                     spacing: 4px;
                     width: 100px;
                     alignment: center;
-                    Text {
-                        text: "Transport";
-                        color: #b9b9bf;
-                        font-size: 12px;
-                        horizontal-alignment: center;
-                    }
                     HorizontalLayout {
                         spacing: 8px;
                         alignment: center;
-                        Button {
-                            text: root.is-playing ? "Stop" : "Play";
-                            width: 70px;
+                        RDSToggle {
+                            active: root.is-playing;
+                            on-icon: "stop";
+                            off-icon: "play_arrow";
+                            width: 44px;
                             height: 32px;
+                            icon-size: 22px;
                             clicked => root.toggle-play();
                         }
                     }

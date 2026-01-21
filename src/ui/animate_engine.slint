@@ -92,16 +92,7 @@ export component AnimateEngine {
     in-out property <float> animate-lfo-y-rate: 0.5;
     in-out property <float> animate-lfo-y-amount: 0.0;
 
-    in-out property <float> animate-filter-cutoff: 0.5;
-    in-out property <float> animate-filter-resonance: 0.5;
-    in-out property <float> animate-filter-drive: 0.5;
     in property <[string]> animate-filter-types;
-    in-out property <int> animate-filter-type: 0;
-
-    in-out property <float> animate-amp-attack: 0.01;
-    in-out property <float> animate-amp-decay: 0.1;
-    in-out property <float> animate-amp-sustain: 0.8;
-    in-out property <float> animate-amp-release: 0.3;
 
     in-out property <[bool]> animate-sequencer-grid;
     in property <int> animate-sequencer-current-step: -1;
@@ -184,16 +175,6 @@ export component AnimateEngine {
     callback animate-lfo-y-division-changed(index: int);
     callback animate-lfo-y-rate-changed(value: float);
     callback animate-lfo-y-amount-changed(value: float);
-
-    callback animate-filter-cutoff-changed(value: float);
-    callback animate-filter-resonance-changed(value: float);
-    callback animate-filter-drive-changed(value: float);
-    callback animate-filter-type-changed(index: int);
-
-    callback animate-amp-attack-changed(value: float);
-    callback animate-amp-decay-changed(value: float);
-    callback animate-amp-sustain-changed(value: float);
-    callback animate-amp-release-changed(value: float);
 
     callback animate-sequencer-grid-toggled(row: int, step: int);
 
@@ -1115,123 +1096,6 @@ export component AnimateEngine {
                             size: 28px; indicator-position: 8px;
                             sensitivity: 0.01; scroll-sensitivity: 0.01;
                             value-changed(v) => { root.animate-lfo-y-amount = v; root.animate-lfo-y-amount-changed(v); }
-                        }
-                    }
-                }
-            }
-        }
-
-        HorizontalLayout {
-            spacing: 16px;
-
-            VerticalLayout {
-                spacing: 6px;
-                Text { text: "Filter"; color: #e4e4ea; font-size: 14px; }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-filter-cutoff;
-                            min-value: 0; max-value: 1;
-                            size: 36px; indicator-position: 12px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-filter-cutoff = v; root.animate-filter-cutoff-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-filter-resonance;
-                            min-value: 0; max-value: 1;
-                            size: 36px; indicator-position: 12px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-filter-resonance = v; root.animate-filter-resonance-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-filter-drive;
-                            min-value: 0; max-value: 1;
-                            size: 36px; indicator-position: 12px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-filter-drive = v; root.animate-filter-drive-changed(v); }
-                        }
-                    }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.animate-filter-types;
-                        current-index: root.animate-filter-type;
-                        selected => { root.animate-filter-type = self.current-index; root.animate-filter-type-changed(self.current-index); }
-                    }
-                }
-            }
-
-            VerticalLayout {
-                spacing: 6px;
-                Text { text: "Amp Envelope"; color: #e4e4ea; font-size: 14px; }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "A"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-amp-attack;
-                            min-value: 0.01; max-value: 1;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-amp-attack = v; root.animate-amp-attack-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "D"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-amp-decay;
-                            min-value: 0.01; max-value: 1;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-amp-decay = v; root.animate-amp-decay-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-amp-sustain;
-                            min-value: 0; max-value: 1;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-amp-sustain = v; root.animate-amp-sustain-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "R"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-amp-release;
-                            min-value: 0.01; max-value: 1;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-amp-release = v; root.animate-amp-release-changed(v); }
                         }
                     }
                 }

@@ -25,7 +25,7 @@ export component RDSSlider inherits Rectangle {
     private property <length> base-height: 420px;
     in-out property <length> height-override: 0px;
     private property <length> effective-height: root.height-override > 0px ? root.height-override : root.base-height * root.scale;
-    private property <length> scaled-travel: (root.effective-height - 120px * root.scale);
+    private property <length> scaled-travel: Math.max(10px, root.effective-height - 120px * root.scale);
 
     width: root.is-horizontal ? root.effective-height : root.base-width * root.scale;
     height: root.is-horizontal ? root.base-width * root.scale : root.effective-height;

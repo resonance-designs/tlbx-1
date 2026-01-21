@@ -2,9 +2,9 @@
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'GrainRust Docs',
-  tagline: 'Documentation for the GrainRust sampler',
-  url: 'https://grainrust.local',
+  title: 'TLBX-1 Docs',
+  tagline: 'Documentation for the TLBX-1 Audio Toolbox',
+  url: 'https://tlbx-1.local',
   baseUrl: './',
   onBrokenLinks: 'warn',
   markdown: {
@@ -12,8 +12,8 @@ const config = {
       onBrokenMarkdownLinks: 'warn'
     }
   },
-  organizationName: 'grainrust',
-  projectName: 'grainrust',
+  organizationName: 'resonancedesigns',
+  projectName: 'tlbx-1',
   presets: [
     [
       'classic',
@@ -32,7 +32,7 @@ const config = {
   ],
   themeConfig: {
     navbar: {
-      title: 'GrainRust',
+      title: 'TLBX-1 Docs',
       items: [
         { to: '/docs/intro', label: 'Developer Docs', position: 'left' },
         { to: '/', label: 'Docs Home', position: 'left' }

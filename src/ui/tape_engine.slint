@@ -6,7 +6,8 @@ import {
 import {
     RDSSlider,
     RDSVertVUMeter,
-    RDSKnob
+    RDSKnob,
+    RDSWaveformViz
 } from "./components/index.slint";
 
 export component TapeEngine {
@@ -197,70 +198,12 @@ export component TapeEngine {
                 }
             }
 
-            Rectangle {
+            RDSWaveformViz {
                 width: parent.width - 420px;
                 height: 200px;
-                background: #121216;
-                border-radius: 6px;
-                border-color: #2a2a35;
-                border-width: 1px;
-                HorizontalLayout {
-                    padding: 8px;
-                    spacing: 8px;
-
-                    VerticalLayout {
-                        width: 44px;
-                        height: parent.height - 16px;
-                        spacing: 0px;
-                        Text { text: "+6 dB"; color: #8c8c95; font-size: 10px; }
-                        Rectangle { height: (parent.height - 36px) / 2; width: 1px; background: transparent; }
-                        Text { text: "0 dB"; color: #b9b9bf; font-size: 11px; }
-                        Rectangle { height: (parent.height - 36px) / 2; width: 1px; background: transparent; }
-                        Text { text: "-60 dB"; color: #6c6c74; font-size: 10px; }
-                    }
-
-                    VerticalLayout {
-                        spacing: 6px;
-                        width: parent.width - 60px;
-                        Rectangle {
-                            width: parent.width;
-                            height: parent.height - 20px;
-                            background: transparent;
-                            clip: true;
-
-                            Rectangle {
-                                width: parent.width;
-                                height: parent.height;
-                                for amp[index] in root.waveform : Rectangle {
-                                    width: parent.width / root.waveform.length;
-                                    height: parent.height;
-                                    x: index * (parent.width / root.waveform.length);
-                                    background: transparent;
-                                    Rectangle {
-                                        width: parent.width;
-                                        height: Math.max(2px, Math.abs(amp) * (parent.height - 4px));
-                                        y: (parent.height - self.height) / 2;
-                                        background: index < root.playhead-index ? #c53bff : #4a0d7a;
-                                        border-radius: 1px;
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: parent.width;
-                            height: 14px;
-                            background: transparent;
-                            for label[i] in root.waveform_time_labels : Text {
-                                text: label;
-                                color: #8c8c95;
-                                font-size: 10px;
-                                x: i * (parent.width / root.waveform_time_labels.length);
-                                y: 0px;
-                            }
-                        }
-                    }
-                }
+                waveform: root.waveform;
+                waveform_time_labels: root.waveform_time_labels;
+                playhead-index: root.playhead-index;
             }
 
             Rectangle {

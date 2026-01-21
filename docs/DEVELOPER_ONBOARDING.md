@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Developer Onboarding
 
-Welcome! This guide covers the minimum steps to build and run GrainRust locally.
+Welcome! This guide covers the minimum steps to build and run TLBX-1 locally.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ Welcome! This guide covers the minimum steps to build and run GrainRust locally.
 ## Build and Run (Standalone)
 
 ```bash
-npm run grainrust:dev
+npm run tlbx:dev
 ```
 
 ## Build and Run (Docs)
@@ -35,7 +35,7 @@ npm run storybook
 ## Local Docs Deployment
 
 ```bash
-npm run grainrust:dev-docs
+npm run tlbx:dev-docs
 ```
 
 This generates `documentation/index.html` in the repo root for the app to open.
@@ -43,7 +43,19 @@ This generates `documentation/index.html` in the repo root for the app to open.
 ## Packaging
 
 ```bash
-npm run grainrust:build
+npm run tlbx:build
+```
+
+## Logging
+
+Use `RUST_LOG` to adjust log verbosity:
+
+```bash
+RUST_LOG=symphonia_core=warn
+```
+
+```powershell
+$env:RUST_LOG="symphonia_core=warn"
 ```
 
 ## Version Sync
@@ -56,13 +68,15 @@ The version is sourced from `Cargo.toml` and propagated to `README.md`, package.
 
 Packaging expects these environment variables:
 
-- `GRAINRUST_VST3_PATH` (all platforms) points to the built `.vst3` bundle
-- `GRAINRUST_APP_PATH` (macOS) points to the `.app` bundle
+- `TLBX_VST3_PATH` (all platforms) points to the built `.vst3` bundle
+- `TLBX_APP_PATH` (macOS) points to the `.app` bundle
 
 ## Repository Layout
 
 - `src/` contains DSP + app code
 - `src/ui/` contains Slint UI definitions
+- `src/ui/tlbx1.slint` contains the main window UI definition
 - `src/ui/tape_engine.slint` contains the Tape engine UI component
+- `src/ui/components/viz.slint` contains visualizer and meter components
 - `docs/` contains Markdown developer docs
 - `docs-site/` contains the Docusaurus and Storybook tooling

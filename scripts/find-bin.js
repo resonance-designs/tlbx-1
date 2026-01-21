@@ -15,7 +15,7 @@ if (result.status === 0 && result.stdout) {
   try {
     const metadata = JSON.parse(result.stdout);
     targetDir = metadata.target_directory || targetDir;
-    const pkg = metadata.packages.find(p => p.name === 'grainrust');
+    const pkg = metadata.packages.find(p => p.name === 'tlbx-1');
     if (pkg && pkg.version) {
       version = pkg.version;
     }
@@ -33,11 +33,11 @@ const profiles = ['debug', 'release'];
 const targets = [];
 
 for (const profile of profiles) {
-  targets.push(`${targetDir}/${profile}/grainrust.exe`);
-  targets.push(`${targetDir}/${profile}/deps/grainrust-*.exe`);
+  targets.push(`${targetDir}/${profile}/tlbx-1.exe`);
+  targets.push(`${targetDir}/${profile}/deps/tlbx-1-*.exe`);
 }
 
-console.log(`grainrust ${version}`);
+console.log(`tlbx-1 ${version}`);
 console.log('Target directory:', targetDir);
 console.log('Possible exe locations:');
 for (const t of targets) {

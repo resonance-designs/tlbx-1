@@ -1,0 +1,178 @@
+import { Theme } from "../theme/index.slint";
+
+export component RDSWaveformViz inherits Rectangle {
+    in property <[float]> waveform;
+    in property <[string]> waveform_time_labels;
+    in property <int> playhead-index: 0;
+    private property <int> waveform_length: Math.max(1, root.waveform.length);
+    private property <int> waveform_label_length: Math.max(1, root.waveform_time_labels.length);
+
+    background: Theme.active.background_main;
+    border-radius: Theme.active.radius_large;
+    border-color: Theme.active.border_subtle;
+    border-width: 1px;
+
+    HorizontalLayout {
+        padding: 8px;
+        spacing: 8px;
+
+        VerticalLayout {
+            width: 44px;
+            height: parent.height - 16px;
+            spacing: 0px;
+            Text { text: "+6 dB"; color: Theme.active.text_secondary; font-size: 10px; }
+            Rectangle { height: (parent.height - 36px) / 2; width: 1px; background: transparent; }
+            Text { text: "0 dB"; color: Theme.active.text_secondary; font-size: 11px; }
+            Rectangle { height: (parent.height - 36px) / 2; width: 1px; background: transparent; }
+            Text { text: "-60 dB"; color: Theme.active.text_secondary; font-size: 10px; }
+        }
+
+        VerticalLayout {
+            spacing: 6px;
+            width: parent.width - 60px;
+            Rectangle {
+                width: parent.width;
+                height: parent.height - 20px;
+                background: transparent;
+                clip: true;
+
+                Rectangle {
+                    width: parent.width;
+                    height: parent.height;
+                    for amp[index] in root.waveform : Rectangle {
+                        width: parent.width / root.waveform_length;
+                        height: parent.height;
+                        x: index * (parent.width / root.waveform_length);
+                        background: transparent;
+                        Rectangle {
+                            width: parent.width;
+                            height: Math.max(2px, Math.abs(amp) * (parent.height - 4px));
+                            y: (parent.height - self.height) / 2;
+                            background: index < root.playhead-index ? Theme.active.accent_primary : Theme.active.accent_secondary;
+                            border-radius: Theme.active.radius_small;
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.width;
+                height: 14px;
+                background: transparent;
+                for label[i] in root.waveform_time_labels : Text {
+                    text: label;
+                    color: Theme.active.text_secondary;
+                    font-size: 10px;
+                    x: i * (parent.width / root.waveform_label_length);
+                    y: 0px;
+                }
+            }
+        }
+    }
+}
+
+export component RDSVUMeter {
+    in property <float> level;
+    in property <color> fill-color: Theme.active.meter_normal;
+    property <float> clamped-level: Math.max(0.0, Math.min(1.0, root.level));
+
+    width: 140px;
+    height: 10px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: Theme.active.background_main;
+        border-radius: Theme.active.radius_medium;
+        border-color: Theme.active.border_subtle;
+        border-width: 1px;
+
+        Rectangle {
+            width: Math.max(4px, root.clamped-level * parent.width);
+            height: parent.height;
+            background: root.fill-color;
+            border-radius: Theme.active.radius_medium;
+        }
+    }
+}
+
+export component RDSVertVUMeter {
+    in property <float> level;
+    in property <color> fill-color: Theme.active.meter_normal;
+    property <float> clamped-level: Math.max(0.0, Math.min(1.0, root.level));
+
+    width: 12px;
+    height: 88px;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: Theme.active.background_main;
+        border-radius: Theme.active.radius_medium;
+        border-color: Theme.active.border_subtle;
+        border-width: 1px;
+
+        Rectangle {
+            width: parent.width;
+            height: Math.max(2px, root.clamped-level * parent.height);
+            y: parent.height - self.height;
+            background: root.fill-color;
+            border-radius: Theme.active.radius_medium;
+        }
+    }
+}
+
+export component RDSOscilloscopeViz inherits Rectangle {
+    in property <[float]> oscilloscope;
+    background: transparent;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        for sample[i] in root.oscilloscope : Rectangle {
+            width: 2px;
+            height: Math.max(2px, Math.abs(sample) * (parent.height - 4px));
+            x: i * (parent.width / root.oscilloscope.length);
+            y: (parent.height - self.height) / 2;
+            background: Theme.active.accent_highlight;
+        }
+    }
+}
+
+export component RDSSpectrumViz inherits Rectangle {
+    in property <[float]> spectrum;
+    background: transparent;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        for mag[i] in root.spectrum : Rectangle {
+            width: parent.width / root.spectrum.length;
+            height: Math.max(2px, mag * (parent.height - 4px));
+            x: i * (parent.width / root.spectrum.length);
+            y: parent.height - self.height;
+            background: Theme.active.accent_primary;
+        }
+    }
+}
+
+export component RDSVectorscopeViz inherits Rectangle {
+    in property <[float]> vectorscope_x;
+    in property <[float]> vectorscope_y;
+    background: transparent;
+
+    // vectorscope_x/vectorscope_y are paired arrays and should stay in sync.
+    private property <int> vectorscope_len: Math.min(root.vectorscope_x.length, root.vectorscope_y.length);
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        for idx[i] in vectorscope_len : Rectangle {
+            width: 2px;
+            height: 2px;
+            x: ((root.vectorscope_x[i] * 0.5) + 0.5) * parent.width;
+            y: ((root.vectorscope_y[i] * -0.5) + 0.5) * parent.height;
+            background: Theme.active.meter_normal;
+        }
+    }
+}

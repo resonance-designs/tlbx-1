@@ -4,7 +4,8 @@ import { Theme } from "../theme/index.slint";
 Component: RDSKnob
 Description: A rotary knob component that supports both bounded and infinite rotation modes, with optimized rendering for different backends.
 Public members:
-- indicator: string - "circle" (default), "line", or "carrot"
+- renderer: string - "hi-fi" (default) or "lo-fi"
+- indicator: string - "circle" (default), "line", or "caret"
 - indicator-color: color - color for lo-fi indicators
 - value: float - Current value
 - rotation-angle: angle - Current rotation angle
@@ -67,7 +68,7 @@ export component RDSKnob inherits Rectangle {
         width: root.size;
         height: root.size;
         image-fit: contain;
-        source: @image-url("../assets/knob_body.svg");
+        source: @image-url("../assets/svg/knob_body.svg");
     }
 
     // Position/value indicator - size scales with knob size
@@ -84,7 +85,7 @@ export component RDSKnob inherits Rectangle {
     }
 
     Rectangle {
-        visible: root.indicator == "line" && root.renderer == "lo-fi";
+        visible: root.indicator == "line" && (root.renderer == "lo-fi" || root.renderer == "hi-fi");
         width: 2px;
         height: root.size / 4;
         x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
@@ -94,7 +95,7 @@ export component RDSKnob inherits Rectangle {
     }
 
     Path {
-        visible: root.indicator == "carrot" && root.renderer == "lo-fi";
+        visible: root.indicator == "caret" && (root.renderer == "lo-fi" || root.renderer == "hi-fi");
         width: root.size / 5;
         height: root.size / 5;
         x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
@@ -110,7 +111,7 @@ export component RDSKnob inherits Rectangle {
         x: root.width / 2 - self.width / 2 + Math.cos(root.rotation-angle - 90deg) * root.indicator-position;
         y: root.height / 2 - self.height / 2 + Math.sin(root.rotation-angle - 90deg) * root.indicator-position;
         image-fit: contain;
-        source: @image-url("../assets/knob_indicator.svg");
+        source: @image-url("../assets/svg/knob_indicator.svg");
     }
 
     // Touch area covers the entire component

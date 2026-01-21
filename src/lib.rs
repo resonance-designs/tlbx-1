@@ -1,14 +1,23 @@
 /**
- * GrainRust - A Rust-based granular audio sampler.
+ * TLBX-1 - A Rust-based audio toolbox.
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.6
+ * Version: 0.1.8
  * Component: Core Logic
  */
 
 /**
- * GrainRust - A Rust-based granular audio sampler.
+ * TLBX-1 - A Rust-based audio toolbox.
+ * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
+ * Author: Richard Bakos <info@resonancedesigns.dev>
+ * Website: https://resonancedesigns.dev
+ * Version: 0.1.7
+ * Component: Core Logic
+ */
+
+/**
+ * TLBX-1 - A Rust-based audio toolbox.
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
@@ -96,7 +105,7 @@ fn default_window_size() -> baseview::Size {
     }
 }
 
-include!(concat!(env!("OUT_DIR"), "/grainrust.rs"));
+include!(concat!(env!("OUT_DIR"), "/tlbx1.rs"));
 
 struct Track {
     /// Audio data for the track. Each channel is a Vec of f32.
@@ -557,8 +566,8 @@ impl Default for Track {
     }
 }
 
-pub struct GrainRust {
-    params: Arc<GrainRustParams>,
+pub struct TLBX1 {
+    params: Arc<TLBX1Params>,
     tracks: Arc<[Track; NUM_TRACKS]>,
     master_meters: Arc<MasterMeters>,
     visualizer: Arc<VisualizerState>,
@@ -581,7 +590,7 @@ struct AnimateLibrary {
 }
 
 #[derive(Params)]
-pub struct GrainRustParams {
+pub struct TLBX1Params {
     #[id = "selected_track"]
     pub selected_track: IntParam,
 
@@ -632,7 +641,7 @@ impl AnimateLibrary {
     }
 }
 
-impl Default for GrainRust {
+impl Default for TLBX1 {
     fn default() -> Self {
         let tracks = [
             Track::default(),
@@ -642,7 +651,7 @@ impl Default for GrainRust {
         ];
         
         Self {
-            params: Arc::new(GrainRustParams::default()),
+            params: Arc::new(TLBX1Params::default()),
             tracks: Arc::new(tracks),
             master_meters: Arc::new(MasterMeters::default()),
             visualizer: Arc::new(VisualizerState::new()),
@@ -704,7 +713,7 @@ struct VisualizerState {
     vectorscope_y: Mutex<Vec<f32>>,
 }
 
-impl Default for GrainRustParams {
+impl Default for TLBX1Params {
     fn default() -> Self {
         Self {
             selected_track: IntParam::new("Selected Track", 1, IntRange::Linear { min: 1, max: 4 }),
@@ -747,7 +756,7 @@ impl Default for GrainRustParams {
     }
 }
 
-pub enum GrainRustTask {
+pub enum TLBX1Task {
     LoadSample(usize, PathBuf),
     SaveProject(PathBuf),
     LoadProject(PathBuf),
@@ -964,7 +973,7 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     *track.sample_path.lock() = None;
 }
 
-impl GrainRust {
+impl TLBX1 {
     fn process_animate(
         track: &Track,
         buffer: &mut Buffer,
@@ -1187,8 +1196,8 @@ impl GrainRust {
     }
 }
 
-impl Plugin for GrainRust {
-    const NAME: &'static str = "GrainRust";
+impl Plugin for TLBX1 {
+    const NAME: &'static str = "TLBX-1";
     const VENDOR: &'static str = "Zencoder";
     const URL: &'static str = "https://example.com";
     const EMAIL: &'static str = "info@example.com";
@@ -1216,7 +1225,7 @@ impl Plugin for GrainRust {
     const SAMPLE_ACCURATE_AUTOMATION: bool = true;
 
     type SysExMessage = ();
-    type BackgroundTask = GrainRustTask;
+    type BackgroundTask = TLBX1Task;
 
     fn initialize(
         &mut self,
@@ -1252,7 +1261,7 @@ impl Plugin for GrainRust {
         let tracks = self.tracks.clone();
         let global_tempo = self.global_tempo.clone();
         Box::new(move |task| match task {
-            GrainRustTask::LoadSample(track_idx, path) => {
+            TLBX1Task::LoadSample(track_idx, path) => {
                 if track_idx >= NUM_TRACKS {
                     return;
                 }
@@ -1281,7 +1290,7 @@ impl Plugin for GrainRust {
                     }
                 }
             }
-            GrainRustTask::SaveProject(path) => {
+            TLBX1Task::SaveProject(path) => {
                 let tempo =
                     f32::from_bits(global_tempo.load(Ordering::Relaxed));
                 if let Err(err) = save_project(&tracks, tempo, &path) {
@@ -1290,7 +1299,7 @@ impl Plugin for GrainRust {
                     nih_log!("Saved project: {:?}", path);
                 }
             }
-            GrainRustTask::LoadProject(path) => {
+            TLBX1Task::LoadProject(path) => {
                 if let Err(err) = load_project(&tracks, &global_tempo, &path) {
                     nih_log!("Failed to load project: {:?}", err);
                 } else {
@@ -3314,7 +3323,7 @@ fn load_project(
 }
 
 struct SlintEditor {
-    params: Arc<GrainRustParams>,
+    params: Arc<TLBX1Params>,
     tracks: Arc<[Track; NUM_TRACKS]>,
     master_meters: Arc<MasterMeters>,
     visualizer: Arc<VisualizerState>,
@@ -3324,7 +3333,7 @@ struct SlintEditor {
     metronome_count_in_ticks: Arc<AtomicU32>,
     metronome_count_in_playback: Arc<AtomicBool>,
     metronome_count_in_record: Arc<AtomicBool>,
-    async_executor: AsyncExecutor<GrainRust>,
+    async_executor: AsyncExecutor<TLBX1>,
 }
 
 impl Editor for SlintEditor {
@@ -3349,7 +3358,7 @@ impl Editor for SlintEditor {
         let window_handle = baseview::Window::open_parented(
             &ParentWindowHandleAdapter(parent),
             WindowOpenOptions {
-                title: "GrainRust".to_string(),
+                title: "TLBX-1".to_string(),
                 size: initial_size,
                 scale: WindowScalePolicy::SystemScaleFactor,
                 gl_config: None,
@@ -3407,7 +3416,7 @@ impl Drop for SlintEditorHandle {
 
 struct SlintWindow {
     gui_context: Arc<dyn GuiContext>,
-    params: Arc<GrainRustParams>,
+    params: Arc<TLBX1Params>,
     tracks: Arc<[Track; NUM_TRACKS]>,
     master_meters: Arc<MasterMeters>,
     visualizer: Arc<VisualizerState>,
@@ -3417,9 +3426,9 @@ struct SlintWindow {
     metronome_count_in_ticks: Arc<AtomicU32>,
     metronome_count_in_playback: Arc<AtomicBool>,
     metronome_count_in_record: Arc<AtomicBool>,
-    async_executor: AsyncExecutor<GrainRust>,
+    async_executor: AsyncExecutor<TLBX1>,
     slint_window: std::rc::Rc<MinimalSoftwareWindow>,
-    ui: Box<GrainRustUI>,
+    ui: Box<TLBX1UI>,
     waveform_model: std::rc::Rc<VecModel<f32>>,
     oscilloscope_model: std::rc::Rc<VecModel<f32>>,
     spectrum_model: std::rc::Rc<VecModel<f32>>,
@@ -3441,7 +3450,7 @@ impl SlintWindow {
         window: &mut BaseWindow,
         initial_size: baseview::Size,
         gui_context: Arc<dyn GuiContext>,
-        params: Arc<GrainRustParams>,
+        params: Arc<TLBX1Params>,
         tracks: Arc<[Track; NUM_TRACKS]>,
         master_meters: Arc<MasterMeters>,
         visualizer: Arc<VisualizerState>,
@@ -3451,7 +3460,7 @@ impl SlintWindow {
         metronome_count_in_ticks: Arc<AtomicU32>,
         metronome_count_in_playback: Arc<AtomicBool>,
         metronome_count_in_record: Arc<AtomicBool>,
-        async_executor: AsyncExecutor<GrainRust>,
+        async_executor: AsyncExecutor<TLBX1>,
     ) -> Self {
         ensure_slint_platform();
         let (slint_window, ui) = create_slint_ui();
@@ -4020,7 +4029,7 @@ impl BaseWindowHandler for SlintWindow {
                     if track_idx < NUM_TRACKS {
                         if let Some(path) = path {
                             self.async_executor
-                                .execute_background(GrainRustTask::LoadSample(track_idx, path));
+                                .execute_background(TLBX1Task::LoadSample(track_idx, path));
                         }
                     }
                 }
@@ -4039,11 +4048,11 @@ impl BaseWindowHandler for SlintWindow {
             match action {
                 ProjectDialogAction::Save(path) => {
                     self.async_executor
-                        .execute_background(GrainRustTask::SaveProject(path));
+                        .execute_background(TLBX1Task::SaveProject(path));
                 }
                 ProjectDialogAction::Load(path) => {
                     self.async_executor
-                        .execute_background(GrainRustTask::LoadProject(path));
+                        .execute_background(TLBX1Task::LoadProject(path));
                 }
             }
         }
@@ -4143,9 +4152,9 @@ impl BaseWindowHandler for SlintWindow {
 }
 
 fn initialize_ui(
-    ui: &GrainRustUI,
+    ui: &TLBX1UI,
     gui_context: &Arc<dyn GuiContext>,
-    params: &Arc<GrainRustParams>,
+    params: &Arc<TLBX1Params>,
     tracks: &Arc<[Track; NUM_TRACKS]>,
     global_tempo: &Arc<AtomicU32>,
     _follow_host_tempo: &Arc<AtomicBool>,
@@ -4153,7 +4162,7 @@ fn initialize_ui(
     metronome_count_in_ticks: &Arc<AtomicU32>,
     metronome_count_in_playback: &Arc<AtomicBool>,
     metronome_count_in_record: &Arc<AtomicBool>,
-    _async_executor: &AsyncExecutor<GrainRust>,
+    _async_executor: &AsyncExecutor<TLBX1>,
     output_devices: &[String],
     input_devices: &[String],
     sample_rates: &[u32],
@@ -5417,7 +5426,7 @@ fn initialize_ui(
             let project_dialog_tx = project_dialog_tx.clone();
             std::thread::spawn(move || {
                 let path = rfd::FileDialog::new()
-                    .add_filter("GrainRust Project", &["json"])
+                    .add_filter("TLBX-1 Project", &["json"])
                     .save_file();
                 if let Some(path) = path {
                     let _ = project_dialog_tx.send(ProjectDialogAction::Save(path));
@@ -5432,7 +5441,7 @@ fn initialize_ui(
             let project_dialog_tx = project_dialog_tx.clone();
             std::thread::spawn(move || {
                 let path = rfd::FileDialog::new()
-                    .add_filter("GrainRust Project", &["json"])
+                    .add_filter("TLBX-1 Project", &["json"])
                     .pick_file();
                 if let Some(path) = path {
                     let _ = project_dialog_tx.send(ProjectDialogAction::Load(path));
@@ -5840,11 +5849,11 @@ fn ensure_slint_platform() {
     });
 }
 
-fn create_slint_ui() -> (std::rc::Rc<MinimalSoftwareWindow>, Box<GrainRustUI>) {
+fn create_slint_ui() -> (std::rc::Rc<MinimalSoftwareWindow>, Box<TLBX1UI>) {
     SLINT_WINDOW_SLOT.with(|slot| {
         *slot.borrow_mut() = None;
     });
-    let ui = Box::new(GrainRustUI::new().expect("Failed to create Slint UI"));
+    let ui = Box::new(TLBX1UI::new().expect("Failed to create Slint UI"));
     let window = SLINT_WINDOW_SLOT.with(|slot| {
         slot.borrow_mut()
             .take()
@@ -5997,22 +6006,22 @@ fn map_mouse_button(button: baseview::MouseButton) -> Option<PointerEventButton>
     }
 }
 
-impl Vst3Plugin for GrainRust {
-    const VST3_CLASS_ID: [u8; 16] = *b"GrainRustZencode";
+impl Vst3Plugin for TLBX1 {
+    const VST3_CLASS_ID: [u8; 16] = *b"TLBX1Zencode____";
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] =
         &[Vst3SubCategory::Instrument, Vst3SubCategory::Sampler];
 }
 
-impl ClapPlugin for GrainRust {
-    const CLAP_ID: &'static str = "com.zencoder.grainrust";
-    const CLAP_DESCRIPTION: Option<&'static str> = Some("A granular sampler plugin");
+impl ClapPlugin for TLBX1 {
+    const CLAP_ID: &'static str = "com.zencoder.tlbx-1";
+    const CLAP_DESCRIPTION: Option<&'static str> = Some("An audio toolbox plugin");
     const CLAP_MANUAL_URL: Option<&'static str> = None;
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
     const CLAP_FEATURES: &'static [ClapFeature] = &[ClapFeature::Instrument, ClapFeature::Sampler, ClapFeature::Stereo];
 }
 
-nih_export_vst3!(GrainRust);
-nih_export_clap!(GrainRust);
+nih_export_vst3!(TLBX1);
+nih_export_clap!(TLBX1);
 
 fn current_arg_value(flag: &str) -> Option<String> {
     let mut args = std::env::args();

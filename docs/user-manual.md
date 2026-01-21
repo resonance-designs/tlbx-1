@@ -5,13 +5,17 @@ sidebar_position: 3
 
 # User Manual
 
-This manual covers the current GrainRust workflow as of the latest Mosaic update.
+This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 
 ## Transport
 
 - **Play/Stop**: The global transport button in the header starts or stops all tracks simultaneously.
 - **Audition**: Located within the engine controls, this momentary button plays only the currently selected track while held down, allowing for quick checks without starting the entire project.
 - **Keyboard (standalone)**: Space toggles Play/Stop. Escape closes open modals.
+
+## Visualizers
+
+- Use the visualizer toggles to switch between oscilloscope, spectrum, and vectorscope.
 
 ## Tracks
 

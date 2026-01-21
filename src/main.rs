@@ -1,25 +1,20 @@
 /**
- * GrainRust - A Rust-based granular audio sampler.
+ * TLBX-1 - A Rust-based audio toolbox.
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.6
- * Component: Main Entry Point
- */
-
-/**
- * GrainRust - A Rust-based granular audio sampler.
- * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
- * Author: Richard Bakos <info@resonancedesigns.dev>
- * Website: https://resonancedesigns.dev
- * Version: 0.1.6
+ * Version: 0.1.8
  * Component: Main Entry Point
  */
 
 use nih_plug::prelude::*;
-use grainrust::GrainRust;
+use env_logger::Env;
+use tlbx_1::TLBX1;
 
 fn main() {
+    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
+        .try_init()
+        .ok();
     let mut args: Vec<String> = std::env::args().collect();
     #[cfg(target_os = "windows")]
     {
@@ -32,5 +27,5 @@ fn main() {
             args.push("2048".to_string());
         }
     }
-    nih_export_standalone_with_args::<GrainRust, _>(args);
+    nih_export_standalone_with_args::<TLBX1, _>(args);
 }

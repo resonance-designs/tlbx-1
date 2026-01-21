@@ -11,16 +11,16 @@ Write-Host "Building standalone binary..."
 New-Item -ItemType Directory -Force -Path $standaloneDir | Out-Null
 New-Item -ItemType Directory -Force -Path $vst3Dir | Out-Null
 
-Copy-Item -Force (Join-Path $root "target\\release\\grainrust.exe") (Join-Path $standaloneDir "grainrust.exe")
+Copy-Item -Force (Join-Path $root "target\\release\\tlbx-1.exe") (Join-Path $standaloneDir "tlbx-1.exe")
 
-$VST3Path = $env:GRAINRUST_VST3_PATH
+$VST3Path = $env:TLBX_VST3_PATH
 if (-not $VST3Path) {
-    Write-Host "GRAINRUST_VST3_PATH not set. Skipping VST3 staging."
+    Write-Host "TLBX_VST3_PATH not set. Skipping VST3 staging."
 } else {
     if (Test-Path $VST3Path) {
-        Copy-Item -Recurse -Force $VST3Path (Join-Path $vst3Dir "GrainRust.vst3")
+        Copy-Item -Recurse -Force $VST3Path (Join-Path $vst3Dir "TLBX-1.vst3")
     } else {
-        Write-Host "GRAINRUST_VST3_PATH does not exist: $VST3Path"
+        Write-Host "TLBX_VST3_PATH does not exist: $VST3Path"
     }
 }
 

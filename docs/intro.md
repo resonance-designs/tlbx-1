@@ -7,7 +7,7 @@ sidebar_position: 1
 
 This section is the home for Markdown-based developer docs. Add new files under `docs/` and they will appear in the Docusaurus site automatically.
 
-Recent UI changes include the extracted `TapeEngine` component (`src/ui/tape_engine.slint`) and lo‑fi knob rendering modes for performance-sensitive layouts.
+Recent UI changes include the extracted `TapeEngine` component (`src/ui/tape_engine.slint`), lo‑fi knob rendering modes for performance-sensitive layouts, and visualizer components grouped in `src/ui/components/viz.slint`.
 
 ## Build the Docs Site
 
@@ -29,7 +29,7 @@ npm run storybook
 Run the cross-platform packaging pipeline (OS-specific output):
 
 ```bash
-npm run grainrust:build
+npm run tlbx:build
 ```
 
 ## Version Sync
@@ -41,5 +41,5 @@ npm run version:sync
 ## Local Docs Deployment
 
 ```bash
-npm run grainrust:dev-docs
+npm run tlbx:dev-docs
 ```

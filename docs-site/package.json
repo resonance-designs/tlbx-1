@@ -1,7 +1,7 @@
 {
-  "name": "grainrust-docs",
+  "name": "tlbx-docs",
   "private": true,
-  "version": "0.1.6",
+  "version": "0.1.8",
   "scripts": {
     "start": "docusaurus start",
     "build": "docusaurus build",

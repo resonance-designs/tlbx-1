@@ -78,6 +78,7 @@ Packaging expects these environment variables:
 - `src/ui/tlbx1.slint` contains the main window UI definition
 - `src/ui/tape_engine.slint` contains the Tape engine UI component
 - `src/ui/animate_engine.slint` contains the Animate engine UI component
+- `src/ui/simpkick_engine.slint` contains the SimpKick engine UI component
 - `src/ui/components/viz.slint` contains visualizer and meter components
 - `src/ui/components/` contains shared controls (RDS Slint UI Component Kit)
 - `docs/` contains Markdown developer docs

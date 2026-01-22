@@ -67,6 +67,12 @@
 - [ ] Replicate the vector synth oscillators (switchable between wavetable and sample type) and X-Y vector controls from the AniMMI synth in /ref/animmi
 - [ ] 4 Oscillator slots with two modes the select from (vector/sample)
 
+### Engine 3: SimpKick
+
+- [x] Kick synth engine with pitch, decay, drive, and level controls
+- [x] Add short attack control for click smoothing
+- [x] 16-step sequencer tied to master transport
+
 ## Ongoing: Tooling + Docs
 
 - [x] Add Docusaurus docs site

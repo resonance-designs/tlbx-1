@@ -20,7 +20,7 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 ## Tracks
 
 - Use the Track 1–4 buttons to select the active track.
-- Each track can load a sample and run the Tape engine + Mosaic device.
+- Each track can load a sample and run the Tape engine + Mosaic device, or load Animate/SimpKick.
 
 ## Tape Engine
 
@@ -32,6 +32,12 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 
 - Load the Animate engine per track via the Engine selector + Load Engine.
 - Animate displays its own slot controls and X‑Y pad when loaded.
+
+## SimpKick Engine
+
+- Load the SimpKick engine per track via the Engine selector + Load Engine.
+- The kick synth includes Pitch, Decay, Attack, Drive, and Level controls.
+- Use the 16-step sequencer row to toggle steps on/off per track.
 
 ## Mosaic Device
 
@@ -48,6 +54,13 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 ## Project Management
 
 - Save Project / Load Project stores per‑track sample paths and loop/mix state.
+- Use the Browser panel to browse project files and sample libraries.
+- Add Library Folder registers a folder in the browser list.
+
+## Browser
+
+- Open the Browser to view saved projects and library folders.
+- Selecting a folder updates the entry list for quick loading.
 
 ## Documentation
 

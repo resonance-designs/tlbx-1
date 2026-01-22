@@ -33,6 +33,7 @@ import {
 import { TapeEngine } from "./tape_engine.slint";
 import { AnimateEngine } from "./animate_engine.slint";
 import { SimpKickEngine } from "./simpkick_engine.slint";
+import { Browser, BrowserEntry } from "./browser.slint";
 
 export component TLBX1UI inherits Window {
     in-out property <int> selected-track: 1;
@@ -123,6 +124,12 @@ export component TLBX1UI inherits Window {
     in property <string> engine-confirm-text;
     in property <int> active-engine-type: 0; // 1 = Tape, 2 = Animate, 3 = Simp Kick
     in property <bool> is-software-renderer: false;
+
+    // Browser Properties
+    in property <[string]> library-folders;
+    in property <[BrowserEntry]> current-folder-content;
+    in property <string> current-path;
+    in-out property <bool> show-browser: false;
 
     // Animate Engine Properties
     in property <[string]> animate-slot-types;
@@ -223,6 +230,7 @@ export component TLBX1UI inherits Window {
     // Simp Kick Engine Properties
     in-out property <float> kick-pitch: 0.5;
     in-out property <float> kick-decay: 0.5;
+    in-out property <float> kick-attack: 0.0;
     in-out property <float> kick-drive: 0.0;
     in-out property <float> kick-level: 1.0;
     in-out property <[bool]> kick-sequencer-grid;
@@ -307,6 +315,12 @@ export component TLBX1UI inherits Window {
     callback visualizer-mode-selected(index: int);
     callback quit();
     callback toggle-settings();
+    callback toggle-browser();
+    callback save-project-data(title: string, description: string);
+    callback export-project-data(title: string, description: string);
+    callback add-library-folder();
+    callback select-library-folder(index: int);
+    callback open-browser-entry(entry: BrowserEntry);
     callback save-project();
     callback load-project();
     callback output-device-selected(index: int);
@@ -407,6 +421,7 @@ export component TLBX1UI inherits Window {
 
     callback kick-pitch-changed(value: float);
     callback kick-decay-changed(value: float);
+    callback kick-attack-changed(value: float);
     callback kick-drive-changed(value: float);
     callback kick-level-changed(value: float);
     callback kick-sequencer-grid-toggled(step: int);
@@ -543,7 +558,7 @@ export component TLBX1UI inherits Window {
 
                 VerticalLayout {
                     spacing: 4px;
-                    width: 100px;
+                    width: 200px;
                     alignment: center;
                     HorizontalLayout {
                         spacing: 8px;
@@ -556,6 +571,11 @@ export component TLBX1UI inherits Window {
                             height: 32px;
                             icon-size: 22px;
                             clicked => root.toggle-play();
+                        }
+                        Button {
+                            text: "BROWSER";
+                            height: 32px;
+                            clicked => { root.toggle-browser(); }
                         }
                     }
                 }
@@ -980,12 +1000,14 @@ export component TLBX1UI inherits Window {
                             width: parent.width;
                             kick-pitch <=> root.kick-pitch;
                             kick-decay <=> root.kick-decay;
+                            kick-attack <=> root.kick-attack;
                             kick-drive <=> root.kick-drive;
                             kick-level <=> root.kick-level;
                             kick-sequencer-grid <=> root.kick-sequencer-grid;
                             kick-sequencer-current-step: root.kick-sequencer-current-step;
                             kick-pitch-changed(value) => { root.kick-pitch-changed(value); }
                             kick-decay-changed(value) => { root.kick-decay-changed(value); }
+                            kick-attack-changed(value) => { root.kick-attack-changed(value); }
                             kick-drive-changed(value) => { root.kick-drive-changed(value); }
                             kick-level-changed(value) => { root.kick-level-changed(value); }
                             kick-sequencer-grid-toggled(step) => { root.kick-sequencer-grid-toggled(step); }
@@ -1174,6 +1196,22 @@ export component TLBX1UI inherits Window {
                 }
             }
         }
+    }
+
+    if root.show-browser : Browser {
+        x: 50px;
+        y: 50px;
+        width: parent.width - 100px;
+        height: parent.height - 100px;
+        library-folders: root.library-folders;
+        current-folder-content: root.current-folder-content;
+        current-path: root.current-path;
+        close => { root.show-browser = false; }
+        add-library-folder => { root.add-library-folder(); }
+        select-library-folder(index) => { root.select-library-folder(index); }
+        open-entry(entry) => { root.open-browser-entry(entry); }
+        save-project(title, desc) => { root.save-project-data(title, desc); }
+        export-project(title, desc) => { root.export-project-data(title, desc); }
     }
 }
 }

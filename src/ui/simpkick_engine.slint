@@ -3,6 +3,7 @@ import { RDSKnob, RDSSequencerCell } from "./components/index.slint";
 export component SimpKickEngine {
     in-out property <float> kick-pitch: 0.5;
     in-out property <float> kick-decay: 0.5;
+    in-out property <float> kick-attack: 0.0;
     in-out property <float> kick-drive: 0.0;
     in-out property <float> kick-level: 1.0;
     in-out property <[bool]> kick-sequencer-grid;
@@ -10,6 +11,7 @@ export component SimpKickEngine {
 
     callback kick-pitch-changed(value: float);
     callback kick-decay-changed(value: float);
+    callback kick-attack-changed(value: float);
     callback kick-drive-changed(value: float);
     callback kick-level-changed(value: float);
     callback kick-sequencer-grid-toggled(step: int);
@@ -46,6 +48,19 @@ export component SimpKickEngine {
                     size: 32px; indicator-position: 10px;
                     sensitivity: 0.01; scroll-sensitivity: 0.01;
                     value-changed(v) => { root.kick-decay = v; root.kick-decay-changed(v); }
+                }
+            }
+            VerticalLayout {
+                spacing: 4px;
+                width: 50px;
+                Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                RDSKnob {
+                    renderer: "lo-fi";
+                    value: root.kick-attack;
+                    min-value: 0.0; max-value: 1.0;
+                    size: 32px; indicator-position: 10px;
+                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                    value-changed(v) => { root.kick-attack = v; root.kick-attack-changed(v); }
                 }
             }
             VerticalLayout {

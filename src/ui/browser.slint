@@ -1,0 +1,215 @@
+/**
+ * TLBX-1 - Browser Component
+ * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
+ */
+
+import { Button, ScrollView, LineEdit } from "std-widgets.slint";
+import { Theme } from "./theme/index.slint";
+import { RDSHeaderLabel, RDSSelectButton } from "./components/index.slint";
+
+export struct BrowserEntry {
+    name: string,
+    is_dir: bool,
+    path: string,
+}
+
+export component Browser inherits Rectangle {
+    in property <[string]> library-folders;
+    in property <[BrowserEntry]> current-folder-content;
+    in property <string> current-path;
+    in-out property <string> project-title: "New Project";
+    in-out property <string> project-description: "";
+    
+    callback add-library-folder();
+    callback select-library-folder(int);
+    callback open-entry(BrowserEntry);
+    callback save-project(string, string);
+    callback export-project(string, string);
+    callback close();
+
+    background: Theme.active.background_main;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Theme.active.border_strong;
+
+    VerticalLayout {
+        padding: 15px;
+        spacing: 15px;
+
+        HorizontalLayout {
+            alignment: space-between;
+            RDSHeaderLabel {
+                text: "BROWSER / LIBRARY";
+            }
+            Button {
+                text: "CLOSE";
+                clicked => { root.close(); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 15px;
+            
+            // Left Pane: Library Folders
+            VerticalLayout {
+                width: 220px;
+                spacing: 8px;
+                Text { 
+                    text: "LIBRARIES"; 
+                    color: Theme.active.text_secondary;
+                    font-size: Theme.active.font_small;
+                    font-weight: 700;
+                }
+                Rectangle {
+                    background: Theme.active.background_raised;
+                    border-radius: 4px;
+                    ScrollView {
+                        VerticalLayout {
+                            alignment: start;
+                            padding: 4px;
+                            spacing: 2px;
+                            for folder[i] in library-folders: Rectangle {
+                                height: 32px;
+                                border-radius: 2px;
+                                background: Theme.active.background_hover;
+                                TouchArea {
+                                    clicked => { root.select-library-folder(i); }
+                                }
+                                Text {
+                                    text: folder;
+                                    color: Theme.active.text_primary;
+                                    x: 8px;
+                                    vertical-alignment: center;
+                                    font-size: Theme.active.font_medium;
+                                }
+                            }
+                        }
+                    }
+                }
+                Button {
+                    text: "+ ADD FOLDER";
+                    clicked => { root.add-library-folder(); }
+                }
+            }
+
+            // Right Pane: Content
+            VerticalLayout {
+                spacing: 8px;
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { 
+                        text: current-path; 
+                        color: Theme.active.text_secondary;
+                        font-size: Theme.active.font_small;
+                        font-weight: 700;
+                        overflow: elide;
+                    }
+                }
+                Rectangle {
+                    background: Theme.active.background_raised;
+                    border-radius: 4px;
+                    ScrollView {
+                        VerticalLayout {
+                            alignment: start;
+                            padding: 4px;
+                            spacing: 2px;
+                            for entry in current-folder-content: Rectangle {
+                                height: 32px;
+                                border-radius: 2px;
+                                background: Theme.active.background_hover;
+                                TouchArea {
+                                    clicked => { root.open-entry(entry); }
+                                }
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    spacing: 12px;
+                                    Text {
+                                        text: entry.is_dir ? "FOLDER" : "FILE";
+                                        color: Theme.active.text_secondary;
+                                        vertical-alignment: center;
+                                        font-size: 10px;
+                                    }
+                                    Text {
+                                        text: entry.name;
+                                        color: Theme.active.text_primary;
+                                        vertical-alignment: center;
+                                        font-size: Theme.active.font_medium;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Project Info & Actions
+        Rectangle {
+            height: 120px;
+            background: Theme.active.background_raised;
+            border-radius: 6px;
+            padding: 12px;
+            
+            HorizontalLayout {
+                spacing: 25px;
+                padding: 12px;
+                
+                VerticalLayout {
+                    spacing: 8px;
+                    HorizontalLayout {
+                        spacing: 10px;
+                        alignment: start;
+                        Text { 
+                            text: "TITLE:"; 
+                            color: Theme.active.text_secondary; 
+                            vertical-alignment: center;
+                            width: 60px;
+                            font-size: Theme.active.font_small;
+                        }
+                        LineEdit {
+                            text <=> project-title;
+                            placeholder-text: "Project Name";
+                            width: 250px;
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: 10px;
+                        alignment: start;
+                        Text { 
+                            text: "DESC:"; 
+                            color: Theme.active.text_secondary; 
+                            vertical-alignment: center;
+                            width: 60px;
+                            font-size: Theme.active.font_small;
+                        }
+                        LineEdit {
+                            text <=> project-description;
+                            placeholder-text: "Optional description...";
+                            width: 250px;
+                        }
+                    }
+                }
+                
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 12px;
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Button {
+                            text: "SAVE PROJECT";
+                            height: 40px;
+                            width: 140px;
+                            clicked => { root.save-project(project-title, project-description); }
+                        }
+                        Button {
+                            text: "EXPORT ZIP";
+                            height: 40px;
+                            width: 140px;
+                            clicked => { root.export-project(project-title, project-description); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

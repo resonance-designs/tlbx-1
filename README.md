@@ -13,9 +13,11 @@ The UI is built with Slint in combination with the [Resonance Designs Slint UI C
 - Engine loader per track
   - Engine 1: Tape-Deck (based on Torso S-4)
   - Engine 2: Animate (based on Korg Wavestation)
+  - Engine 3: SimpKick (sequenced kick synth)
 - RDS Slint UI Component Kit for shared UI controls and theming
 - Post-tape Mosaic granular buffer with bypass toggle
 - Project save/load (JSON)
+- Project/library browser for samples and saved projects
 - Standalone audio device settings (device, sample rate, buffer size)
 - Built-in visualizers (oscilloscope, spectrum, vectorscope)
 
@@ -108,6 +110,7 @@ Installers include the built documentation site under `documentation/` in the in
 - Loop Start/Length/XFade apply to the active track
 - Mosaic enable toggles the post-tape granular buffer per track
 - Save/Load Project stores track paths and loop/mix state
+- Browser opens the project/library panel for quick loading and folder management
 - Settings panel is a modal for standalone audio device configuration
 - The engine controls are hidden until an engine is loaded for the active track
 - Tape parameters are organized in a 4x3 grid for efficient control

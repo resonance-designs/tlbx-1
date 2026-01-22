@@ -2118,9 +2118,21 @@ impl Plugin for TLBX1 {
 
                     let rotate_norm =
                         f32::from_bits(track.tape_rotate.load(Ordering::Relaxed)).clamp(0.0, 1.0);
-                    let base_start = (loop_start_norm * num_samples as f32) as usize;
+                    let reverse_active = tape_reverse || loop_mode == 3;
                     let rotate_offset = (rotate_norm * num_samples as f32) as usize;
-                    let loop_start = (base_start + rotate_offset) % num_samples.max(1);
+                    let loop_start = if reverse_active {
+                        let base_end =
+                            ((1.0 - loop_start_norm) * num_samples as f32) as usize;
+                        let loop_end = (base_end + rotate_offset).min(num_samples);
+                        let mut loop_len = (loop_length_norm * num_samples as f32) as usize;
+                        if loop_len == 0 {
+                            loop_len = loop_end.max(1);
+                        }
+                        loop_end.saturating_sub(loop_len)
+                    } else {
+                        let base_start = (loop_start_norm * num_samples as f32) as usize;
+                        (base_start + rotate_offset) % num_samples.max(1)
+                    };
                     let mut loop_len = (loop_length_norm * num_samples as f32) as usize;
                     if loop_len == 0 {
                         loop_len = num_samples.saturating_sub(loop_start).max(1);
@@ -5426,12 +5438,25 @@ fn initialize_ui(
                 f32::from_bits(track.loop_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
             let rotate_norm =
                 f32::from_bits(track.tape_rotate.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+            let reverse_active = track.tape_reverse.load(Ordering::Relaxed) || loop_mode == 3;
             let loop_start = if loop_enabled {
                 if let Some(samples) = track.samples.try_lock() {
                     let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
-                    let base_start = (loop_start_norm * len as f32) as usize;
                     let rotate_offset = (rotate_norm * len as f32) as usize;
-                    ((base_start + rotate_offset) % len.max(1)) as f32
+                    if reverse_active {
+                        let base_end = ((1.0 - loop_start_norm) * len as f32) as usize;
+                        let loop_end = (base_end + rotate_offset).min(len);
+                        let mut loop_len =
+                            (f32::from_bits(track.loop_length.load(Ordering::Relaxed)) * len as f32)
+                                as usize;
+                        if loop_len == 0 {
+                            loop_len = loop_end.max(1);
+                        }
+                        loop_end.saturating_sub(loop_len) as f32
+                    } else {
+                        let base_start = (loop_start_norm * len as f32) as usize;
+                        ((base_start + rotate_offset) % len.max(1)) as f32
+                    }
                 } else {
                     0.0
                 }
@@ -5442,7 +5467,12 @@ fn initialize_ui(
                 f32::from_bits(track.trigger_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
             let trigger_start = if let Some(samples) = track.samples.try_lock() {
                 let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
-                (trigger_start_norm * len as f32) as f32
+                let start_norm = if reverse_active {
+                    (1.0 - trigger_start_norm).clamp(0.0, 0.999)
+                } else {
+                    trigger_start_norm
+                };
+                (start_norm * len as f32) as f32
             } else {
                 0.0
             };
@@ -5523,13 +5553,26 @@ fn initialize_ui(
                 f32::from_bits(track.loop_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
             let rotate_norm =
                 f32::from_bits(track.tape_rotate.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+            let reverse_active = track.tape_reverse.load(Ordering::Relaxed) || loop_mode == 3;
 
             let loop_start = if loop_enabled {
                 if let Some(samples) = track.samples.try_lock() {
                     let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
-                    let base_start = (loop_start_norm * len as f32) as usize;
                     let rotate_offset = (rotate_norm * len as f32) as usize;
-                    ((base_start + rotate_offset) % len.max(1)) as f32
+                    if reverse_active {
+                        let base_end = ((1.0 - loop_start_norm) * len as f32) as usize;
+                        let loop_end = (base_end + rotate_offset).min(len);
+                        let mut loop_len =
+                            (f32::from_bits(track.loop_length.load(Ordering::Relaxed)) * len as f32)
+                                as usize;
+                        if loop_len == 0 {
+                            loop_len = loop_end.max(1);
+                        }
+                        loop_end.saturating_sub(loop_len) as f32
+                    } else {
+                        let base_start = (loop_start_norm * len as f32) as usize;
+                        ((base_start + rotate_offset) % len.max(1)) as f32
+                    }
                 } else {
                     0.0
                 }
@@ -5541,7 +5584,12 @@ fn initialize_ui(
                 f32::from_bits(track.trigger_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
             let trigger_start = if let Some(samples) = track.samples.try_lock() {
                 let len = samples.get(0).map(|ch| ch.len()).unwrap_or(0);
-                (trigger_start_norm * len as f32) as f32
+                let start_norm = if reverse_active {
+                    (1.0 - trigger_start_norm).clamp(0.0, 0.999)
+                } else {
+                    trigger_start_norm
+                };
+                (start_norm * len as f32) as f32
             } else {
                 0.0
             };

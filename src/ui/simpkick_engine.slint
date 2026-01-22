@@ -1,0 +1,88 @@
+import { RDSKnob, RDSSequencerCell } from "./components/index.slint";
+
+export component SimpKickEngine {
+    in-out property <float> kick-pitch: 0.5;
+    in-out property <float> kick-decay: 0.5;
+    in-out property <float> kick-drive: 0.0;
+    in-out property <float> kick-level: 1.0;
+    in-out property <[bool]> kick-sequencer-grid;
+    in property <int> kick-sequencer-current-step: -1;
+
+    callback kick-pitch-changed(value: float);
+    callback kick-decay-changed(value: float);
+    callback kick-drive-changed(value: float);
+    callback kick-level-changed(value: float);
+    callback kick-sequencer-grid-toggled(step: int);
+
+    VerticalLayout {
+        spacing: 8px;
+        width: parent.width;
+
+        Text { text: "Simp Kick"; color: #f0f0f2; font-size: 15px; }
+
+        HorizontalLayout {
+            spacing: 12px;
+            VerticalLayout {
+                spacing: 4px;
+                width: 50px;
+                Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                RDSKnob {
+                    renderer: "lo-fi";
+                    value: root.kick-pitch;
+                    min-value: 0.0; max-value: 1.0;
+                    size: 32px; indicator-position: 10px;
+                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                    value-changed(v) => { root.kick-pitch = v; root.kick-pitch-changed(v); }
+                }
+            }
+            VerticalLayout {
+                spacing: 4px;
+                width: 50px;
+                Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                RDSKnob {
+                    renderer: "lo-fi";
+                    value: root.kick-decay;
+                    min-value: 0.0; max-value: 1.0;
+                    size: 32px; indicator-position: 10px;
+                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                    value-changed(v) => { root.kick-decay = v; root.kick-decay-changed(v); }
+                }
+            }
+            VerticalLayout {
+                spacing: 4px;
+                width: 50px;
+                Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                RDSKnob {
+                    renderer: "lo-fi";
+                    value: root.kick-drive;
+                    min-value: 0.0; max-value: 1.0;
+                    size: 32px; indicator-position: 10px;
+                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                    value-changed(v) => { root.kick-drive = v; root.kick-drive-changed(v); }
+                }
+            }
+            VerticalLayout {
+                spacing: 4px;
+                width: 50px;
+                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                RDSKnob {
+                    renderer: "lo-fi";
+                    value: root.kick-level;
+                    min-value: 0.0; max-value: 1.0;
+                    size: 32px; indicator-position: 10px;
+                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                    value-changed(v) => { root.kick-level = v; root.kick-level-changed(v); }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 2px;
+            for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
+                active: root.kick-sequencer-grid[s];
+                current: s == root.kick-sequencer-current-step;
+                clicked => { root.kick-sequencer-grid-toggled(s); }
+            }
+        }
+    }
+}

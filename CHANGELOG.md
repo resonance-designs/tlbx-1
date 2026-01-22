@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.1.12] - 2026-01-22
+
 ## [0.1.11] - 2026-01-21
 
 - Added SimpKick engine UI with a 16-step sequencer

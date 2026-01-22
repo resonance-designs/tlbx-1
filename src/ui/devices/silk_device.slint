@@ -1,0 +1,247 @@
+import { Button } from "std-widgets.slint";
+
+import { RDSKnob, RDSComboBox } from "../components/index.slint";
+
+export component SilkDevice {
+    in-out property <bool> ring-enabled: false;
+    in-out property <float> ring-cutoff: 0.5;
+    in-out property <float> ring-resonance: 0.0;
+    in-out property <float> ring-decay: 0.0;
+    in-out property <float> ring-pitch: 0.5;
+    in property <[string]> ring-decay-modes;
+    in-out property <int> ring-decay-mode: 0;
+    in-out property <float> ring-slope: 0.5;
+    in-out property <float> ring-tone: 0.5;
+    in-out property <float> ring-tilt: 0.5;
+    in-out property <float> ring-wet: 0.0;
+    in-out property <float> ring-detune: 0.0;
+    in-out property <float> ring-waves: 0.0;
+    in-out property <float> ring-waves-rate: 0.5;
+    in-out property <float> ring-noise: 0.0;
+    in-out property <float> ring-noise-rate: 0.5;
+
+    callback toggle-ring-enabled();
+    callback ring-cutoff-changed(value: float);
+    callback ring-resonance-changed(value: float);
+    callback ring-decay-changed(value: float);
+    callback ring-pitch-changed(value: float);
+    callback ring-decay-mode-selected(index: int);
+    callback ring-slope-changed(value: float);
+    callback ring-tone-changed(value: float);
+    callback ring-tilt-changed(value: float);
+    callback ring-wet-changed(value: float);
+    callback ring-detune-changed(value: float);
+    callback ring-waves-changed(value: float);
+    callback ring-waves-rate-changed(value: float);
+    callback ring-noise-changed(value: float);
+    callback ring-noise-rate-changed(value: float);
+
+    VerticalLayout {
+        spacing: 8px;
+        width: parent.width;
+
+        Text { text: "Ring Controls"; color: #e4e4ea; font-size: 14px; }
+        HorizontalLayout {
+            spacing: 8px;
+            Button {
+                text: root.ring-enabled ? "Ring ON" : "Ring BYPASS";
+                clicked => root.toggle-ring-enabled();
+            }
+        }
+
+        VerticalLayout {
+            spacing: 0px;
+
+            HorizontalLayout {
+                spacing: 12px;
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-cutoff;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-cutoff = v; root.ring-cutoff-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-resonance;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-resonance = v; root.ring-resonance-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-decay;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-decay = v; root.ring-decay-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-pitch;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-pitch = v; root.ring-pitch-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 100px;
+                    Text { text: "Decay Mode"; color: #b9b9bf; font-size: 11px; }
+                    RDSComboBox {
+                        width: 100px;
+                        model: root.ring-decay-modes;
+                        current-index: root.ring-decay-mode;
+                        selected => {
+                            root.ring-decay-mode = self.current-index;
+                            root.ring-decay-mode-selected(self.current-index);
+                        }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-tone;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-tone = v; root.ring-tone-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Tilt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-tilt;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-tilt = v; root.ring-tilt-changed(v); }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 12px;
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Slope"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-slope;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-slope = v; root.ring-slope-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Wet"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-wet;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-wet = v; root.ring-wet-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Detune"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-detune;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-detune = v; root.ring-detune-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Waves"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-waves;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-waves = v; root.ring-waves-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "W-Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-waves-rate;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-waves-rate = v; root.ring-waves-rate-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "Noise"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-noise;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-noise = v; root.ring-noise-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 60px;
+                    Text { text: "N-Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.ring-noise-rate;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.ring-noise-rate = v; root.ring-noise-rate-changed(v); }
+                    }
+                }
+            }
+        }
+    }
+}

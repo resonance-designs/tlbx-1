@@ -8,6 +8,8 @@ import {
     RDSWaveformViz,
     RDSComboBox
 } from "./components/index.slint";
+import { GranulatorDevice } from "./devices/granulator_device.slint";
+import { SilkDevice } from "./devices/silk_device.slint";
 
 export component TapeEngine {
     in property <bool> is-recording: false;
@@ -449,406 +451,71 @@ export component TapeEngine {
                 spacing: 16px;
                 width: parent.width;
 
-                VerticalLayout {
-                    spacing: 8px;
+                GranulatorDevice {
                     width: (parent.width - 16px) / 2;
-                    Text { text: "Mosaic Controls"; color: #e4e4ea; font-size: 14px; }
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Button {
-                            text: root.mosaic-enabled ? "Mosaic ON" : "Mosaic BYPASS";
-                            clicked => root.toggle-mosaic-enabled();
-                        }
-                    }
-
-                    VerticalLayout {
-                        spacing: 0px;
-
-                        HorizontalLayout {
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-pitch;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-pitch = v; root.mosaic-pitch-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-rate;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-rate = v; root.mosaic-rate-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Size"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-size;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-size = v; root.mosaic-size-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Contour"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-contour;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-contour = v; root.mosaic-contour-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Warp"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-warp;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-warp = v; root.mosaic-warp-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Spray"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-spray;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-spray = v; root.mosaic-spray-changed(v); }
-                                }
-                            }
-                        }
-
-                        HorizontalLayout {
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Pattern"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-pattern;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-pattern = v; root.mosaic-pattern-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Wet"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-wet;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-wet = v; root.mosaic-wet-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Detune"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-detune;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-detune = v; root.mosaic-detune-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Spatial"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-spatial;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-spatial = v; root.mosaic-spatial-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Rand Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-rand-rate;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-rand-rate = v; root.mosaic-rand-rate-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Rand Size"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-rand-size;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-rand-size = v; root.mosaic-rand-size-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "SOS"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.mosaic-sos;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.mosaic-sos = v; root.mosaic-sos-changed(v); }
-                                }
-                            }
-                        }
-                    }
+                    mosaic-enabled <=> root.mosaic-enabled;
+                    mosaic-pitch <=> root.mosaic-pitch;
+                    mosaic-rate <=> root.mosaic-rate;
+                    mosaic-size <=> root.mosaic-size;
+                    mosaic-contour <=> root.mosaic-contour;
+                    mosaic-warp <=> root.mosaic-warp;
+                    mosaic-spray <=> root.mosaic-spray;
+                    mosaic-pattern <=> root.mosaic-pattern;
+                    mosaic-wet <=> root.mosaic-wet;
+                    mosaic-detune <=> root.mosaic-detune;
+                    mosaic-spatial <=> root.mosaic-spatial;
+                    mosaic-rand-rate <=> root.mosaic-rand-rate;
+                    mosaic-rand-size <=> root.mosaic-rand-size;
+                    mosaic-sos <=> root.mosaic-sos;
+                    toggle-mosaic-enabled => root.toggle-mosaic-enabled();
+                    mosaic-pitch-changed(value) => { root.mosaic-pitch-changed(value); }
+                    mosaic-rate-changed(value) => { root.mosaic-rate-changed(value); }
+                    mosaic-size-changed(value) => { root.mosaic-size-changed(value); }
+                    mosaic-contour-changed(value) => { root.mosaic-contour-changed(value); }
+                    mosaic-warp-changed(value) => { root.mosaic-warp-changed(value); }
+                    mosaic-spray-changed(value) => { root.mosaic-spray-changed(value); }
+                    mosaic-pattern-changed(value) => { root.mosaic-pattern-changed(value); }
+                    mosaic-wet-changed(value) => { root.mosaic-wet-changed(value); }
+                    mosaic-detune-changed(value) => { root.mosaic-detune-changed(value); }
+                    mosaic-spatial-changed(value) => { root.mosaic-spatial-changed(value); }
+                    mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
+                    mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
+                    mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
                 }
 
-                VerticalLayout {
-                    spacing: 8px;
+                SilkDevice {
                     width: (parent.width - 16px) / 2;
-                    Text { text: "Ring Controls"; color: #e4e4ea; font-size: 14px; }
-                    HorizontalLayout {
-                        spacing: 8px;
-                        Button {
-                            text: root.ring-enabled ? "Ring ON" : "Ring BYPASS";
-                            clicked => root.toggle-ring-enabled();
-                        }
-                    }
-
-                    VerticalLayout {
-                        spacing: 0px;
-
-                        HorizontalLayout {
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Cutoff"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-cutoff;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-cutoff = v; root.ring-cutoff-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-resonance;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-resonance = v; root.ring-resonance-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-decay;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-decay = v; root.ring-decay-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-pitch;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-pitch = v; root.ring-pitch-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 100px;
-                                Text { text: "Decay Mode"; color: #b9b9bf; font-size: 11px; }
-                                RDSComboBox {
-                                    width: 100px;
-                                    model: root.ring-decay-modes;
-                                    current-index: root.ring-decay-mode;
-                                    selected => {
-                                        root.ring-decay-mode = self.current-index;
-                                        root.ring-decay-mode-selected(self.current-index);
-                                    }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Slope"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-slope;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-slope = v; root.ring-slope-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-tone;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-tone = v; root.ring-tone-changed(v); }
-                                }
-                            }
-                        }
-
-                        HorizontalLayout {
-                            spacing: 12px;
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Tilt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-tilt;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-tilt = v; root.ring-tilt-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Wet"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-wet;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-wet = v; root.ring-wet-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Detune"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-detune;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-detune = v; root.ring-detune-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Waves"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-waves;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-waves = v; root.ring-waves-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "W-Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-waves-rate;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-waves-rate = v; root.ring-waves-rate-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "Noise"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-noise;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-noise = v; root.ring-noise-changed(v); }
-                                }
-                            }
-                            VerticalLayout {
-                                spacing: 4px;
-                                width: 60px;
-                                Text { text: "N-Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                                RDSKnob {
-                                    renderer: "lo-fi";
-                                    value: root.ring-noise-rate;
-                                    min-value: 0; max-value: 1;
-                                    size: 48px; indicator-position: 15px;
-                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
-                                    value-changed(v) => { root.ring-noise-rate = v; root.ring-noise-rate-changed(v); }
-                                }
-                            }
-                        }
-                    }
+                    ring-enabled <=> root.ring-enabled;
+                    ring-cutoff <=> root.ring-cutoff;
+                    ring-resonance <=> root.ring-resonance;
+                    ring-decay <=> root.ring-decay;
+                    ring-pitch <=> root.ring-pitch;
+                    ring-decay-modes: root.ring-decay-modes;
+                    ring-decay-mode <=> root.ring-decay-mode;
+                    ring-slope <=> root.ring-slope;
+                    ring-tone <=> root.ring-tone;
+                    ring-tilt <=> root.ring-tilt;
+                    ring-wet <=> root.ring-wet;
+                    ring-detune <=> root.ring-detune;
+                    ring-waves <=> root.ring-waves;
+                    ring-waves-rate <=> root.ring-waves-rate;
+                    ring-noise <=> root.ring-noise;
+                    ring-noise-rate <=> root.ring-noise-rate;
+                    toggle-ring-enabled => root.toggle-ring-enabled();
+                    ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
+                    ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
+                    ring-decay-changed(value) => { root.ring-decay-changed(value); }
+                    ring-pitch-changed(value) => { root.ring-pitch-changed(value); }
+                    ring-decay-mode-selected(index) => { root.ring-decay-mode-selected(index); }
+                    ring-slope-changed(value) => { root.ring-slope-changed(value); }
+                    ring-tone-changed(value) => { root.ring-tone-changed(value); }
+                    ring-tilt-changed(value) => { root.ring-tilt-changed(value); }
+                    ring-wet-changed(value) => { root.ring-wet-changed(value); }
+                    ring-detune-changed(value) => { root.ring-detune-changed(value); }
+                    ring-waves-changed(value) => { root.ring-waves-changed(value); }
+                    ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
+                    ring-noise-changed(value) => { root.ring-noise-changed(value); }
+                    ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
                 }
             }
         }

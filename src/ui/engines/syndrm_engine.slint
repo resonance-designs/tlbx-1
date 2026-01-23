@@ -1,0 +1,193 @@
+import { RDSKnob, RDSSequencerCell } from "../components/index.slint";
+
+export component SynDRMEngine {
+    in-out property <float> kick-pitch: 0.5;
+    in-out property <float> kick-decay: 0.5;
+    in-out property <float> kick-attack: 0.0;
+    in-out property <float> kick-drive: 0.0;
+    in-out property <float> kick-level: 1.0;
+    in-out property <[bool]> kick-sequencer-grid;
+    in property <int> kick-sequencer-current-step: -1;
+
+    in-out property <float> snare-tone: 0.5;
+    in-out property <float> snare-decay: 0.4;
+    in-out property <float> snare-snappy: 0.6;
+    in-out property <float> snare-level: 0.8;
+    in-out property <[bool]> snare-sequencer-grid;
+    in property <int> snare-sequencer-current-step: -1;
+
+    callback kick-pitch-changed(value: float);
+    callback kick-decay-changed(value: float);
+    callback kick-attack-changed(value: float);
+    callback kick-drive-changed(value: float);
+    callback kick-level-changed(value: float);
+    callback kick-sequencer-grid-toggled(step: int);
+
+    callback snare-tone-changed(value: float);
+    callback snare-decay-changed(value: float);
+    callback snare-snappy-changed(value: float);
+    callback snare-level-changed(value: float);
+    callback snare-sequencer-grid-toggled(step: int);
+
+    VerticalLayout {
+        spacing: 10px;
+        width: parent.width;
+
+        Text { text: "SynDRM"; color: #f0f0f2; font-size: 15px; }
+
+        VerticalLayout {
+            spacing: 6px;
+            Text { text: "Kick"; color: #b9b9bf; font-size: 11px; }
+            HorizontalLayout {
+                spacing: 12px;
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.kick-pitch;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.kick-pitch = v; root.kick-pitch-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.kick-decay;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.kick-decay = v; root.kick-decay-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.kick-attack;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.kick-attack = v; root.kick-attack-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.kick-drive;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.kick-drive = v; root.kick-drive-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.kick-level;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.kick-level = v; root.kick-level-changed(v); }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            spacing: 6px;
+            Text { text: "Snare"; color: #b9b9bf; font-size: 11px; }
+            HorizontalLayout {
+                spacing: 12px;
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.snare-tone;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.snare-tone = v; root.snare-tone-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.snare-decay;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.snare-decay = v; root.snare-decay-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Snap"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.snare-snappy;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.snare-snappy = v; root.snare-snappy-changed(v); }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px;
+                    width: 50px;
+                    Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.snare-level;
+                        min-value: 0.0; max-value: 1.0;
+                        size: 32px; indicator-position: 10px;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.snare-level = v; root.snare-level-changed(v); }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            spacing: 4px;
+            HorizontalLayout {
+                spacing: 6px;
+                Text { text: "Kick"; width: 40px; color: #b9b9bf; font-size: 11px; }
+                for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
+                    active: root.kick-sequencer-grid[s];
+                    current: s == root.kick-sequencer-current-step;
+                    clicked => { root.kick-sequencer-grid-toggled(s); }
+                }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Text { text: "Snare"; width: 40px; color: #b9b9bf; font-size: 11px; }
+                for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
+                    active: root.snare-sequencer-grid[s];
+                    current: s == root.snare-sequencer-current-step;
+                    clicked => { root.snare-sequencer-grid-toggled(s); }
+                }
+            }
+        }
+    }
+}

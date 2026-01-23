@@ -32,7 +32,7 @@ import {
 
 import { TapeEngine } from "./engines/tape_engine.slint";
 import { AnimateEngine } from "./engines/animate_engine.slint";
-import { SimpKickEngine } from "./engines/simpkick_engine.slint";
+import { SynDRMEngine } from "./engines/syndrm_engine.slint";
 import { VoidSeedEngine } from "./engines/void_seed_engine.slint";
 import { Browser, BrowserEntry } from "./browser.slint";
 
@@ -123,7 +123,7 @@ export component TLBX1UI inherits Window {
     in property <string> metronome-count-in-label;
     in-out property <bool> show-engine-confirm: false;
     in property <string> engine-confirm-text;
-    in property <int> active-engine-type: 0; // 1 = Tape, 2 = Animate, 3 = Simp Kick, 4 = Void Seed
+    in property <int> active-engine-type: 0; // 1 = Tape, 2 = Animate, 3 = SynDRM, 4 = Void Seed
     in property <bool> is-software-renderer: false;
 
     // Browser Properties
@@ -228,7 +228,7 @@ export component TLBX1UI inherits Window {
     in property <int> animate-sequencer-rows: 10;
     in property <int> animate-sequencer-current-step: -1;
 
-    // Simp Kick Engine Properties
+    // SynDRM Engine Properties
     in-out property <float> kick-pitch: 0.5;
     in-out property <float> kick-decay: 0.5;
     in-out property <float> kick-attack: 0.0;
@@ -236,6 +236,12 @@ export component TLBX1UI inherits Window {
     in-out property <float> kick-level: 1.0;
     in-out property <[bool]> kick-sequencer-grid;
     in property <int> kick-sequencer-current-step: -1;
+    in-out property <float> snare-tone: 0.5;
+    in-out property <float> snare-decay: 0.4;
+    in-out property <float> snare-snappy: 0.6;
+    in-out property <float> snare-level: 0.8;
+    in-out property <[bool]> snare-sequencer-grid;
+    in property <int> snare-sequencer-current-step: -1;
 
     // Void Seed Engine Properties
     in-out property <float> void-base-freq: 40.0;
@@ -436,6 +442,11 @@ export component TLBX1UI inherits Window {
     callback kick-drive-changed(value: float);
     callback kick-level-changed(value: float);
     callback kick-sequencer-grid-toggled(step: int);
+    callback snare-tone-changed(value: float);
+    callback snare-decay-changed(value: float);
+    callback snare-snappy-changed(value: float);
+    callback snare-level-changed(value: float);
+    callback snare-sequencer-grid-toggled(step: int);
 
     // Void Seed Engine Callbacks
     callback void-base-freq-changed(value: float);
@@ -1033,17 +1044,17 @@ export component TLBX1UI inherits Window {
                                     }
                                 }
                             }
-                            simpkick-section := Rectangle {
+                            syndrm-section := Rectangle {
                                 width: parent.width;
-                                height: root.active-engine-type == 3 ? simpkick-content.preferred-height : 0px;
+                                height: root.active-engine-type == 3 ? syndrm-content.preferred-height : 0px;
                                 clip: true;
                                 visible: root.active-engine-type == 3;
 
-                                simpkick-content := VerticalLayout {
+                                syndrm-content := VerticalLayout {
                                     spacing: 8px;
                                     width: parent.width;
 
-                                    SimpKickEngine {
+                                    SynDRMEngine {
                                         width: parent.width;
                                         kick-pitch <=> root.kick-pitch;
                                         kick-decay <=> root.kick-decay;
@@ -1052,12 +1063,23 @@ export component TLBX1UI inherits Window {
                                         kick-level <=> root.kick-level;
                                         kick-sequencer-grid <=> root.kick-sequencer-grid;
                                         kick-sequencer-current-step: root.kick-sequencer-current-step;
+                                        snare-tone <=> root.snare-tone;
+                                        snare-decay <=> root.snare-decay;
+                                        snare-snappy <=> root.snare-snappy;
+                                        snare-level <=> root.snare-level;
+                                        snare-sequencer-grid <=> root.snare-sequencer-grid;
+                                        snare-sequencer-current-step: root.snare-sequencer-current-step;
                                         kick-pitch-changed(value) => { root.kick-pitch-changed(value); }
                                         kick-decay-changed(value) => { root.kick-decay-changed(value); }
                                         kick-attack-changed(value) => { root.kick-attack-changed(value); }
                                         kick-drive-changed(value) => { root.kick-drive-changed(value); }
                                         kick-level-changed(value) => { root.kick-level-changed(value); }
                                         kick-sequencer-grid-toggled(step) => { root.kick-sequencer-grid-toggled(step); }
+                                        snare-tone-changed(value) => { root.snare-tone-changed(value); }
+                                        snare-decay-changed(value) => { root.snare-decay-changed(value); }
+                                        snare-snappy-changed(value) => { root.snare-snappy-changed(value); }
+                                        snare-level-changed(value) => { root.snare-level-changed(value); }
+                                        snare-sequencer-grid-toggled(step) => { root.snare-sequencer-grid-toggled(step); }
                                     }
                                 }
                             }

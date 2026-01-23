@@ -453,29 +453,51 @@ struct Track {
     animate_amp_stage: [AtomicU32; 10],
     /// Animate amp envelope level (0..1) for each voice.
     animate_amp_level: [AtomicU32; 10],
-    /// Simp Kick pitch (normalized 0..1).
+    /// SynDRM kick pitch (normalized 0..1).
     kick_pitch: AtomicU32,
-    /// Simp Kick decay (normalized 0..1).
+    /// SynDRM kick decay (normalized 0..1).
     kick_decay: AtomicU32,
-    /// Simp Kick attack (normalized 0..1).
+    /// SynDRM kick attack (normalized 0..1).
     kick_attack: AtomicU32,
-    /// Simp Kick drive (normalized 0..1).
+    /// SynDRM kick drive (normalized 0..1).
     kick_drive: AtomicU32,
-    /// Simp Kick output level (normalized 0..1).
+    /// SynDRM kick output level (normalized 0..1).
     kick_level: AtomicU32,
-    /// Simp Kick sequencer grid (16 steps).
+    /// SynDRM kick sequencer grid (16 steps).
     kick_sequencer_grid: Arc<[AtomicBool; 16]>,
-    /// Simp Kick sequencer current step.
+    /// SynDRM kick sequencer current step.
     kick_sequencer_step: AtomicI32,
-    /// Simp Kick sequencer phase in samples.
+    /// SynDRM kick sequencer phase in samples.
     kick_sequencer_phase: AtomicU32,
-    /// Simp Kick oscillator phase (0..1).
+    /// SynDRM kick oscillator phase (0..1).
     kick_phase: AtomicU32,
-    /// Simp Kick amplitude envelope (0..1).
+    /// SynDRM kick amplitude envelope (0..1).
     kick_env: AtomicU32,
-    /// Simp Kick pitch envelope (0..1).
+    /// SynDRM kick pitch envelope (0..1).
     kick_pitch_env: AtomicU32,
-    /// Simp Kick attack remaining samples.
+    /// SynDRM kick attack remaining samples.
+    /// SynDRM snare tone (normalized 0..1).
+    snare_tone: AtomicU32,
+    /// SynDRM snare decay (normalized 0..1).
+    snare_decay: AtomicU32,
+    /// SynDRM snare snappy/noise mix (normalized 0..1).
+    snare_snappy: AtomicU32,
+    /// SynDRM snare output level (normalized 0..1).
+    snare_level: AtomicU32,
+    /// SynDRM snare sequencer grid (16 steps).
+    snare_sequencer_grid: Arc<[AtomicBool; 16]>,
+    /// SynDRM snare sequencer current step.
+    snare_sequencer_step: AtomicI32,
+    /// SynDRM snare sequencer phase in samples.
+    snare_sequencer_phase: AtomicU32,
+    /// SynDRM snare oscillator phase (0..1).
+    snare_phase: AtomicU32,
+    /// SynDRM snare tone envelope (0..1).
+    snare_env: AtomicU32,
+    /// SynDRM snare noise envelope (0..1).
+    snare_noise_env: AtomicU32,
+    /// SynDRM snare noise RNG state.
+    snare_noise_rng: AtomicU32,
     kick_attack_remaining: AtomicU32,
     /// Void Seed base frequency.
     void_base_freq: AtomicU32,
@@ -525,7 +547,7 @@ struct Track {
     void_delay_buffer: Arc<Mutex<[Vec<f32>; 2]>>,
     /// Void Seed delay write position.
     void_delay_write_pos: AtomicU32,
-    /// Engine type loaded for this track (0 = none, 1 = tape, 2 = animate, 3 = simpkick, 4 = voidseed).
+    /// Engine type loaded for this track (0 = none, 1 = tape, 2 = animate, 3 = syndrm, 4 = voidseed).
     engine_type: AtomicU32,
     /// Logs one debug line per playback start to confirm audio thread output.
     debug_logged: AtomicBool,
@@ -726,6 +748,17 @@ impl Default for Track {
             kick_env: AtomicU32::new(0.0f32.to_bits()),
             kick_pitch_env: AtomicU32::new(0.0f32.to_bits()),
             kick_attack_remaining: AtomicU32::new(0),
+            snare_tone: AtomicU32::new(0.5f32.to_bits()),
+            snare_decay: AtomicU32::new(0.4f32.to_bits()),
+            snare_snappy: AtomicU32::new(0.6f32.to_bits()),
+            snare_level: AtomicU32::new(0.8f32.to_bits()),
+            snare_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
+            snare_sequencer_step: AtomicI32::new(-1),
+            snare_sequencer_phase: AtomicU32::new(0),
+            snare_phase: AtomicU32::new(0.0f32.to_bits()),
+            snare_env: AtomicU32::new(0.0f32.to_bits()),
+            snare_noise_env: AtomicU32::new(0.0f32.to_bits()),
+            snare_noise_rng: AtomicU32::new(0xdead_beef),
             void_base_freq: AtomicU32::new(40.0f32.to_bits()),
             void_base_freq_smooth: AtomicU32::new(40.0f32.to_bits()),
             void_enabled: AtomicBool::new(false),
@@ -1244,6 +1277,19 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.kick_env.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.kick_pitch_env.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.kick_attack_remaining.store(0, Ordering::Relaxed);
+    track.snare_tone.store(0.5f32.to_bits(), Ordering::Relaxed);
+    track.snare_decay.store(0.4f32.to_bits(), Ordering::Relaxed);
+    track.snare_snappy.store(0.6f32.to_bits(), Ordering::Relaxed);
+    track.snare_level.store(0.8f32.to_bits(), Ordering::Relaxed);
+    for i in 0..16 {
+        track.snare_sequencer_grid[i].store(false, Ordering::Relaxed);
+    }
+    track.snare_sequencer_step.store(-1, Ordering::Relaxed);
+    track.snare_sequencer_phase.store(0, Ordering::Relaxed);
+    track.snare_phase.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.snare_env.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.snare_noise_env.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.snare_noise_rng.store(0xdead_beef, Ordering::Relaxed);
 
     track.void_base_freq.store(40.0f32.to_bits(), Ordering::Relaxed);
     track.void_chaos_depth.store(0.5f32.to_bits(), Ordering::Relaxed);
@@ -1812,7 +1858,7 @@ impl TLBX1 {
         }
     }
 
-    fn process_simpkick(
+    fn process_syndrm(
         track: &Track,
         track_output: &mut [Vec<f32>],
         num_buffer_samples: usize,
@@ -1826,6 +1872,7 @@ impl TLBX1 {
         let mut sequencer_phase = master_phase;
         let mut current_step = master_step;
         track.kick_sequencer_step.store(current_step, Ordering::Relaxed);
+        track.snare_sequencer_step.store(current_step, Ordering::Relaxed);
 
         let kick_pitch = f32::from_bits(track.kick_pitch.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let kick_decay = f32::from_bits(track.kick_decay.load(Ordering::Relaxed)).clamp(0.0, 1.0);
@@ -1837,11 +1884,27 @@ impl TLBX1 {
         } else {
             f32::from_bits(track.kick_level.load(Ordering::Relaxed)).clamp(0.0, 1.0)
         };
+        let snare_tone = f32::from_bits(track.snare_tone.load(Ordering::Relaxed))
+            .clamp(0.0, 1.0);
+        let snare_decay = f32::from_bits(track.snare_decay.load(Ordering::Relaxed))
+            .clamp(0.0, 1.0);
+        let snare_snappy = f32::from_bits(track.snare_snappy.load(Ordering::Relaxed))
+            .clamp(0.0, 1.0);
+        let snare_level = if track_muted {
+            0.0
+        } else {
+            f32::from_bits(track.snare_level.load(Ordering::Relaxed)).clamp(0.0, 1.0)
+        };
+
         let mut env = f32::from_bits(track.kick_env.load(Ordering::Relaxed));
         let mut pitch_env = f32::from_bits(track.kick_pitch_env.load(Ordering::Relaxed));
         let mut phase = f32::from_bits(track.kick_phase.load(Ordering::Relaxed));
-        let mut attack_remaining =
-            track.kick_attack_remaining.load(Ordering::Relaxed);
+        let mut attack_remaining = track.kick_attack_remaining.load(Ordering::Relaxed);
+        let mut snare_env = f32::from_bits(track.snare_env.load(Ordering::Relaxed));
+        let mut snare_noise_env =
+            f32::from_bits(track.snare_noise_env.load(Ordering::Relaxed));
+        let mut snare_phase = f32::from_bits(track.snare_phase.load(Ordering::Relaxed));
+        let mut snare_noise_rng = track.snare_noise_rng.load(Ordering::Relaxed);
 
         let decay_time = 0.05 + kick_decay * 1.5;
         let pitch_decay_time = 0.01 + kick_decay * 0.25;
@@ -1857,6 +1920,11 @@ impl TLBX1 {
         let base_freq = 40.0 + kick_pitch * 120.0;
         let sweep = base_freq * 2.5;
         let drive = 1.0 + kick_drive * 8.0;
+        let snare_decay_time = 0.03 + snare_decay * 0.4;
+        let snare_noise_decay_time = 0.02 + snare_decay * 0.2;
+        let snare_env_coeff = (-1.0 / (snare_decay_time * sr)).exp();
+        let snare_noise_coeff = (-1.0 / (snare_noise_decay_time * sr)).exp();
+        let snare_freq = 180.0 + snare_tone * 420.0;
 
         let output = track_output;
 
@@ -1866,6 +1934,7 @@ impl TLBX1 {
                 sequencer_phase -= samples_per_step;
                 current_step = (current_step + 1).rem_euclid(16);
                 track.kick_sequencer_step.store(current_step, Ordering::Relaxed);
+                track.snare_sequencer_step.store(current_step, Ordering::Relaxed);
                 let step_idx = current_step as usize;
                 if track.kick_sequencer_grid[step_idx].load(Ordering::Relaxed) {
                     pitch_env = 1.0;
@@ -1874,6 +1943,11 @@ impl TLBX1 {
                     } else {
                         env = 1.0;
                     }
+                }
+                if track.snare_sequencer_grid[step_idx].load(Ordering::Relaxed) {
+                    snare_env = 1.0;
+                    snare_noise_env = 1.0;
+                    snare_phase = 0.0;
                 }
             }
 
@@ -1884,6 +1958,8 @@ impl TLBX1 {
                 env *= env_coeff;
             }
             pitch_env *= pitch_coeff;
+            snare_env *= snare_env_coeff;
+            snare_noise_env *= snare_noise_coeff;
 
             let freq = base_freq + pitch_env * sweep;
             phase += freq / sr;
@@ -1897,6 +1973,23 @@ impl TLBX1 {
             }
             sample *= kick_level;
 
+            if snare_env > 0.0 || snare_noise_env > 0.0 {
+                snare_phase += snare_freq / sr;
+                if snare_phase >= 1.0 {
+                    snare_phase -= 1.0;
+                }
+                snare_noise_rng = snare_noise_rng
+                    .wrapping_mul(1_664_525)
+                    .wrapping_add(1_013_904_223);
+                let noise = ((snare_noise_rng >> 9) as f32 * (1.0 / 8_388_608.0)) * 2.0 - 1.0;
+                let tone_sample = (snare_phase * 2.0 * PI).sin() * snare_env;
+                let noise_sample = noise * snare_noise_env;
+                let snare_sample =
+                    (tone_sample * (1.0 - snare_snappy) + noise_sample * snare_snappy)
+                        * snare_level;
+                sample += snare_sample;
+            }
+
             for channel in output.iter_mut() {
                 channel[sample_idx] += sample;
             }
@@ -1904,6 +1997,9 @@ impl TLBX1 {
 
         track
             .kick_sequencer_phase
+            .store(sequencer_phase.round().max(0.0) as u32, Ordering::Relaxed);
+        track
+            .snare_sequencer_phase
             .store(sequencer_phase.round().max(0.0) as u32, Ordering::Relaxed);
         track.kick_phase.store(phase.to_bits(), Ordering::Relaxed);
         track.kick_env.store(env.to_bits(), Ordering::Relaxed);
@@ -1913,6 +2009,14 @@ impl TLBX1 {
         track
             .kick_attack_remaining
             .store(attack_remaining, Ordering::Relaxed);
+        track.snare_phase.store(snare_phase.to_bits(), Ordering::Relaxed);
+        track.snare_env.store(snare_env.to_bits(), Ordering::Relaxed);
+        track
+            .snare_noise_env
+            .store(snare_noise_env.to_bits(), Ordering::Relaxed);
+        track
+            .snare_noise_rng
+            .store(snare_noise_rng, Ordering::Relaxed);
     }
 
     fn process_voidseed(
@@ -3029,7 +3133,7 @@ impl Plugin for TLBX1 {
                         samples_per_step,
                     );
                 } else if engine_type == 3 {
-                    Self::process_simpkick(
+                    Self::process_syndrm(
                         track,
                         &mut self.track_buffer,
                         buffer.samples(),
@@ -4367,6 +4471,10 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("kick_attack".to_string(), f(&track.kick_attack));
     params.insert("kick_drive".to_string(), f(&track.kick_drive));
     params.insert("kick_level".to_string(), f(&track.kick_level));
+    params.insert("snare_tone".to_string(), f(&track.snare_tone));
+    params.insert("snare_decay".to_string(), f(&track.snare_decay));
+    params.insert("snare_snappy".to_string(), f(&track.snare_snappy));
+    params.insert("snare_level".to_string(), f(&track.snare_level));
 
     params.insert("void_base_freq".to_string(), f(&track.void_base_freq));
     params.insert("void_chaos_depth".to_string(), f(&track.void_chaos_depth));
@@ -4487,6 +4595,10 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.kick_attack, "kick_attack");
     sf(&track.kick_drive, "kick_drive");
     sf(&track.kick_level, "kick_level");
+    sf(&track.snare_tone, "snare_tone");
+    sf(&track.snare_decay, "snare_decay");
+    sf(&track.snare_snappy, "snare_snappy");
+    sf(&track.snare_level, "snare_level");
 
     sf(&track.void_base_freq, "void_base_freq");
     sf(&track.void_chaos_depth, "void_chaos_depth");
@@ -4532,6 +4644,10 @@ fn save_project(
             let grid = track.kick_sequencer_grid.clone();
             for j in 0..16 {
                 track_data.sequence.push(grid[j].load(Ordering::Relaxed));
+            }
+            let snare_grid = track.snare_sequencer_grid.clone();
+            for j in 0..16 {
+                track_data.sequence.push(snare_grid[j].load(Ordering::Relaxed));
             }
         }
 
@@ -4607,6 +4723,15 @@ fn load_project(
             let grid = track.animate_sequencer_grid.clone();
             for j in 0..160 {
                 grid[j].store(track_data.sequence[j], Ordering::Relaxed);
+            }
+        } else if track_data.engine_type == 3 && track_data.sequence.len() == 32 {
+            let grid = track.kick_sequencer_grid.clone();
+            for j in 0..16 {
+                grid[j].store(track_data.sequence[j], Ordering::Relaxed);
+            }
+            let snare_grid = track.snare_sequencer_grid.clone();
+            for j in 0..16 {
+                snare_grid[j].store(track_data.sequence[j + 16], Ordering::Relaxed);
             }
         } else if track_data.engine_type == 3 && track_data.sequence.len() == 16 {
             let grid = track.kick_sequencer_grid.clone();
@@ -4704,6 +4829,10 @@ fn export_project_as_zip(
             let grid = track.kick_sequencer_grid.clone();
             for j in 0..16 {
                 track_data.sequence.push(grid[j].load(Ordering::Relaxed));
+            }
+            let snare_grid = track.snare_sequencer_grid.clone();
+            for j in 0..16 {
+                track_data.sequence.push(snare_grid[j].load(Ordering::Relaxed));
             }
         }
 
@@ -5480,6 +5609,21 @@ impl SlintWindow {
             kick_sequencer_grid
                 .push(self.tracks[track_idx].kick_sequencer_grid[i].load(Ordering::Relaxed));
         }
+        let snare_tone =
+            f32::from_bits(self.tracks[track_idx].snare_tone.load(Ordering::Relaxed));
+        let snare_decay =
+            f32::from_bits(self.tracks[track_idx].snare_decay.load(Ordering::Relaxed));
+        let snare_snappy =
+            f32::from_bits(self.tracks[track_idx].snare_snappy.load(Ordering::Relaxed));
+        let snare_level =
+            f32::from_bits(self.tracks[track_idx].snare_level.load(Ordering::Relaxed));
+        let snare_sequencer_current_step =
+            self.tracks[track_idx].snare_sequencer_step.load(Ordering::Relaxed);
+        let mut snare_sequencer_grid = Vec::with_capacity(16);
+        for i in 0..16 {
+            snare_sequencer_grid
+                .push(self.tracks[track_idx].snare_sequencer_grid[i].load(Ordering::Relaxed));
+        }
 
         let void_base_freq = f32::from_bits(self.tracks[track_idx].void_base_freq.load(Ordering::Relaxed));
         let void_chaos_depth = f32::from_bits(self.tracks[track_idx].void_chaos_depth.load(Ordering::Relaxed));
@@ -5734,6 +5878,16 @@ impl SlintWindow {
         self.ui
             .set_kick_sequencer_grid(ModelRc::from(std::rc::Rc::new(VecModel::from(
                 kick_sequencer_grid,
+            ))));
+        self.ui.set_snare_tone(snare_tone);
+        self.ui.set_snare_decay(snare_decay);
+        self.ui.set_snare_snappy(snare_snappy);
+        self.ui.set_snare_level(snare_level);
+        self.ui
+            .set_snare_sequencer_current_step(snare_sequencer_current_step);
+        self.ui
+            .set_snare_sequencer_grid(ModelRc::from(std::rc::Rc::new(VecModel::from(
+                snare_sequencer_grid,
             ))));
 
         self.ui.set_void_base_freq(void_base_freq);
@@ -6151,7 +6305,7 @@ fn initialize_ui(
     ui.set_engine_types(ModelRc::new(VecModel::from(vec![
         SharedString::from("Tape-Deck"),
         SharedString::from("Animate"),
-        SharedString::from("Simp Kick"),
+        SharedString::from("SynDRM"),
         SharedString::from("Void Seed"),
     ])));
     ui.set_engine_index(0);
@@ -8285,6 +8439,63 @@ fn initialize_ui(
             if index < 16 {
                 let current = tracks_kick[track_idx].kick_sequencer_grid[index].load(Ordering::Relaxed);
                 tracks_kick[track_idx].kick_sequencer_grid[index].store(!current, Ordering::Relaxed);
+            }
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_tone_changed(move |value| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_snare[track_idx]
+                .snare_tone
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_decay_changed(move |value| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_snare[track_idx]
+                .snare_decay
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_snappy_changed(move |value| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_snare[track_idx]
+                .snare_snappy
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_level_changed(move |value| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_snare[track_idx]
+                .snare_level
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_sequencer_grid_toggled(move |step| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let index = step as usize;
+            if index < 16 {
+                let current = tracks_snare[track_idx].snare_sequencer_grid[index].load(Ordering::Relaxed);
+                tracks_snare[track_idx].snare_sequencer_grid[index].store(!current, Ordering::Relaxed);
             }
         }
     });

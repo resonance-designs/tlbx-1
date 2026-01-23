@@ -13,8 +13,12 @@
 
 ### Master + I/O
 
-- [ ] Master level, DJ filters, compression
+- [x] Master level, DJ filters, compression
 - [ ] Record main output
+- [ ] Offline audio export
+  - [ ] Click export button
+  - [ ] File dialog to pick location and file name
+  - [ ] Choose length (default: 1 minute)
 - [ ] MIDI CC mapping and sync
 
 ### Engine 1: Tape-Deck
@@ -64,14 +68,106 @@
 
 #### Phase 1: Vector Device (Vector)
 
-- [ ] Replicate the vector synth oscillators (switchable between wavetable and sample type) and X-Y vector controls from the AniMMI synth in /ref/animmi
-- [ ] 4 Oscillator slots with two modes the select from (vector/sample)
+- [ ] Replicate the vector synth from the AniMMI synth in /ref/animmi
+  - [x] 4 Oscillator slots with two types to select from (wavetable/sample)
+    - [ ] Parameters that are applicable to both oscillator types
+      - [x] Volume/Gain
+      - [x] Pan
+      - [x] Coarse Pitch
+      - [x] Fine Pitch
+      - [ ] Filter Type
+        - [ ] Moog
+        - [x] High-Pass
+        - [x] Band-Pass
+      - [x] Filter Cutoff
+      - [x] Filter Resonance
+      - [ ] Filter Amount
+      - [ ] ADSR Envelope
+    - [ ] Wavetable Slot
+      - [x] Wavetable selector
+        - [x] Large array of .wav wavetables files
+      - [x] Wavetable LFO
+        - [x] Amount
+        - [x] Waveform
+          - [x] Sine
+          - [x] Triangle
+          - [x] Saw
+          - [x] Square
+          - [x] S&H
+        - [ ] Rate
+          - [ ] Min: 0.01hz
+          - [ ] Max: 20hz
+        - [x] Sync
+          - [x] Timing division based on BPM
+            - [x] 1/16
+            - [x] 1/8
+            - [x] 1/4
+            - [x] 1/3
+            - [x] 1/2
+            - [x] 1
+            - [x] 2
+            - [x] 4
+    - [x] Sample Oscillator
+      - [x] Sample Start Position
+      - [x] Loop Start Position
+      - [x] Loop End Position
+  - [ ] Vector modulation between the 4 slots
+    - [ ] X-Y Pad Interface
+    - [ ] X-Y LFO's
+      - [x] Amount
+      - [x] Waveform
+        - [x] Sine
+        - [x] Triangle
+        - [x] Saw
+        - [x] Square
+        - [x] S&H
+      - [x] Rate
+      - [x] Sync
+        - [ ] Rate
+          - [ ] Min: 0.01hz
+          - [ ] Max: 20hz
+        - [x] Timing division based on BPM
+          - [x] 1/16
+          - [x] 1/8
+          - [x] 1/4
+          - [x] 1/3
+          - [x] 1/2
+          - [x] 1
+          - [x] 2
+          - [x] 4
+  - [ ] Sequencer
+    - [ ] 16 steps X 8 pages (128 Steps total)
+    - [ ] 10 lanes
+    - [ ] Page navigation buttons to navigate to different pages of the sequencer
+    - [ ] Lane navigation buttons to navigate through the 10 available lanes of the sequencer
+    - [ ] Step navigation buttons to navigate up and down the steps of sequencer
+    - [ ] Loop is determined by whether there are active steps in pages. If there are only active steps in page 1, the sequencer will loop after the 16th step of the sequencer (page 1). If page 2 has active steps it will loop after the 32nd step of the sequencer. If page 1 has steps, page 2 does not, and page 3 does, it will loop after the 48th step, and so on.
+    - [ ] Scale mode (drop-down selector with button to assign the scale):
+    - [ ] Each lane is assigned a note based on the scale
+    - [ ] Can assign note changes per step to override the note set by the sequencers scale
+    - [ ] Can assign parameter changes of the engine per step
 
-### Engine 3: SimpKick
+### Engine 3: SynDRM
 
-- [x] Kick synth engine with pitch, decay, drive, and level controls
-- [x] Add short attack control for click smoothing
-- [x] 16-step sequencer tied to master transport
+- [ ] 10 track drum synth engine
+  - [x] Kick synth
+    - [x] Parameters
+      - [x] Pitch
+      - [x] Decay
+      - [x] Drive
+      - [x] Volume
+  - [ ] Sequencer
+    - [ ] 16 steps X 8 pages (128 Steps total)
+    - [ ] 10 lanes (1 lane for each drum channel)
+    - [ ] Page navigation buttons to navigate to different pages of the sequencer
+    - [ ] Lane navigation buttons to navigate through the 10 available lanes of the sequencer
+    - [ ] Step navigation buttons to navigate up and down the steps of sequencer
+    - [ ] Loop is determined by whether there are active steps in pages. If there are only active steps in page 1, the sequencer will loop after the 16th step of the sequencer (page 1). If page 2 has active steps it will loop after the 32nd step of the sequencer. If page 1 has steps, page 2 does not, and page 3 does, it will loop after the 48th step, and so on.
+    - [ ] Can assign parameter changes of the engine per step
+
+### Engine 4: Void Seed
+
+- [ ] Replicate the generative drone synth referenced in /ref/animmi
 
 ## Ongoing: Tooling + Docs
 

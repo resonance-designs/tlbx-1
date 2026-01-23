@@ -78,8 +78,11 @@ Packaging expects these environment variables:
 - `src/ui/tlbx1.slint` contains the main window UI definition
 - `src/ui/engines/tape_engine.slint` contains the Tape engine UI component
 - `src/ui/engines/animate_engine.slint` contains the Animate engine UI component
-- `src/ui/engines/simpkick_engine.slint` contains the SimpKick engine UI component
+- `src/ui/engines/syndrm_engine.slint` contains the SynDRM engine UI component
 - `src/ui/engines/void_seed_engine.slint` contains the Void Seed engine UI component
+- `src/ui/devices/granulator_device.slint` contains the Mosaic/Granulator device UI component
+- `src/ui/devices/silk_device.slint` contains the Ring/Silk device UI component
+- `src/ui/globals.slint` contains shared UI globals (e.g., keybed bus)
 - `src/ui/components/viz.slint` contains visualizer and meter components
 - `src/ui/components/` contains shared controls (RDS Slint UI Component Kit)
 - `docs/` contains Markdown developer docs

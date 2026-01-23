@@ -6,6 +6,7 @@ import {
     RDSCircleToggle,
     RDSKeybed
 } from "../components/index.slint";
+import { RDSKeybedBus } from "../globals.slint";
 
 export component AnimateEngine {
     in property <[string]> animate-slot-types;
@@ -176,6 +177,8 @@ export component AnimateEngine {
     callback animate-lfo-y-division-changed(index: int);
     callback animate-lfo-y-rate-changed(value: float);
     callback animate-lfo-y-amount-changed(value: float);
+
+    private property <int> keybed-last-note: 60;
 
     callback animate-sequencer-grid-toggled(row: int, step: int);
 
@@ -1123,10 +1126,20 @@ export component AnimateEngine {
             VerticalLayout {
                 spacing: 4px;
                 Text { text: "Keybed"; color: #e4e4ea; font-size: 14px; }
+                Text {
+                    text: "Last note: " + keybed-last-note;
+                    color: #a9a9b6;
+                    font-size: 11px;
+                }
                 RDSKeybed {
                     octaves: 2;
                     scale: "chromatic";
                     size: 16px;
+                    note-triggered(note) => {
+                        keybed-last-note = note;
+                        RDSKeybedBus.last-note = note;
+                        RDSKeybedBus.note-triggered(note);
+                    }
                 }
             }
         }

@@ -9892,6 +9892,20 @@ fn initialize_ui(
 
     let tracks_animate = Arc::clone(tracks);
     let params_animate = Arc::clone(params);
+    ui.global::<RDSKeybedBus>().on_note_triggered(move |note| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_keybed_note
+                .store(note, Ordering::Relaxed);
+            tracks_animate[track_idx]
+                .animate_keybed_trigger
+                .store(true, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
     ui.on_animate_sequencer_grid_toggled(move |row, step| {
         let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
         if track_idx < NUM_TRACKS {

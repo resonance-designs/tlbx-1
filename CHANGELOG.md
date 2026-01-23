@@ -2,6 +2,14 @@
 
 ## [0.1.14] - 2026-01-23
 
+- Renamed SimpKick to SynDRM and add snare synth lane + DSP params (drive, filters, attack)
+- Migrated SynDRM DSP to FunDSP with per‑track chains and new filter types
+- Overhauled SynDRM sequencer UI (pages/lanes/step editor, randomize/clear tooling)
+- Extracted Mosaic (Granulator) and Ring (Silk) devices into dedicated components
+- Added reusable UI components: XY pad, numeric keypad modal, keybed
+- Integrated keybed in Animate UI and wired via global bus to avoid TLBX1 callback crashes
+- Updated all relevant documentation.
+
 ## [0.1.13] - 2026-01-23
 
 - Added Void Seed engine: a 12-oscillator generative drone swarm with chaotic LFO modulation, integrated feedback/diffusion delay, and "Chaos/Entropy" XY pad.

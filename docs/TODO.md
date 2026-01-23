@@ -31,14 +31,14 @@
 - [x] Add UI for tape page 1/2 parameters and action buttons
 - [x] Extract Tape UI into its own Slint component
 
-#### Phase 2: Granular Device (Mosaic)
+#### Phase 2: Granular Device (Mosaic / Granulator)
 
 - [x] Implement granular buffer and grain spawning (basic)
 - [x] Map pitch/rate/size/contour/warp/spray/pattern/wet to DSP
 - [x] Map random rate/size, detune, and SOS to DSP
 - [x] Add smoothing for Mosaic parameters
 
-#### Phase 3: Filter Device (Ring)
+#### Phase 3: Filter Device (Ring / Silk)
 
 - [ ] Implement resonator/filter bank core controls
 - [ ] Add animation (waves/noise/tilt/detune) and pre/post mode
@@ -154,6 +154,14 @@
     - [x] Parameters
       - [x] Pitch
       - [x] Decay
+      - [x] Attack
+      - [x] Drive
+      - [x] Volume
+  - [x] Snare synth
+    - [x] Parameters
+      - [x] Tone
+      - [x] Decay
+      - [x] Attack
       - [x] Drive
       - [x] Volume
   - [ ] Sequencer

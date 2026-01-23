@@ -11,12 +11,12 @@ The UI is built with Slint in combination with the [Resonance Designs Slint UI C
 - Global transport (play/stop all tracks)
 - Per-track level, mute, and loop controls (start/length/x-fade)
 - Engine loader per track
-  - Engine 1: Tape-Deck (based on Torso S-4)
-  - Engine 2: Animate (based on Korg Wavestation)
-  - Engine 3: SimpKick (sequenced kick synth)
-  - Engine 4: Void Seed (generative drone engine)
+- Engine 1: Tape-Deck (based on Torso S-4)
+- Engine 2: Animate (based on Korg Wavestation)
+- Engine 3: SynDRM (sequenced drum synth: kick + snare)
+- Engine 4: Void Seed (generative drone engine)
 - RDS Slint UI Component Kit for shared UI controls and theming
-- Post-tape Mosaic granular buffer with bypass toggle
+- Post-tape Mosaic granular buffer with bypass toggle (Granulator device)
 - Project save/load (JSON)
 - Project/library browser for samples and saved projects
 - Standalone audio device settings (device, sample rate, buffer size)
@@ -110,11 +110,13 @@ Installers include the built documentation site under `documentation/` in the in
 - Track Level and Mute affect only the active track
 - Loop Start/Length/XFade apply to the active track
 - Mosaic enable toggles the post-tape granular buffer per track
+- Ring enable toggles the post-tape filter device per track (Silk device)
 - Save/Load Project stores track paths and loop/mix state
 - Browser opens the project/library panel for quick loading and folder management
 - Settings panel is a modal for standalone audio device configuration
 - The engine controls are hidden until an engine is loaded for the active track
 - Tape parameters are organized in a 4x3 grid for efficient control
+- Animate includes a chromatic keybed for note triggering
 - Keyboard shortcuts (standalone): Space toggles Play/Stop, Escape closes modals
 - Visualizer modes: oscilloscope, spectrum, vectorscope
 

@@ -8,6 +8,7 @@ import {
 
 export component SynDRMEngine {
     in property <[string]> filter-types;
+    in-out property <bool> track-muted: false;
     in-out property <float> kick-pitch: 0.5;
     in-out property <float> kick-decay: 0.5;
     in-out property <float> kick-attack: 0.0;
@@ -124,12 +125,24 @@ export component SynDRMEngine {
     callback syndrm-clear-both-lane-all();
     callback syndrm-clear-both-all-page();
     callback syndrm-clear-both-all-all();
+    callback toggle-track-mute();
 
     VerticalLayout {
         spacing: 10px;
         width: parent.width;
 
-        Text { text: "SynDRM"; color: #f0f0f2; font-size: 15px; }
+        HorizontalLayout {
+            spacing: 10px;
+            Text { text: "SynDRM"; color: #f0f0f2; font-size: 15px; }
+            HorizontalLayout {
+                spacing: 6px;
+                Text { text: "Mute"; color: #b9b9bf; font-size: 11px; }
+                RDSCircleToggle {
+                    active: root.track-muted;
+                    clicked => root.toggle-track-mute();
+                }
+            }
+        }
 
         VerticalLayout {
             spacing: 6px;

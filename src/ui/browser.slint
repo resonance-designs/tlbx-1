@@ -148,11 +148,12 @@ export component Browser inherits Rectangle {
             height: 120px;
             background: Theme.active.background_raised;
             border-radius: 6px;
-            padding: 12px;
-            
-            HorizontalLayout {
-                spacing: 25px;
+            VerticalLayout {
                 padding: 12px;
+                
+                HorizontalLayout {
+                    spacing: 25px;
+                    padding: 12px;
                 
                 VerticalLayout {
                     spacing: 8px;
@@ -190,22 +191,23 @@ export component Browser inherits Rectangle {
                     }
                 }
                 
-                VerticalLayout {
-                    alignment: center;
-                    spacing: 12px;
-                    HorizontalLayout {
+                    VerticalLayout {
+                        alignment: center;
                         spacing: 12px;
-                        Button {
-                            text: "SAVE PROJECT";
-                            height: 40px;
-                            width: 140px;
-                            clicked => { root.save-project(project-title, project-description); }
-                        }
-                        Button {
-                            text: "EXPORT ZIP";
-                            height: 40px;
-                            width: 140px;
-                            clicked => { root.export-project(project-title, project-description); }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            Button {
+                                text: "SAVE PROJECT";
+                                height: 40px;
+                                width: 140px;
+                                clicked => { root.save-project(project-title, project-description); }
+                            }
+                            Button {
+                                text: "EXPORT ZIP";
+                                height: 40px;
+                                width: 140px;
+                                clicked => { root.export-project(project-title, project-description); }
+                            }
                         }
                     }
                 }

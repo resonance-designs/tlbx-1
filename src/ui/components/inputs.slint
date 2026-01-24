@@ -94,6 +94,12 @@ export component RDSNumericKeypad {
     callback input-changed(value: string);
     callback committed(value: float);
     callback cleared();
+    callback digit-pressed(value: int);
+    callback delete-pressed();
+    callback clear-pressed();
+    callback decimal-pressed();
+    callback negative-pressed();
+    callback ok-pressed();
 
     width: 200px;
     height: 280px;
@@ -110,155 +116,125 @@ export component RDSNumericKeypad {
                 (root.input-int + (root.input-decimal-active ? root.input-decimal * 0.1 : 0.0))
             : root.current-value;
 
+    digit-pressed(value) => {
+        if (root.input-decimal-active) {
+            root.input-decimal = value;
+        } else {
+            root.input-int = root.input-int * 10 + value;
+        }
+        root.input-has-value = true;
+        root.input-text = root.input-display;
+        root.input-changed(root.input-text);
+    }
+
+    delete-pressed() => {
+        if (root.input-decimal-active) {
+            root.input-decimal-active = false;
+            root.input-decimal = 0;
+        } else {
+            root.input-int = Math.floor(root.input-int / 10);
+            if (root.input-int <= 0) {
+                root.input-int = 0;
+                root.input-has-value = false;
+                root.input-negative = false;
+            }
+        }
+        root.input-text = root.input-display;
+        root.input-changed(root.input-text);
+    }
+
+    clear-pressed() => {
+        root.input-text = "-";
+        root.input-int = 0;
+        root.input-decimal = 0;
+        root.input-has-value = false;
+        root.input-negative = false;
+        root.input-decimal-active = false;
+        root.cleared();
+        root.input-changed(root.input-text);
+    }
+
+    decimal-pressed() => {
+        if (!root.num-only) {
+            root.input-decimal-active = true;
+            if (!root.input-has-value) {
+                root.input-has-value = true;
+                root.input-int = 0;
+            }
+            root.input-text = root.input-display;
+            root.input-changed(root.input-text);
+        }
+    }
+
+    negative-pressed() => {
+        if (!root.num-only && root.allow-negative) {
+            root.input-negative = !root.input-negative;
+            root.input-text = root.input-display;
+            root.input-changed(root.input-text);
+        }
+    }
+
+    ok-pressed() => { root.committed(root.parsed-input); }
+
     FocusScope {
         width: parent.width;
         height: parent.height;
 
         key-pressed(event) => {
             if (event.text == "0") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 0;
-                } else {
-                    root.input-int = root.input-int * 10 + 0;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(0);
                 return accept;
             }
             if (event.text == "1") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 1;
-                } else {
-                    root.input-int = root.input-int * 10 + 1;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(1);
                 return accept;
             }
             if (event.text == "2") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 2;
-                } else {
-                    root.input-int = root.input-int * 10 + 2;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(2);
                 return accept;
             }
             if (event.text == "3") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 3;
-                } else {
-                    root.input-int = root.input-int * 10 + 3;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(3);
                 return accept;
             }
             if (event.text == "4") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 4;
-                } else {
-                    root.input-int = root.input-int * 10 + 4;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(4);
                 return accept;
             }
             if (event.text == "5") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 5;
-                } else {
-                    root.input-int = root.input-int * 10 + 5;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(5);
                 return accept;
             }
             if (event.text == "6") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 6;
-                } else {
-                    root.input-int = root.input-int * 10 + 6;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(6);
                 return accept;
             }
             if (event.text == "7") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 7;
-                } else {
-                    root.input-int = root.input-int * 10 + 7;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(7);
                 return accept;
             }
             if (event.text == "8") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 8;
-                } else {
-                    root.input-int = root.input-int * 10 + 8;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(8);
                 return accept;
             }
             if (event.text == "9") {
-                if (root.input-decimal-active) {
-                    root.input-decimal = 9;
-                } else {
-                    root.input-int = root.input-int * 10 + 9;
-                }
-                root.input-has-value = true;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.digit-pressed(9);
                 return accept;
             }
             if (!root.num-only && root.allow-negative && event.text == "-") {
-                root.input-negative = !root.input-negative;
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.negative-pressed();
                 return accept;
             }
             if (!root.num-only && event.text == ".") {
-                root.input-decimal-active = true;
-                if (!root.input-has-value) {
-                    root.input-has-value = true;
-                    root.input-int = 0;
-                }
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.decimal-pressed();
                 return accept;
             }
             if (event.text == "\u{0008}" || event.text == "\u{007f}") {
-                if (root.input-decimal-active) {
-                    root.input-decimal-active = false;
-                    root.input-decimal = 0;
-                } else {
-                    root.input-int = Math.floor(root.input-int / 10);
-                    if (root.input-int <= 0) {
-                        root.input-int = 0;
-                        root.input-has-value = false;
-                        root.input-negative = false;
-                    }
-                }
-                root.input-text = root.input-display;
-                root.input-changed(root.input-text);
+                root.delete-pressed();
                 return accept;
             }
             if (event.text == "\u{000d}" || event.text == "\n") {
-                root.committed(root.parsed-input);
+                root.ok-pressed();
                 return accept;
             }
             reject
@@ -304,26 +280,17 @@ export component RDSNumericKeypad {
                 spacing: 6px;
                 KeypadButton {
                     label: "7"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 7; } else { root.input-int = root.input-int * 10 + 7; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(7);
                     }
                 }
                 KeypadButton {
                     label: "8"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 8; } else { root.input-int = root.input-int * 10 + 8; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(8);
                     }
                 }
                 KeypadButton {
                     label: "9"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 9; } else { root.input-int = root.input-int * 10 + 9; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(9);
                     }
                 }
             }
@@ -331,26 +298,17 @@ export component RDSNumericKeypad {
                 spacing: 6px;
                 KeypadButton {
                     label: "4"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 4; } else { root.input-int = root.input-int * 10 + 4; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(4);
                     }
                 }
                 KeypadButton {
                     label: "5"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 5; } else { root.input-int = root.input-int * 10 + 5; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(5);
                     }
                 }
                 KeypadButton {
                     label: "6"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 6; } else { root.input-int = root.input-int * 10 + 6; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(6);
                     }
                 }
             }
@@ -358,26 +316,17 @@ export component RDSNumericKeypad {
                 spacing: 6px;
                 KeypadButton {
                     label: "1"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 1; } else { root.input-int = root.input-int * 10 + 1; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(1);
                     }
                 }
                 KeypadButton {
                     label: "2"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 2; } else { root.input-int = root.input-int * 10 + 2; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(2);
                     }
                 }
                 KeypadButton {
                     label: "3"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 3; } else { root.input-int = root.input-int * 10 + 3; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(3);
                     }
                 }
             }
@@ -386,10 +335,7 @@ export component RDSNumericKeypad {
                 Rectangle { width: 44px; height: 36px; opacity: 0; }
                 KeypadButton {
                     label: "0"; clicked => {
-                        if (root.input-decimal-active) { root.input-decimal = 0; } else { root.input-int = root.input-int * 10 + 0; }
-                        root.input-has-value = true;
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.digit-pressed(0);
                     }
                 }
                 Rectangle { width: 44px; height: 36px; opacity: 0; }
@@ -400,59 +346,30 @@ export component RDSNumericKeypad {
                 KeypadButton {
                     label: "Del";
                     clicked => {
-                        if (root.input-decimal-active) {
-                            root.input-decimal-active = false;
-                            root.input-decimal = 0;
-                        } else {
-                            root.input-int = Math.floor(root.input-int / 10);
-                            if (root.input-int <= 0) {
-                                root.input-int = 0;
-                                root.input-has-value = false;
-                                root.input-negative = false;
-                            }
-                        }
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.delete-pressed();
                     }
                 }
                 KeypadButton {
                     label: "Clr";
                     clicked => {
-                        root.input-text = "-";
-                        root.input-int = 0;
-                        root.input-decimal = 0;
-                        root.input-has-value = false;
-                        root.input-negative = false;
-                        root.input-decimal-active = false;
-                        root.cleared();
-                        root.input-changed(root.input-text);
+                        root.clear-pressed();
                     }
                 }
                 KeypadButton {
                     label: ".";
                     clicked => {
-                        root.input-decimal-active = true;
-                        if (!root.input-has-value) {
-                            root.input-has-value = true;
-                            root.input-int = 0;
-                        }
-                        root.input-text = root.input-display;
-                        root.input-changed(root.input-text);
+                        root.decimal-pressed();
                     }
                 }
                 KeypadButton {
                     label: "-";
                     clicked => {
-                        if (root.allow-negative) {
-                            root.input-negative = !root.input-negative;
-                            root.input-text = root.input-display;
-                            root.input-changed(root.input-text);
-                        }
+                        root.negative-pressed();
                     }
                 }
                 KeypadButton {
                     label: "OK";
-                    clicked => { root.committed(root.parsed-input); }
+                    clicked => { root.ok-pressed(); }
                 }
             }
         }

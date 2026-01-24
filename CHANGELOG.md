@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.15] - 2026-01-23
+
+- Cleaned build warnings by removing unused fields/helpers and tightening follow_host_tempo field usage across TLBX1/SlintEditor/SlintWindow, plus simplified loops.
+- Removed unused project serialization structs/helpers. Fixed browser panel padding by wrapping in a layout.
+- Adjusted the spectrum display to be less “wide” and show more movement.
+
 ## [0.1.14] - 2026-01-23
 
 - Renamed SimpKick to SynDRM and add snare synth lane + DSP params (drive, filters, attack)

@@ -4,10 +4,12 @@ import {
     RDSToggle,
     RDSSpectrumViz,
     RDSSlider,
-    RDSXYPad
+    RDSXYPad,
+    RDSCircleToggle
 } from "../components/index.slint";
 
 export component VoidSeedEngine {
+    in-out property <bool> track-muted: false;
     in-out property <float> void-base-freq: 40.0;
     in-out property <float> void-chaos-depth: 0.5;
     in-out property <float> void-entropy: 0.2;
@@ -27,9 +29,35 @@ export component VoidSeedEngine {
     callback void-mod-rate-changed(float);
     callback void-level-changed(float);
     callback toggle-void();
+    callback toggle-track-mute();
 
-    HorizontalLayout {
-        spacing: 20px;
+    VerticalLayout {
+        spacing: 12px;
+        width: parent.width;
+
+        HorizontalLayout {
+            spacing: 10px;
+            width: parent.width;
+
+            RDSHeaderLabel {
+                text: "Void Seed";
+                horizontal-alignment: left;
+                padding-horizontal: 12px;
+                padding-vertical: 6px;
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+                Text { text: "Mute"; color: #b9b9bf; font-size: 11px; }
+                RDSCircleToggle {
+                    active: root.track-muted;
+                    clicked => root.toggle-track-mute();
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 20px;
 
         // Left Side: Gain Slider + Chaos Pad
         VerticalLayout {
@@ -184,6 +212,7 @@ export component VoidSeedEngine {
                     spectrum: root.spectrum;
                 }
             }
+        }
         }
     }
 }

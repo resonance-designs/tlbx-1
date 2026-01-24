@@ -51,3 +51,6 @@ ui-testing = ["slint/backend-winit", "slint/std"]
 renderer-software = ["slint/renderer-software"]
 renderer-opengl = ["slint/renderer-femtovg", "slint/std", "slint/backend-winit"]
 renderer-vulkan = ["slint/renderer-skia-vulkan", "slint/std", "slint/backend-winit"]
+
+[profile.dev]
+opt-level = 1

@@ -1027,8 +1027,10 @@ impl SynDRMDspState {
 }
 
 struct AnimateLibrary {
-    wavetables: Vec<Vec<f32>>,
-    samples: Vec<Vec<Vec<f32>>>,
+    wavetable_paths: Vec<PathBuf>,
+    sample_paths: Vec<PathBuf>,
+    wavetables: Mutex<Vec<Option<Arc<Vec<f32>>>>>,
+    samples: Mutex<Vec<Option<Arc<Vec<Vec<f32>>>>>>,
 }
 
 #[derive(Params)]
@@ -1048,10 +1050,7 @@ pub struct TLBX1Params {
 
 impl AnimateLibrary {
     fn load() -> Self {
-        let mut wavetables = Vec::new();
-        let mut samples = Vec::new();
-
-        fn scan_dir(dir: &Path, wavetables: &mut Vec<Vec<f32>>, samples: &mut Vec<Vec<Vec<f32>>>, is_wavetable: bool) {
+        fn scan_dir(dir: &Path, paths: &mut Vec<PathBuf>) {
             if let Ok(entries) = std::fs::read_dir(dir) {
                 let mut sorted_entries: Vec<_> = entries.flatten().collect();
                 sorted_entries.sort_by_key(|e| e.file_name());
@@ -1059,27 +1058,94 @@ impl AnimateLibrary {
                 for entry in sorted_entries {
                     let path = entry.path();
                     if path.is_dir() {
-                        scan_dir(&path, wavetables, samples, is_wavetable);
+                        scan_dir(&path, paths);
                     } else if path.extension().map_or(false, |ext| ext == "wav" || ext == "mp3") {
-                        if let Ok((data, _)) = load_audio_file(&path) {
-                            if is_wavetable {
-                                // For wavetables, we only take the first channel
-                                if !data.is_empty() {
-                                    wavetables.push(data[0].clone());
-                                }
-                            } else {
-                                samples.push(data);
-                            }
-                        }
+                        paths.push(path);
                     }
                 }
             }
         }
 
-        scan_dir(Path::new("src/library/factory/wavetables"), &mut wavetables, &mut samples, true);
-        scan_dir(Path::new("src/library/factory/samples"), &mut wavetables, &mut samples, false);
+        let mut wavetable_paths = Vec::new();
+        let mut sample_paths = Vec::new();
 
-        Self { wavetables, samples }
+        scan_dir(Path::new("src/library/factory/wavetables"), &mut wavetable_paths);
+        scan_dir(Path::new("src/library/factory/samples"), &mut sample_paths);
+
+        let wavetables = vec![None; wavetable_paths.len()];
+        let samples = vec![None; sample_paths.len()];
+
+        Self {
+            wavetable_paths,
+            sample_paths,
+            wavetables: Mutex::new(wavetables),
+            samples: Mutex::new(samples),
+        }
+    }
+
+    fn ensure_wavetable_loaded(&self, idx: usize) -> Option<Arc<Vec<f32>>> {
+        if idx >= self.wavetable_paths.len() {
+            return None;
+        }
+        if let Some(mut cache) = self.wavetables.try_lock() {
+            if let Some(existing) = cache.get(idx).and_then(|entry| entry.clone()) {
+                return Some(existing);
+            }
+        }
+        let path = self.wavetable_paths.get(idx)?.clone();
+        let data = load_audio_file(&path).ok();
+        let wavetable = data.and_then(|(data, _)| data.get(0).cloned());
+        if let Some(wt) = wavetable {
+            let arc = Arc::new(wt);
+            if let Some(mut cache) = self.wavetables.try_lock() {
+                if let Some(entry) = cache.get_mut(idx) {
+                    *entry = Some(Arc::clone(&arc));
+                }
+            }
+            return Some(arc);
+        }
+        None
+    }
+
+    fn ensure_sample_loaded(&self, idx: usize) -> Option<Arc<Vec<Vec<f32>>>> {
+        if idx >= self.sample_paths.len() {
+            return None;
+        }
+        if let Some(mut cache) = self.samples.try_lock() {
+            if let Some(existing) = cache.get(idx).and_then(|entry| entry.clone()) {
+                return Some(existing);
+            }
+        }
+        let path = self.sample_paths.get(idx)?.clone();
+        let data = load_audio_file(&path).ok();
+        if let Some((data, _)) = data {
+            let arc = Arc::new(data);
+            if let Some(mut cache) = self.samples.try_lock() {
+                if let Some(entry) = cache.get_mut(idx) {
+                    *entry = Some(Arc::clone(&arc));
+                }
+            }
+            return Some(arc);
+        }
+        None
+    }
+
+    fn get_wavetable_cached(&self, idx: usize) -> Option<Arc<Vec<f32>>> {
+        if idx >= self.wavetable_paths.len() {
+            return None;
+        }
+        self.wavetables
+            .try_lock()
+            .and_then(|cache| cache.get(idx).and_then(|entry| entry.clone()))
+    }
+
+    fn get_sample_cached(&self, idx: usize) -> Option<Arc<Vec<Vec<f32>>>> {
+        if idx >= self.sample_paths.len() {
+            return None;
+        }
+        self.samples
+            .try_lock()
+            .and_then(|cache| cache.get(idx).and_then(|entry| entry.clone()))
     }
 }
 
@@ -1841,7 +1907,7 @@ impl TLBX1 {
                 if track.animate_slot_types[slot].load(Ordering::Relaxed) == 1 {
                     let smp_idx =
                         track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
-                    if let Some(smp) = animate_library.samples.get(smp_idx) {
+                    if let Some(smp) = animate_library.get_sample_cached(smp_idx) {
                         let len = smp.get(0).map(|ch| ch.len()).unwrap_or(0);
                         if len > 0 {
                             let start = (sample_start[slot]
@@ -1895,7 +1961,7 @@ impl TLBX1 {
                             for slot in 0..4 {
                                 if track.animate_slot_types[slot].load(Ordering::Relaxed) == 1 {
                                     let smp_idx = track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
-                                    if let Some(smp) = animate_library.samples.get(smp_idx) {
+                                    if let Some(smp) = animate_library.get_sample_cached(smp_idx) {
                                         let len = smp.get(0).map(|ch| ch.len()).unwrap_or(0);
                                         if len > 0 {
                                             let start = (sample_start[slot] * (len.saturating_sub(1) as f32))
@@ -2047,8 +2113,9 @@ impl TLBX1 {
 
                     let mut slot_sample = 0.0f32;
                     if slot_type == 0 { // Wavetable
-                        let wt_idx = track.animate_slot_wavetables[slot].load(Ordering::Relaxed) as usize;
-                        if let Some(wt) = animate_library.wavetables.get(wt_idx) {
+                        let wt_idx =
+                            track.animate_slot_wavetables[slot].load(Ordering::Relaxed) as usize;
+                        if let Some(wt) = animate_library.get_wavetable_cached(wt_idx) {
                             if !wt.is_empty() {
                                 let phase = f32::from_bits(track.animate_slot_phases[row][slot].load(Ordering::Relaxed));
                                 // Use first cycle (2048 samples)
@@ -2076,8 +2143,9 @@ impl TLBX1 {
                             }
                         }
                     } else { // Sample
-                        let smp_idx = track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
-                        if let Some(smp) = animate_library.samples.get(smp_idx) {
+                        let smp_idx =
+                            track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
+                        if let Some(smp) = animate_library.get_sample_cached(smp_idx) {
                             if !smp.is_empty() && !smp[0].is_empty() {
                                 let len = smp[0].len();
                                 if len > 0 {
@@ -2206,7 +2274,7 @@ impl TLBX1 {
                     if slot_type == 0 {
                         let wt_idx =
                             track.animate_slot_wavetables[slot].load(Ordering::Relaxed) as usize;
-                        if let Some(wt) = animate_library.wavetables.get(wt_idx) {
+                        if let Some(wt) = animate_library.get_wavetable_cached(wt_idx) {
                             if !wt.is_empty() {
                                 let phase = keybed_phases[slot];
                                 let cycle_len = wt.len().min(2048);
@@ -2236,7 +2304,7 @@ impl TLBX1 {
                     } else {
                         let smp_idx =
                             track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
-                        if let Some(smp) = animate_library.samples.get(smp_idx) {
+                        if let Some(smp) = animate_library.get_sample_cached(smp_idx) {
                             if !smp.is_empty() && !smp[0].is_empty() {
                                 let len = smp[0].len();
                                 if len > 0 {
@@ -3940,6 +4008,7 @@ impl Plugin for TLBX1 {
             metronome_count_in_record: self.metronome_count_in_record.clone(),
             async_executor,
             pending_project_params: self.pending_project_params.clone(),
+            animate_library: self.animate_library.clone(),
         }))
     }
 
@@ -6353,6 +6422,7 @@ struct SlintEditor {
     metronome_count_in_record: Arc<AtomicBool>,
     async_executor: AsyncExecutor<TLBX1>,
     pending_project_params: Arc<Mutex<Option<PendingProjectParams>>>,
+    animate_library: Arc<AnimateLibrary>,
 }
 
 impl Editor for SlintEditor {
@@ -6373,6 +6443,7 @@ impl Editor for SlintEditor {
         let metronome_count_in_record = self.metronome_count_in_record.clone();
         let async_executor = self.async_executor.clone();
         let pending_project_params = self.pending_project_params.clone();
+        let animate_library = self.animate_library.clone();
 
         let initial_size = default_window_size();
         let window_handle = baseview::Window::open_parented(
@@ -6400,6 +6471,7 @@ impl Editor for SlintEditor {
                     metronome_count_in_record,
                     async_executor,
                     pending_project_params,
+                    animate_library,
                 )
             },
         );
@@ -6469,6 +6541,7 @@ struct SlintWindow {
     current_path: Arc<Mutex<PathBuf>>,
     library_folders_model: std::rc::Rc<VecModel<SharedString>>,
     current_folder_content_model: std::rc::Rc<VecModel<BrowserEntry>>,
+    animate_library: Arc<AnimateLibrary>,
 }
 
 impl SlintWindow {
@@ -6488,6 +6561,7 @@ impl SlintWindow {
         metronome_count_in_record: Arc<AtomicBool>,
         async_executor: AsyncExecutor<TLBX1>,
         pending_project_params: Arc<Mutex<Option<PendingProjectParams>>>,
+        animate_library: Arc<AnimateLibrary>,
     ) -> Self {
         ensure_slint_platform();
         let (slint_window, ui) = create_slint_ui();
@@ -6587,6 +6661,7 @@ impl SlintWindow {
             &current_path,
             &library_folders_model,
             &current_folder_content_model,
+            &animate_library,
         );
 
         ui.set_library_folders(ModelRc::from(library_folders_model.clone()));
@@ -6631,6 +6706,7 @@ impl SlintWindow {
             current_path,
             library_folders_model,
             current_folder_content_model,
+            animate_library,
         }
     }
 
@@ -7740,6 +7816,15 @@ impl BaseWindowHandler for SlintWindow {
     }
 }
 
+fn spawn_with_stack<F>(f: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    let _ = std::thread::Builder::new()
+        .stack_size(32 * 1024 * 1024)
+        .spawn(f);
+}
+
 fn initialize_ui(
     ui: &TLBX1UI,
     gui_context: &Arc<dyn GuiContext>,
@@ -7762,6 +7847,7 @@ fn initialize_ui(
     current_path: &Arc<Mutex<PathBuf>>,
     library_folders_model: &std::rc::Rc<VecModel<SharedString>>,
     current_folder_content_model: &std::rc::Rc<VecModel<BrowserEntry>>,
+    animate_library: &Arc<AnimateLibrary>,
 ) {
     ui.set_output_devices(ModelRc::new(VecModel::from(
         output_devices
@@ -7947,7 +8033,7 @@ fn initialize_ui(
     ui.on_add_library_folder(move || {
         let ui_weak = ui_add_folder.clone();
         let library_folders = library_folders_add.clone();
-        std::thread::spawn(move || {
+        spawn_with_stack(move || {
             if let Some(path) = rfd::FileDialog::new().pick_folder() {
                 slint::invoke_from_event_loop(move || {
                     if let Some(ui) = ui_weak.upgrade() {
@@ -8008,7 +8094,7 @@ fn initialize_ui(
         let title = title.to_string();
         let description = description.to_string();
         let project_dialog_tx = project_dialog_tx_save.clone();
-        std::thread::spawn(move || {
+        spawn_with_stack(move || {
             if let Some(path) = rfd::FileDialog::new()
                 .set_title("Select Project Folder")
                 .pick_folder()
@@ -8027,7 +8113,7 @@ fn initialize_ui(
         let title = title.to_string();
         let description = description.to_string();
         let project_dialog_tx = project_dialog_tx_export.clone();
-        std::thread::spawn(move || {
+        spawn_with_stack(move || {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("Zip Archive", &["zip"])
                 .save_file()
@@ -8482,7 +8568,7 @@ fn initialize_ui(
             return;
         }
         let sample_dialog_tx = sample_dialog_tx_load.clone();
-        std::thread::spawn(move || {
+        spawn_with_stack(move || {
             let path = rfd::FileDialog::new()
                 .add_filter("Audio", &["wav", "flac", "mp3", "ogg"])
                 .pick_file();
@@ -8498,7 +8584,7 @@ fn initialize_ui(
             return;
         }
         let sample_dialog_tx = sample_dialog_tx_save.clone();
-        std::thread::spawn(move || {
+        spawn_with_stack(move || {
             let path = rfd::FileDialog::new()
                 .add_filter("WAV", &["wav"])
                 .save_file();
@@ -9197,7 +9283,7 @@ fn initialize_ui(
         let project_dialog_tx = project_dialog_tx.clone();
         move || {
             let project_dialog_tx = project_dialog_tx.clone();
-            std::thread::spawn(move || {
+            spawn_with_stack(move || {
                 let path = rfd::FileDialog::new()
                     .add_filter("TLBX-1 Project", &["json"])
                     .save_file();
@@ -9212,7 +9298,7 @@ fn initialize_ui(
         let project_dialog_tx = project_dialog_tx.clone();
         move || {
             let project_dialog_tx = project_dialog_tx.clone();
-            std::thread::spawn(move || {
+            spawn_with_stack(move || {
                 let path = rfd::FileDialog::new()
                     .add_filter("TLBX-1 Project", &["json"])
                     .pick_file();
@@ -9262,6 +9348,10 @@ fn initialize_ui(
 
         let tracks_animate = Arc::clone(tracks);
         let params_animate = Arc::clone(params);
+        let animate_library_a = Arc::clone(&animate_library);
+        let animate_library_b = Arc::clone(&animate_library);
+        let animate_library_c = Arc::clone(&animate_library);
+        let animate_library_d = Arc::clone(&animate_library);
         match i {
             0 => ui.on_animate_slot_a_wavetable_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9269,6 +9359,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_a.ensure_wavetable_loaded(index as usize);
             }),
             1 => ui.on_animate_slot_b_wavetable_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9276,6 +9367,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_b.ensure_wavetable_loaded(index as usize);
             }),
             2 => ui.on_animate_slot_c_wavetable_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9283,6 +9375,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_c.ensure_wavetable_loaded(index as usize);
             }),
             3 => ui.on_animate_slot_d_wavetable_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9290,12 +9383,17 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_wavetables[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_d.ensure_wavetable_loaded(index as usize);
             }),
             _ => (),
         }
 
         let tracks_animate = Arc::clone(tracks);
         let params_animate = Arc::clone(params);
+        let animate_library_a = Arc::clone(&animate_library);
+        let animate_library_b = Arc::clone(&animate_library);
+        let animate_library_c = Arc::clone(&animate_library);
+        let animate_library_d = Arc::clone(&animate_library);
         match i {
             0 => ui.on_animate_slot_a_sample_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9303,6 +9401,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_samples[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_a.ensure_sample_loaded(index as usize);
             }),
             1 => ui.on_animate_slot_b_sample_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9310,6 +9409,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_samples[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_b.ensure_sample_loaded(index as usize);
             }),
             2 => ui.on_animate_slot_c_sample_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9317,6 +9417,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_samples[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_c.ensure_sample_loaded(index as usize);
             }),
             3 => ui.on_animate_slot_d_sample_changed(move |index| {
                 let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
@@ -9324,6 +9425,7 @@ fn initialize_ui(
                     tracks_animate[track_idx].animate_slot_samples[slot_idx]
                         .store(index as u32, Ordering::Relaxed);
                 }
+                animate_library_d.ensure_sample_loaded(index as usize);
             }),
             _ => (),
         }

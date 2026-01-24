@@ -58,6 +58,46 @@ RUST_LOG=symphonia_core=warn
 $env:RUST_LOG="symphonia_core=warn"
 ```
 
+## Stack Size Override (Windows)
+
+If you hit startup stack overflows, you can set `RUST_MIN_STACK` for the current shell:
+
+```powershell
+echo $env:RUST_MIN_STACK
+$env:RUST_MIN_STACK = "33554432"
+Remove-Item Env:\RUST_MIN_STACK
+```
+
+```cmd
+echo %RUST_MIN_STACK%
+set RUST_MIN_STACK=33554432
+set RUST_MIN_STACK=
+```
+
+To persist it (PowerShell):
+
+```powershell
+[Environment]::SetEnvironmentVariable("RUST_MIN_STACK","33554432","User")
+[Environment]::SetEnvironmentVariable("RUST_MIN_STACK",$null,"User")
+```
+
+## Stack Size Override (macOS/Linux)
+
+Set `RUST_MIN_STACK` for the current shell:
+
+```bash
+echo "$RUST_MIN_STACK"
+export RUST_MIN_STACK=33554432
+unset RUST_MIN_STACK
+```
+
+To persist it (bash/zsh):
+
+```bash
+echo 'export RUST_MIN_STACK=33554432' >> ~/.zshrc
+# or ~/.bashrc / ~/.bash_profile
+```
+
 ## Version Sync
 
 ```bash

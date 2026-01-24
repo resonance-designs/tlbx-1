@@ -1,5 +1,7 @@
 # Changelog
 
+## [0.1.15] - 2026-01-23
+
 ## [0.1.14] - 2026-01-23
 
 - Renamed SimpKick to SynDRM and add snare synth lane + DSP params (drive, filters, attack)

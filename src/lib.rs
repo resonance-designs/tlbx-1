@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.13
+ * Version: 0.1.15
  * Component: Core Logic
  */
 
@@ -1665,6 +1665,7 @@ impl TLBX1 {
         master_step: i32,
         master_phase: f32,
         samples_per_step: f32,
+        transport_running: bool,
     ) {
         let sr = track.sample_rate.load(Ordering::Relaxed).max(1) as f32;
         let tempo_bits = global_tempo.load(Ordering::Relaxed);
@@ -1676,11 +1677,21 @@ impl TLBX1 {
         };
 
         // Sequencer timing
-        let mut sequencer_phase = master_phase;
-        let mut current_step = master_step;
-        track
-            .animate_sequencer_step
-            .store(current_step, Ordering::Relaxed);
+        let mut sequencer_phase = if transport_running {
+            master_phase
+        } else {
+            f32::from_bits(track.animate_sequencer_phase.load(Ordering::Relaxed))
+        };
+        let mut current_step = if transport_running {
+            master_step
+        } else {
+            track.animate_sequencer_step.load(Ordering::Relaxed)
+        };
+        if transport_running {
+            track
+                .animate_sequencer_step
+                .store(current_step, Ordering::Relaxed);
+        }
 
         // Animate Parameters
         let target_x = f32::from_bits(track.animate_vector_x.load(Ordering::Relaxed));
@@ -1944,38 +1955,44 @@ impl TLBX1 {
 
         for sample_idx in 0..num_buffer_samples {
             // Step sequencer (master-synced)
-            sequencer_phase += 1.0;
-            if sequencer_phase >= samples_per_step {
-                sequencer_phase -= samples_per_step;
-                current_step = (current_step + 1).rem_euclid(16);
-                track
-                    .animate_sequencer_step
-                    .store(current_step, Ordering::Relaxed);
+            if transport_running {
+                sequencer_phase += 1.0;
+                if sequencer_phase >= samples_per_step {
+                    sequencer_phase -= samples_per_step;
+                    current_step = (current_step + 1).rem_euclid(16);
+                    track
+                        .animate_sequencer_step
+                        .store(current_step, Ordering::Relaxed);
 
-                // Update envelope stages for all voices based on grid
-                for row in 0..10 {
-                    let note_active = track.animate_sequencer_grid[row * 16 + current_step as usize].load(Ordering::Relaxed);
-                    if note_active {
-                        if amp_stages[row] == 0 || amp_stages[row] == 4 {
-                            amp_stages[row] = 1; // Attack
-                            for slot in 0..4 {
-                                if track.animate_slot_types[slot].load(Ordering::Relaxed) == 1 {
-                                    let smp_idx = track.animate_slot_samples[slot].load(Ordering::Relaxed) as usize;
-                                    if let Some(smp) = animate_library.get_sample_cached(smp_idx) {
-                                        let len = smp.get(0).map(|ch| ch.len()).unwrap_or(0);
-                                        if len > 0 {
-                                            let start = (sample_start[slot] * (len.saturating_sub(1) as f32))
-                                                .round()
-                                                .clamp(0.0, (len.saturating_sub(1)) as f32);
-                                            track.animate_slot_sample_pos[row][slot]
-                                                .store(start.to_bits(), Ordering::Relaxed);
+                    // Update envelope stages for all voices based on grid
+                    for row in 0..10 {
+                        let note_active = track.animate_sequencer_grid[row * 16 + current_step as usize]
+                            .load(Ordering::Relaxed);
+                        if note_active {
+                            if amp_stages[row] == 0 || amp_stages[row] == 4 {
+                                amp_stages[row] = 1; // Attack
+                                for slot in 0..4 {
+                                    if track.animate_slot_types[slot].load(Ordering::Relaxed) == 1 {
+                                        let smp_idx =
+                                            track.animate_slot_samples[slot].load(Ordering::Relaxed)
+                                                as usize;
+                                        if let Some(smp) = animate_library.get_sample_cached(smp_idx) {
+                                            let len = smp.get(0).map(|ch| ch.len()).unwrap_or(0);
+                                            if len > 0 {
+                                                let start = (sample_start[slot]
+                                                    * (len.saturating_sub(1) as f32))
+                                                    .round()
+                                                    .clamp(0.0, (len.saturating_sub(1)) as f32);
+                                                track.animate_slot_sample_pos[row][slot]
+                                                    .store(start.to_bits(), Ordering::Relaxed);
+                                            }
                                         }
                                     }
                                 }
                             }
+                        } else if amp_stages[row] != 0 && amp_stages[row] != 4 {
+                            amp_stages[row] = 4; // Release
                         }
-                    } else if amp_stages[row] != 0 && amp_stages[row] != 4 {
-                        amp_stages[row] = 4; // Release
                     }
                 }
             }
@@ -2413,9 +2430,11 @@ impl TLBX1 {
             }
         }
 
-        track
-            .animate_sequencer_phase
-            .store(sequencer_phase.round().max(0.0) as u32, Ordering::Relaxed);
+        if transport_running {
+            track
+                .animate_sequencer_phase
+                .store(sequencer_phase.round().max(0.0) as u32, Ordering::Relaxed);
+        }
         track.animate_vector_x_smooth.store(x_smooth.to_bits(), Ordering::Relaxed);
         track.animate_vector_y_smooth.store(y_smooth.to_bits(), Ordering::Relaxed);
         track
@@ -2482,6 +2501,7 @@ impl TLBX1 {
         master_step_count: i64,
         samples_per_step: f32,
         sample_rate: f32,
+        transport_running: bool,
     ) {
         let sr = sample_rate.max(1.0);
         dsp_state.set_sample_rate(sr);
@@ -2498,10 +2518,25 @@ impl TLBX1 {
             loop_steps = ((max_step / SYNDRM_PAGE_SIZE) + 1) * SYNDRM_PAGE_SIZE;
         }
         let loop_steps_i32 = loop_steps.max(1) as i32;
-        let mut sequencer_phase = master_phase;
-        let mut current_step = (master_step_count as i32).rem_euclid(loop_steps_i32);
-        track.kick_sequencer_step.store(current_step, Ordering::Relaxed);
-        track.snare_sequencer_step.store(current_step, Ordering::Relaxed);
+        let mut sequencer_phase = if transport_running {
+            master_phase
+        } else {
+            f32::from_bits(track.kick_sequencer_phase.load(Ordering::Relaxed))
+        };
+        let mut current_step = if transport_running {
+            (master_step_count as i32).rem_euclid(loop_steps_i32)
+        } else {
+            let step = track.kick_sequencer_step.load(Ordering::Relaxed);
+            if step < 0 {
+                step
+            } else {
+                step.rem_euclid(loop_steps_i32)
+            }
+        };
+        if transport_running {
+            track.kick_sequencer_step.store(current_step, Ordering::Relaxed);
+            track.snare_sequencer_step.store(current_step, Ordering::Relaxed);
+        }
 
         let mut kick_pitch_base =
             f32::from_bits(track.kick_pitch.load(Ordering::Relaxed)).clamp(0.0, 1.0);
@@ -2973,106 +3008,108 @@ impl TLBX1 {
         let output = track_output;
 
         for sample_idx in 0..num_buffer_samples {
-            sequencer_phase += 1.0;
-            if sequencer_phase >= samples_per_step {
-                sequencer_phase -= samples_per_step;
-                current_step = (current_step + 1).rem_euclid(loop_steps_i32);
-                track.kick_sequencer_step.store(current_step, Ordering::Relaxed);
-                track.snare_sequencer_step.store(current_step, Ordering::Relaxed);
-                let step_idx = current_step as usize;
-                if step_idx < SYNDRM_STEPS {
-                    apply_kick_step_params(
-                        track,
-                        step_idx,
-                        step_hold,
-                        track_muted,
-                        cutoff_min,
-                        cutoff_span,
-                        sr,
-                        &mut kick_pitch,
-                        &mut kick_decay,
-                        &mut kick_attack,
-                        &mut kick_drive,
-                        &mut kick_level,
-                        &mut kick_filter_type,
-                        &mut kick_filter_cutoff,
-                        &mut kick_filter_resonance,
-                        &mut kick_pitch_base,
-                        &mut kick_decay_base,
-                        &mut kick_attack_base,
-                        &mut kick_drive_base,
-                        &mut kick_level_base,
-                        &mut kick_filter_type_base,
-                        &mut kick_filter_cutoff_base,
-                        &mut kick_filter_resonance_base,
-                        &mut decay_time,
-                        &mut pitch_decay_time,
-                        &mut env_coeff,
-                        &mut attack_time,
-                        &mut attack_samples,
-                        &mut attack_step,
-                        &mut pitch_coeff,
-                        &mut base_freq,
-                        &mut sweep,
-                        &mut drive,
-                        &mut kick_cutoff_hz,
-                        &mut kick_q,
-                    );
-                    apply_snare_step_params(
-                        track,
-                        step_idx,
-                        step_hold,
-                        track_muted,
-                        cutoff_min,
-                        cutoff_span,
-                        sr,
-                        &mut snare_tone,
-                        &mut snare_decay,
-                        &mut snare_snappy,
-                        &mut snare_attack,
-                        &mut snare_drive,
-                        &mut snare_level,
-                        &mut snare_filter_type,
-                        &mut snare_filter_cutoff,
-                        &mut snare_filter_resonance,
-                        &mut snare_tone_base,
-                        &mut snare_decay_base,
-                        &mut snare_snappy_base,
-                        &mut snare_attack_base,
-                        &mut snare_drive_base,
-                        &mut snare_level_base,
-                        &mut snare_filter_type_base,
-                        &mut snare_filter_cutoff_base,
-                        &mut snare_filter_resonance_base,
-                        &mut snare_decay_time,
-                        &mut snare_noise_decay_time,
-                        &mut snare_env_coeff,
-                        &mut snare_noise_coeff,
-                        &mut snare_attack_time,
-                        &mut snare_attack_samples,
-                        &mut snare_attack_step,
-                        &mut snare_freq,
-                        &mut snare_cutoff_hz,
-                        &mut snare_q,
-                        &mut snare_drive_gain,
-                    );
+            if transport_running {
+                sequencer_phase += 1.0;
+                if sequencer_phase >= samples_per_step {
+                    sequencer_phase -= samples_per_step;
+                    current_step = (current_step + 1).rem_euclid(loop_steps_i32);
+                    track.kick_sequencer_step.store(current_step, Ordering::Relaxed);
+                    track.snare_sequencer_step.store(current_step, Ordering::Relaxed);
+                    let step_idx = current_step as usize;
+                    if step_idx < SYNDRM_STEPS {
+                        apply_kick_step_params(
+                            track,
+                            step_idx,
+                            step_hold,
+                            track_muted,
+                            cutoff_min,
+                            cutoff_span,
+                            sr,
+                            &mut kick_pitch,
+                            &mut kick_decay,
+                            &mut kick_attack,
+                            &mut kick_drive,
+                            &mut kick_level,
+                            &mut kick_filter_type,
+                            &mut kick_filter_cutoff,
+                            &mut kick_filter_resonance,
+                            &mut kick_pitch_base,
+                            &mut kick_decay_base,
+                            &mut kick_attack_base,
+                            &mut kick_drive_base,
+                            &mut kick_level_base,
+                            &mut kick_filter_type_base,
+                            &mut kick_filter_cutoff_base,
+                            &mut kick_filter_resonance_base,
+                            &mut decay_time,
+                            &mut pitch_decay_time,
+                            &mut env_coeff,
+                            &mut attack_time,
+                            &mut attack_samples,
+                            &mut attack_step,
+                            &mut pitch_coeff,
+                            &mut base_freq,
+                            &mut sweep,
+                            &mut drive,
+                            &mut kick_cutoff_hz,
+                            &mut kick_q,
+                        );
+                        apply_snare_step_params(
+                            track,
+                            step_idx,
+                            step_hold,
+                            track_muted,
+                            cutoff_min,
+                            cutoff_span,
+                            sr,
+                            &mut snare_tone,
+                            &mut snare_decay,
+                            &mut snare_snappy,
+                            &mut snare_attack,
+                            &mut snare_drive,
+                            &mut snare_level,
+                            &mut snare_filter_type,
+                            &mut snare_filter_cutoff,
+                            &mut snare_filter_resonance,
+                            &mut snare_tone_base,
+                            &mut snare_decay_base,
+                            &mut snare_snappy_base,
+                            &mut snare_attack_base,
+                            &mut snare_drive_base,
+                            &mut snare_level_base,
+                            &mut snare_filter_type_base,
+                            &mut snare_filter_cutoff_base,
+                            &mut snare_filter_resonance_base,
+                            &mut snare_decay_time,
+                            &mut snare_noise_decay_time,
+                            &mut snare_env_coeff,
+                            &mut snare_noise_coeff,
+                            &mut snare_attack_time,
+                            &mut snare_attack_samples,
+                            &mut snare_attack_step,
+                            &mut snare_freq,
+                            &mut snare_cutoff_hz,
+                            &mut snare_q,
+                            &mut snare_drive_gain,
+                        );
 
-                    if track.kick_sequencer_grid[step_idx].load(Ordering::Relaxed) {
-                        pitch_env = 1.0;
-                        if attack_samples > 0 {
-                            attack_remaining = attack_samples;
-                        } else {
-                            env = 1.0;
+                        if track.kick_sequencer_grid[step_idx].load(Ordering::Relaxed) {
+                            pitch_env = 1.0;
+                            if attack_samples > 0 {
+                                attack_remaining = attack_samples;
+                            } else {
+                                env = 1.0;
+                            }
                         }
-                    }
-                    if track.snare_sequencer_grid[step_idx].load(Ordering::Relaxed) {
-                        if snare_attack_samples > 0 {
-                            snare_attack_remaining = snare_attack_samples;
-                            snare_env = 0.0;
-                            snare_noise_env = 0.0;
-                        } else {
-                            snare_env = 1.0;
-                            snare_noise_env = 1.0;
+                        if track.snare_sequencer_grid[step_idx].load(Ordering::Relaxed) {
+                            if snare_attack_samples > 0 {
+                                snare_attack_remaining = snare_attack_samples;
+                                snare_env = 0.0;
+                                snare_noise_env = 0.0;
+                            } else {
+                                snare_env = 1.0;
+                                snare_noise_env = 1.0;
+                            }
                         }
                     }
                 }
@@ -3213,13 +3250,15 @@ impl TLBX1 {
         sample_rate: f32,
     ) {
         let sr = sample_rate.max(1.0);
+        const VOID_SEED_DB_BOOST: f32 = 1.4125375; // +3 dB
         let base_freq = f32::from_bits(track.void_base_freq.load(Ordering::Relaxed));
         let chaos_depth = f32::from_bits(track.void_chaos_depth.load(Ordering::Relaxed));
         let entropy = f32::from_bits(track.void_entropy.load(Ordering::Relaxed));
         let feedback = f32::from_bits(track.void_feedback.load(Ordering::Relaxed));
         let diffusion = f32::from_bits(track.void_diffusion.load(Ordering::Relaxed));
         let mod_rate = f32::from_bits(track.void_mod_rate.load(Ordering::Relaxed));
-        let void_level = f32::from_bits(track.void_level.load(Ordering::Relaxed));
+        let void_level =
+            f32::from_bits(track.void_level.load(Ordering::Relaxed)) * VOID_SEED_DB_BOOST;
 
         let mut osc_phases = [0.0f32; 12];
         let mut lfo_phases = [0.0f32; 12];
@@ -3241,7 +3280,11 @@ impl TLBX1 {
         let mut internal_gain = f32::from_bits(track.void_internal_gain.load(Ordering::Relaxed));
 
         // Targeting 0.8 gain when enabled, 0.0 when disabled (ramping)
-        let target_gain = if track.void_enabled.load(Ordering::Relaxed) { 0.8 } else { 0.0 };
+        let target_gain = if track.void_enabled.load(Ordering::Relaxed) {
+            0.8 * VOID_SEED_DB_BOOST
+        } else {
+            0.0
+        };
         let gain_step = (target_gain - internal_gain) / (4.0 * sr); // 4 second ramp
 
         let output = track_output;
@@ -3254,7 +3297,7 @@ impl TLBX1 {
             let delay_samples = (0.25 * sr) as usize;
 
             for sample_idx in 0..num_buffer_samples {
-                internal_gain = (internal_gain + gain_step).clamp(0.0, 0.8);
+                internal_gain = (internal_gain + gain_step).clamp(0.0, target_gain);
 
                 // Chaos LFO (affects filter frequency)
                 chaos_phase += 0.02 / sr;
@@ -4288,59 +4331,96 @@ impl Plugin for TLBX1 {
         }
 
         // Handle playback for all tracks
+        let transport_running = any_playing;
         for (track_idx, track) in self.tracks.iter().enumerate() {
             if track.is_recording.load(Ordering::Relaxed) {
                 continue;
             }
 
-            if track.is_playing.load(Ordering::Relaxed) {
-                keep_alive = true;
+            let engine_type = track.engine_type.load(Ordering::Relaxed);
+            let track_muted = track.is_muted.load(Ordering::Relaxed);
+            let should_process =
+                transport_running || matches!(engine_type, 2 | 3 | 4);
+            if !should_process {
+                let prev_left =
+                    f32::from_bits(track.meter_left.load(Ordering::Relaxed));
+                let prev_right =
+                    f32::from_bits(track.meter_right.load(Ordering::Relaxed));
+                let next_left = smooth_meter(prev_left, 0.0);
+                let next_right = smooth_meter(prev_right, 0.0);
+                track
+                    .meter_left
+                    .store(next_left.to_bits(), Ordering::Relaxed);
+                track
+                    .meter_right
+                    .store(next_right.to_bits(), Ordering::Relaxed);
+                continue;
+            }
+            if !transport_running && track_muted {
+                let prev_left =
+                    f32::from_bits(track.meter_left.load(Ordering::Relaxed));
+                let prev_right =
+                    f32::from_bits(track.meter_right.load(Ordering::Relaxed));
+                let next_left = smooth_meter(prev_left, 0.0);
+                let next_right = smooth_meter(prev_right, 0.0);
+                track
+                    .meter_left
+                    .store(next_left.to_bits(), Ordering::Relaxed);
+                track
+                    .meter_right
+                    .store(next_right.to_bits(), Ordering::Relaxed);
+                continue;
+            }
 
-                // Clear track buffer
-                for channel in self.track_buffer.iter_mut() {
-                    channel.fill(0.0);
-                }
+            keep_alive = true;
 
-                let mut track_peak_left = 0.0f32;
-                let mut track_peak_right = 0.0f32;
+            // Clear track buffer
+            for channel in self.track_buffer.iter_mut() {
+                channel.fill(0.0);
+            }
 
-                let engine_type = track.engine_type.load(Ordering::Relaxed);
-                if engine_type == 2 {
-                    Self::process_animate(
-                        track,
-                        &mut self.track_buffer,
-                        buffer.samples(),
-                        &self.global_tempo,
-                        &self.animate_library,
-                        master_step,
-                        master_phase,
-                        samples_per_step,
-                    );
-                } else if engine_type == 3 {
-                    Self::process_syndrm(
-                        track,
-                        &mut self.track_buffer,
-                        &mut self.syndrm_dsp[track_idx],
-                        buffer.samples(),
-                        &self.global_tempo,
-                        master_step,
-                        master_phase,
-                        master_step_count,
-                        samples_per_step,
-                        master_sr,
-                    );
-                } else if engine_type == 4 {
-                    Self::process_voidseed(
-                        track,
-                        &mut self.track_buffer,
-                        buffer.samples(),
-                        &self.global_tempo,
-                        master_step,
-                        master_phase,
-                        samples_per_step,
-                        master_sr,
-                    );
-                } else if let Some(samples) = track.samples.try_lock() {
+            let mut track_peak_left = 0.0f32;
+            let mut track_peak_right = 0.0f32;
+
+            if engine_type == 2 {
+                Self::process_animate(
+                    track,
+                    &mut self.track_buffer,
+                    buffer.samples(),
+                    &self.global_tempo,
+                    &self.animate_library,
+                    master_step,
+                    master_phase,
+                    samples_per_step,
+                    transport_running,
+                );
+            } else if engine_type == 3 {
+                Self::process_syndrm(
+                    track,
+                    &mut self.track_buffer,
+                    &mut self.syndrm_dsp[track_idx],
+                    buffer.samples(),
+                    &self.global_tempo,
+                    master_step,
+                    master_phase,
+                    master_step_count,
+                    samples_per_step,
+                    master_sr,
+                    transport_running,
+                );
+            } else if engine_type == 4 {
+                Self::process_voidseed(
+                    track,
+                    &mut self.track_buffer,
+                    buffer.samples(),
+                    &self.global_tempo,
+                    master_step,
+                    master_phase,
+                    samples_per_step,
+                    master_sr,
+                );
+            } else if transport_running {
+                if let Some(samples) = track.samples.try_lock() {
                     if samples.is_empty() || samples[0].is_empty() {
                         track.is_playing.store(false, Ordering::Relaxed);
                         continue;
@@ -4381,7 +4461,6 @@ impl Plugin for TLBX1 {
                         .store(smooth_mosaic_sos.to_bits(), Ordering::Relaxed);
                     let track_level =
                         f32::from_bits(track.level.load(Ordering::Relaxed));
-                    let track_muted = track.is_muted.load(Ordering::Relaxed);
                     let tape_speed =
                         f32::from_bits(track.tape_speed.load(Ordering::Relaxed)).clamp(-4.0, 4.0);
                     let tape_tempo = global_tempo.max(1.0);
@@ -4858,51 +4937,39 @@ impl Plugin for TLBX1 {
                         .level_smooth
                         .store(smooth_level.to_bits(), Ordering::Relaxed);
                 }
+            }
 
-                // Apply track effects
-                Self::process_track_mosaic(track, &mut self.track_buffer, buffer.samples());
-                Self::process_track_ring(track, &mut self.track_buffer, buffer.samples(), global_tempo);
+            // Apply track effects
+            Self::process_track_mosaic(track, &mut self.track_buffer, buffer.samples());
+            Self::process_track_ring(track, &mut self.track_buffer, buffer.samples(), global_tempo);
 
-                // Sum track buffer to master output and calculate final peaks
-                let num_buffer_samples = buffer.samples();
-                let output = buffer.as_slice();
-                for sample_idx in 0..num_buffer_samples {
-                    for channel_idx in 0..output.len() {
-                        let val = self.track_buffer[channel_idx][sample_idx];
-                        output[channel_idx][sample_idx] += val;
+            let mix_gain = if track_muted && engine_type != 1 { 0.0 } else { 1.0 };
+            // Sum track buffer to master output and calculate final peaks
+            let num_buffer_samples = buffer.samples();
+            let output = buffer.as_slice();
+            for sample_idx in 0..num_buffer_samples {
+                for channel_idx in 0..output.len() {
+                    let val = self.track_buffer[channel_idx][sample_idx] * mix_gain;
+                    output[channel_idx][sample_idx] += val;
 
-                        if channel_idx == 0 {
-                            track_peak_left = track_peak_left.max(val.abs());
-                        } else if channel_idx == 1 {
-                            track_peak_right = track_peak_right.max(val.abs());
-                        }
+                    if channel_idx == 0 {
+                        track_peak_left = track_peak_left.max(val.abs());
+                    } else if channel_idx == 1 {
+                        track_peak_right = track_peak_right.max(val.abs());
                     }
                 }
-
-                // Update meters with final peaks
-                if output.len() == 1 && buffer.channels() > 1 {
-                    track_peak_right = track_peak_left;
-                }
-                let prev_left = f32::from_bits(track.meter_left.load(Ordering::Relaxed));
-                let prev_right = f32::from_bits(track.meter_right.load(Ordering::Relaxed));
-                let next_left = smooth_meter(prev_left, track_peak_left);
-                let next_right = smooth_meter(prev_right, track_peak_right);
-                track.meter_left.store(next_left.to_bits(), Ordering::Relaxed);
-                track.meter_right.store(next_right.to_bits(), Ordering::Relaxed);
-            } else {
-                let prev_left =
-                    f32::from_bits(track.meter_left.load(Ordering::Relaxed));
-                let prev_right =
-                    f32::from_bits(track.meter_right.load(Ordering::Relaxed));
-                let next_left = smooth_meter(prev_left, 0.0);
-                let next_right = smooth_meter(prev_right, 0.0);
-                track
-                    .meter_left
-                    .store(next_left.to_bits(), Ordering::Relaxed);
-                track
-                    .meter_right
-                    .store(next_right.to_bits(), Ordering::Relaxed);
             }
+
+            // Update meters with final peaks
+            if output.len() == 1 && buffer.channels() > 1 {
+                track_peak_right = track_peak_left;
+            }
+            let prev_left = f32::from_bits(track.meter_left.load(Ordering::Relaxed));
+            let prev_right = f32::from_bits(track.meter_right.load(Ordering::Relaxed));
+            let next_left = smooth_meter(prev_left, track_peak_left);
+            let next_right = smooth_meter(prev_right, track_peak_right);
+            track.meter_left.store(next_left.to_bits(), Ordering::Relaxed);
+            track.meter_right.store(next_right.to_bits(), Ordering::Relaxed);
         }
 
         if any_monitoring {

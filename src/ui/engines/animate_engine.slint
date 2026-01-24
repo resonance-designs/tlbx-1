@@ -96,6 +96,8 @@ export component AnimateEngine {
 
     in property <[string]> animate-filter-types;
 
+    in-out property <bool> track-muted: false;
+
     in-out property <[bool]> animate-sequencer-grid;
     in property <int> animate-sequencer-current-step: -1;
 
@@ -166,6 +168,8 @@ export component AnimateEngine {
     callback animate-slot-d-loop-start-changed(value: float);
     callback animate-slot-d-loop-end-changed(value: float);
 
+    callback toggle-track-mute();
+
     callback animate-vector-changed(x: float, y: float);
     callback animate-lfo-x-waveform-changed(index: int);
     callback animate-lfo-x-sync-changed(value: bool);
@@ -187,11 +191,25 @@ export component AnimateEngine {
         width: parent.width;
         padding: 12px;
 
-        RDSHeaderLabel {
-            text: "Animate";
-            horizontal-alignment: left;
-            padding-horizontal: 12px;
-            padding-vertical: 6px;
+        HorizontalLayout {
+            spacing: 12px;
+            width: parent.width;
+
+            RDSHeaderLabel {
+                text: "Animate";
+                horizontal-alignment: left;
+                padding-horizontal: 12px;
+                padding-vertical: 6px;
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+                Text { text: "Mute"; color: #b9b9bf; font-size: 11px; }
+                RDSCircleToggle {
+                    active: root.track-muted;
+                    clicked => root.toggle-track-mute();
+                }
+            }
         }
 
         HorizontalLayout {

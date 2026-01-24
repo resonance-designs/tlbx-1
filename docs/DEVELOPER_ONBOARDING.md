@@ -62,15 +62,29 @@ $env:RUST_LOG="symphonia_core=warn"
 
 If you hit startup stack overflows, you can set `RUST_MIN_STACK` for the current shell:
 
+Set (PowerShell):
+
 ```powershell
 echo $env:RUST_MIN_STACK
 $env:RUST_MIN_STACK = "33554432"
+```
+
+Remove (PowerShell):
+
+```powershell
 Remove-Item Env:\RUST_MIN_STACK
 ```
+
+Set (cmd.exe):
 
 ```cmd
 echo %RUST_MIN_STACK%
 set RUST_MIN_STACK=33554432
+```
+
+Remove (cmd.exe):
+
+```cmd
 set RUST_MIN_STACK=
 ```
 
@@ -85,9 +99,16 @@ To persist it (PowerShell):
 
 Set `RUST_MIN_STACK` for the current shell:
 
+Set (bash/zsh):
+
 ```bash
 echo "$RUST_MIN_STACK"
 export RUST_MIN_STACK=33554432
+```
+
+Remove (bash/zsh):
+
+```bash
 unset RUST_MIN_STACK
 ```
 

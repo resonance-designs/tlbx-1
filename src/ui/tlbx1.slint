@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.13
+ * Version: 0.1.15
  * Component: UI Definitions
  */
 
@@ -982,6 +982,7 @@ export component TLBX1UI inherits Window {
 
                                     AnimateEngine {
                                         width: parent.width;
+                                        track-muted <=> root.track-muted;
                                         animate-slot-types: root.animate-slot-types;
                                         animate-slot-a-type <=> root.animate-slot-a-type;
                                         animate-slot-b-type <=> root.animate-slot-b-type;
@@ -1140,6 +1141,7 @@ export component TLBX1UI inherits Window {
                                         animate-lfo-y-rate-changed(value) => { root.animate-lfo-y-rate-changed(value); }
                                         animate-lfo-y-amount-changed(value) => { root.animate-lfo-y-amount-changed(value); }
                                         animate-sequencer-grid-toggled(row, step) => { root.animate-sequencer-grid-toggled(row, step); }
+                                        toggle-track-mute => root.toggle-track-mute();
                                     }
                                 }
                             }
@@ -1155,6 +1157,7 @@ export component TLBX1UI inherits Window {
 
                                     SynDRMEngine {
                                         width: parent.width;
+                                        track-muted <=> root.track-muted;
                                         filter-types: root.syndrm-filter-types;
                                         kick-pitch <=> root.kick-pitch;
                                         kick-decay <=> root.kick-decay;
@@ -1264,6 +1267,7 @@ export component TLBX1UI inherits Window {
                                         syndrm-clear-both-lane-all() => { root.syndrm-clear-both-lane-all(); }
                                         syndrm-clear-both-all-page() => { root.syndrm-clear-both-all-page(); }
                                         syndrm-clear-both-all-all() => { root.syndrm-clear-both-all-all(); }
+                                        toggle-track-mute => root.toggle-track-mute();
                                     }
                                 }
                             }
@@ -1279,6 +1283,7 @@ export component TLBX1UI inherits Window {
 
                                     VoidSeedEngine {
                                         width: parent.width;
+                                        track-muted <=> root.track-muted;
                                         void-base-freq <=> root.void-base-freq;
                                         void-chaos-depth <=> root.void-chaos-depth;
                                         void-entropy <=> root.void-entropy;
@@ -1296,6 +1301,7 @@ export component TLBX1UI inherits Window {
                                         void-mod-rate-changed(value) => { root.void-mod-rate-changed(value); }
                                         void-level-changed(value) => { root.void-level-changed(value); }
                                         toggle-void() => { root.toggle-void(); }
+                                        toggle-track-mute => { root.toggle-track-mute(); }
                                     }
                                 }
                             }

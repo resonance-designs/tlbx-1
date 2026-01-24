@@ -6,7 +6,8 @@ import {
     RDSVertVUMeter,
     RDSKnob,
     RDSWaveformViz,
-    RDSComboBox
+    RDSComboBox,
+    RDSCircleToggle
 } from "../components/index.slint";
 import { GranulatorDevice } from "../devices/granulator_device.slint";
 import { SilkDevice } from "../devices/silk_device.slint";
@@ -436,7 +437,19 @@ export component TapeEngine {
                     spacing: 12px;
                     HorizontalLayout {
                         spacing: 8px;
-                        Button { text: root.track-muted ? "Unmute" : "Mute"; clicked => root.toggle-track-mute(); }
+                        HorizontalLayout {
+                            spacing: 6px;
+                            Text {
+                                text: "Mute";
+                                color: #b9b9bf;
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+                            RDSCircleToggle {
+                                active: root.track-muted;
+                                clicked => root.toggle-track-mute();
+                            }
+                        }
                         Button { text: root.loop-enabled ? "Loop On" : "Loop Off"; clicked => root.toggle-loop-enabled(); }
                         Button { text: root.tape-reverse ? "Reverse On" : "Reverse Off"; clicked => root.toggle-tape-reverse(); }
                         Button { text: root.tape-freeze ? "Freeze On" : "Freeze Off"; clicked => root.toggle-tape-freeze(); }

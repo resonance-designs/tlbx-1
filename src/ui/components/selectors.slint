@@ -53,6 +53,15 @@ export component StepperReadout inherits Rectangle {
     in property <float> min-value;
     in property <float> max-value;
     in property <string> font-family: Theme.active.font_readout;
+    in property <color> readout-background: Theme.active.background_main;
+    in property <color> readout-border-color: Theme.active.border_strong;
+    in property <length> readout-border-width: 1px;
+    in property <length> readout-border-radius: Theme.active.radius_medium;
+    in property <length> readout-width: 80px;
+    in property <length> readout-height: 40px;
+    in property <color> readout-text-color: #34D399;
+    in property <length> readout-text-size: 26px;
+    in property <int> readout-text-weight: 400;
     in property <int> pad-digits: 3;
     in property <bool> allow-editing: true;
     in-out property <bool> editing;
@@ -69,19 +78,20 @@ export component StepperReadout inherits Rectangle {
         (root.clamped-pad >= 2 && Math.abs(root.rounded-value) < 10 ? "0" : "") +
         Math.abs(root.rounded-value);
 
-    width: 80px;
-    height: 40px;
+    width: root.readout-width;
+    height: root.readout-height;
     clip: true;
-    border-radius: Theme.active.radius_medium;
-    border-color: Theme.active.border_strong;
-    border-width: 1px;
-    background: root.editing ? Theme.active.background_raised : Theme.active.background_main;
+    border-radius: root.readout-border-radius;
+    border-color: root.readout-border-color;
+    border-width: root.readout-border-width;
+    background: root.readout-background;
 
     if (!root.editing) : Text {
         text: root.display-value;
-        color: #34D399;
+        color: root.readout-text-color;
         font-family: root.font-family;
-        font-size: 26px;
+        font-size: root.readout-text-size;
+        font-weight: root.readout-text-weight;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
@@ -90,7 +100,7 @@ export component StepperReadout inherits Rectangle {
         text: root.display-value;
         color: Theme.active.text_primary;
         font-family: root.font-family;
-        font-size: Theme.active.font_medium;
+        font-size: root.readout-text-size;
         horizontal-alignment: center;
         vertical-alignment: center;
         accepted => {
@@ -289,6 +299,15 @@ Public members:
 - max-value: float - Maximum allowed value
 - step: float - Step size for increment/decrement buttons
 - font-family: string - Font family for the readout (defaults to theme readout font)
+- readout-background: color - Readout background color
+- readout-border-color: color - Readout border color
+- readout-border-width: length - Readout border width
+- readout-border-radius: length - Readout border radius
+- readout-width: length - Readout width
+- readout-height: length - Readout height
+- readout-text-color: color - Readout text color
+- readout-text-size: length - Readout text size
+- readout-text-weight: int - Readout text weight
 - pad-digits: int - Number of digits to pad to (default: 3, clamped to 3)
 - button-tog: bool - Whether to show the increment/decrement buttons (default: false)
 - button-pos: string - "top-bottom" (default fallback) or "left-right" for button arrangement
@@ -301,6 +320,15 @@ export component RDSNumStepper {
     in property <float> max-value: 300;
     in property <float> step: 1;
     in property <string> font-family: Theme.active.font_readout;
+    in property <color> readout-background: Theme.active.background_main;
+    in property <color> readout-border-color: Theme.active.border_strong;
+    in property <length> readout-border-width: 1px;
+    in property <length> readout-border-radius: Theme.active.radius_medium;
+    in property <length> readout-width: 80px;
+    in property <length> readout-height: 40px;
+    in property <color> readout-text-color: #34D399;
+    in property <length> readout-text-size: 26px;
+    in property <int> readout-text-weight: 400;
     in property <int> pad-digits: 3;
     in property <bool> button-tog: true;
     in property <bool> allow-editing: true;
@@ -339,6 +367,15 @@ export component RDSNumStepper {
                 min-value: root.min-value;
                 max-value: root.max-value;
                 font-family: root.font-family;
+                readout-background: root.readout-background;
+                readout-border-color: root.readout-border-color;
+                readout-border-width: root.readout-border-width;
+                readout-border-radius: root.readout-border-radius;
+                readout-width: root.readout-width;
+                readout-height: root.readout-height;
+                readout-text-color: root.readout-text-color;
+                readout-text-size: root.readout-text-size;
+                readout-text-weight: root.readout-text-weight;
                 pad-digits: root.pad-digits;
                 allow-editing: root.allow-editing;
                 editing <=> root.editing;
@@ -378,6 +415,15 @@ export component RDSNumStepper {
                 min-value: root.min-value;
                 max-value: root.max-value;
                 font-family: root.font-family;
+                readout-background: root.readout-background;
+                readout-border-color: root.readout-border-color;
+                readout-border-width: root.readout-border-width;
+                readout-border-radius: root.readout-border-radius;
+                readout-width: root.readout-width;
+                readout-height: root.readout-height;
+                readout-text-color: root.readout-text-color;
+                readout-text-size: root.readout-text-size;
+                readout-text-weight: root.readout-text-weight;
                 pad-digits: root.pad-digits;
                 allow-editing: root.allow-editing;
                 editing <=> root.editing;

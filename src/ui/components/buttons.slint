@@ -1,16 +1,66 @@
 import { Theme } from "../theme/index.slint";
 
+export component RDSButton {
+    in property <string> label;
+    in property <length> label-padding-top: 4px;
+    in property <length> label-padding-right: 4px;
+    in property <length> label-padding-bottom: 4px;
+    in property <length> label-padding-left: 4px;
+    in property <color> text-color: Theme.active.text_primary;
+    in property <TextHorizontalAlignment> horizontal-alignment: center;
+    in property <TextVerticalAlignment> vertical-alignment: center;
+    in property <bool> active;
+    in property <length> button-width: 42px;
+    in property <length> button-height: 28px;
+    in property <color> background: Theme.active.background_main;
+    in property <length> border-width: 1px;
+    in property <color> border-color: Theme.active.border_strong;
+    in property <length> border-radius: Theme.active.radius_medium;
+    callback clicked();
+
+    width: root.button-width;
+    height: root.button-height;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: root.background;
+        border-width: root.border-width;
+        border-color: root.border-color;
+        border-radius: root.border-radius;
+        HorizontalLayout {
+            padding-top: root.label-padding-top;
+            padding-right: root.label-padding-right;
+            padding-bottom: root.label-padding-bottom;
+            padding-left: root.label-padding-left;
+            Text {
+                text: root.label;
+                color: root.text-color;
+                horizontal-alignment: root.horizontal-alignment;
+                vertical-alignment: root.vertical-alignment;
+            }
+        }
+        TouchArea {
+            width: parent.width;
+            height: parent.height;
+            clicked => root.clicked();
+        }
+    }
+}
+
 export component RDSSelectButton {
     in property <string> label;
     in property <bool> active;
+    in property <length> button-width: 80px;
+    in property <length> button-height: 28px;
     callback clicked();
 
-    width: 80px;
-    height: 28px;
+    width: root.button-width;
+    height: root.button-height;
 
     Rectangle {
-        width: 80px;
-        height: 28px;
+        width: parent.width;
+        height: parent.height;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
         border-radius: Theme.active.radius_large;

@@ -50,7 +50,14 @@ export component RDSToggle {
     in-out property <bool> active;
     in property <string> on-icon: "stop";
     in property <string> off-icon: "play_arrow";
-    in property <color> icon-color: Theme.active.text_primary;
+    in property <color> background: Theme.active.background_main;
+    in property <color> active-background: Theme.active.accent_primary;
+    in property <color> border-color: Theme.active.border_strong;
+    in property <color> active-border-color: Theme.active.accent_primary;
+    in property <length> border-width: 1px;
+    in property <length> active-border-width: root.border-width;
+    in property <color> text-color: Theme.active.text_primary;
+    in property <color> icon-color: root.text-color;
     in property <length> icon-size: 20px;
     callback clicked();
 
@@ -61,11 +68,11 @@ export component RDSToggle {
         height: parent.height;
         clip: true;
         border-radius: Theme.active.radius_small;
-        border-color: root.active ? Theme.active.accent_primary : Theme.active.border_strong;
-        border-width: 1px;
+        border-color: root.active ? root.active-border-color : root.border-color;
+        border-width: root.active ? root.active-border-width : root.border-width;
         background: root.active
-            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
-            : (ta.pressed ? Theme.active.border_strong : (ta.has-hover ? Theme.active.background_raised : Theme.active.background_main));
+            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : root.active-background))
+            : (ta.pressed ? Theme.active.border_strong : (ta.has-hover ? Theme.active.background_raised : root.background));
 
         Text {
             text: root.active ? root.on-icon : root.off-icon;

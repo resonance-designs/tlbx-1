@@ -74,6 +74,7 @@ export component RDSWaveformViz inherits Rectangle {
 export component RDSVUMeter {
     in property <float> level;
     in property <color> fill-color: Theme.active.meter_normal;
+    in property <length> vu-border-width: 2px;
     property <float> clamped-level: Math.max(0.0, Math.min(1.0, root.level));
 
     width: 140px;
@@ -85,7 +86,7 @@ export component RDSVUMeter {
         background: Theme.active.background_main;
         border-radius: Theme.active.radius_medium;
         border-color: Theme.active.border_subtle;
-        border-width: 1px;
+        border-width: root.vu-border-width;
 
         Rectangle {
             width: Math.max(4px, root.clamped-level * parent.width);
@@ -99,6 +100,7 @@ export component RDSVUMeter {
 export component RDSVertVUMeter {
     in property <float> level;
     in property <color> fill-color: Theme.active.meter_normal;
+    in property <length> vu-border-width: 2px;
     property <float> clamped-level: Math.max(0.0, Math.min(1.0, root.level));
 
     width: 12px;
@@ -110,7 +112,7 @@ export component RDSVertVUMeter {
         background: Theme.active.background_main;
         border-radius: Theme.active.radius_medium;
         border-color: Theme.active.border_subtle;
-        border-width: 1px;
+        border-width: root.vu-border-width;
 
         Rectangle {
             width: parent.width;

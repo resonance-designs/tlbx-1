@@ -6,7 +6,8 @@ export component RDSHeaderLabel {
     in property <TextHorizontalAlignment> horizontal-alignment: center;
     in property <length> padding-horizontal: 8px;
     in property <length> padding-vertical: 4px;
-
+    in property <length> right-padding: 8px;
+    in property <length> right-gap: 6px;
     width: 100%;
     height: 30px;
 
@@ -26,6 +27,15 @@ export component RDSHeaderLabel {
             font-size: Theme.active.font_large;
             horizontal-alignment: root.horizontal-alignment;
             vertical-alignment: root.vertical-alignment;
+        }
+        right-slot := HorizontalLayout {
+            y: root.padding-vertical;
+            height: Math.max(0px, parent.height - (root.padding-vertical * 2));
+            width: self.preferred-width;
+            x: parent.width - self.width - root.right-padding;
+            alignment: center;
+            spacing: root.right-gap;
+            @children
         }
     }
 }

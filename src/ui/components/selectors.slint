@@ -42,11 +42,22 @@ Public members:
 - min-value: float - Minimum bounds
 - max-value: float - Maximum bounds
 - font-family: string - Font family for the readout
+- readout-background: color - Background color
+- readout-border-color: color - Border color
+- readout-border-width: length - Border width
+- readout-border-radius: length - Border radius
+- readout-width: length - Width
+- readout-height: length - Height
+- readout-text-color: color - Text color
+- readout-text-size: length - Text size
+- readout-text-weight: int - Text weight
 - pad-digits: int - Number of digits to pad to (default: 3, clamped to 3)
+- allow-editing: bool - Whether double-click allows manual text entry
 - editing: bool - Whether currently in text input mode
 - drag-start-y: length - Internal state for drag tracking
 - drag-start-value: float - Internal state for drag tracking
 - value-changed(float): callback - Triggered when value is modified
+- double-clicked(): callback - Triggered on double click
 */
 export component StepperReadout inherits Rectangle {
     in-out property <float> value;
@@ -309,9 +320,11 @@ Public members:
 - readout-text-size: length - Readout text size
 - readout-text-weight: int - Readout text weight
 - pad-digits: int - Number of digits to pad to (default: 3, clamped to 3)
-- button-tog: bool - Whether to show the increment/decrement buttons (default: false)
+- button-tog: bool - Whether to show the increment/decrement buttons (default: true)
+- allow-editing: bool - Whether double-click allows manual text entry
 - button-pos: string - "top-bottom" (default fallback) or "left-right" for button arrangement
 - value-changed(float): callback - Triggered when the value changes via any interaction
+- readout-double-clicked(): callback - Triggered when the readout is double-clicked
 */
 
 export component RDSNumStepper {

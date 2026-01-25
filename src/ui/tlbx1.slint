@@ -615,13 +615,14 @@ export component TLBX1UI inherits Window {
                         VerticalLayout {
                             height: 84px;
                             width: 338px;
-                            // Logo
+                            // MMI Logo
                             Text {
                                 text: "MMI Studios";
                                 font-family: "Quad Light";
                                 color: #f0f0f2;
                                 font-size: 44px;
                             }
+                            // Instrument Name
                             Rectangle {
                                 x: -10px;
                                 width: 354px;
@@ -645,7 +646,7 @@ export component TLBX1UI inherits Window {
                                     }
                                 }
                             }
-                            // Track Select
+                            // Track Selector
                             HorizontalLayout {
                                 padding-top: 8px;
                                 spacing: 8px;
@@ -673,7 +674,7 @@ export component TLBX1UI inherits Window {
                                 Rectangle {
                                     width: 2px;
                                     height: 30px;
-                                    background: #fff;
+                                    background: Theme.active.background-main;
                                 }
                                 // Engine Title
                                 Rectangle {
@@ -689,7 +690,12 @@ export component TLBX1UI inherits Window {
                                         padding-left: 8px;
                                         padding-right: 8px;
                                         Text {
-                                            text: "Track";
+                                            text: "Track " + root.selected-track + ": " +
+                                                (root.active-engine-type == 1 ? "Tape-Deck"
+                                                    : root.active-engine-type == 2 ? "Animate"
+                                                    : root.active-engine-type == 3 ? "SynDRM"
+                                                    : root.active-engine-type == 4 ? "Void Seed"
+                                                    : "None");
                                             color: #f0f0f2;
                                             font-size: 16px;
                                             font-weight: 800;
@@ -952,11 +958,8 @@ export component TLBX1UI inherits Window {
                                     height: root.active-engine-type == 1 ? tape-content.preferred-height : 0px;
                                     clip: true;
                                     visible: root.active-engine-type == 1;
-
                                     tape-content := VerticalLayout {
-                                        spacing: 8px;
                                         width: parent.width;
-
                                         TapeEngine {
                                             width: parent.width;
                                             is-recording: root.is-recording;
@@ -1076,11 +1079,9 @@ export component TLBX1UI inherits Window {
                                     height: root.active-engine-type == 2 ? animate-content.preferred-height : 0px;
                                     clip: true;
                                     visible: root.active-engine-type == 2;
-
                                     animate-content := VerticalLayout {
                                         spacing: 12px;
                                         width: parent.width;
-
                                         AnimateEngine {
                                             width: parent.width;
                                             track-muted <=> root.track-muted;

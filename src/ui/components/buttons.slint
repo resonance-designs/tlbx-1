@@ -1,5 +1,23 @@
 import { Theme } from "../theme/index.slint";
 
+/*
+Component: RDSButton
+Description: A standard button component with customizable labeling and styling.
+Public members:
+- label: string - Text label for the button
+- label-padding-top/right/bottom/left: length - Padding around the label
+- text-color: color - Color of the label text
+- horizontal-alignment: enum - Horizontal alignment of text
+- vertical-alignment: enum - Vertical alignment of text
+- active: bool - Active state of the button
+- button-width: length - Width of the button
+- button-height: length - Height of the button
+- background: color - Background color
+- border-width: length - Width of the border
+- border-color: color - Color of the border
+- border-radius: length - Radius of the corners
+- clicked(): callback - Triggered when the button is clicked
+*/
 export component RDSButton {
     in property <string> label;
     in property <length> label-padding-top: 4px;
@@ -12,23 +30,38 @@ export component RDSButton {
     in property <bool> active;
     in property <length> button-width: 42px;
     in property <length> button-height: 28px;
-    in property <color> background: Theme.active.background_main;
+    in property <color> background: root.active ? Theme.active.accent_primary : Theme.active.background_main;
     in property <length> border-width: 1px;
-    in property <color> border-color: Theme.active.border_strong;
+    in property <color> border-color: root.active ? Theme.active.accent_primary : Theme.active.border_strong;
     in property <length> border-radius: Theme.active.radius_medium;
+    in property <int> layout-stretch: 0;
+    in property <length> layout-preferred-width: Math.max(root.button-width, root.content-width);
     callback clicked();
+    callback pressed();
+    callback released();
 
-    width: root.button-width;
+    private property <length> content-width: label_metrics.preferred-width + root.label-padding-left + root.label-padding-right;
     height: root.button-height;
-
+    min-width: Math.max(root.button-width, root.content-width);
     Rectangle {
         width: parent.width;
         height: parent.height;
-        background: root.background;
+        background: touch.pressed ? (root.active ? Theme.active.accent_secondary : Theme.active.background_hover) : (touch.has-hover ? Theme.active.background_hover : root.background);
         border-width: root.border-width;
         border-color: root.border-color;
         border-radius: root.border-radius;
+        label_metrics := Text {
+            text: root.label;
+            color: root.text-color;
+            horizontal-alignment: root.horizontal-alignment;
+            vertical-alignment: root.vertical-alignment;
+            visible: false;
+            width: 0px;
+            height: 0px;
+        }
         HorizontalLayout {
+            width: parent.width;
+            height: parent.height;
             padding-top: root.label-padding-top;
             padding-right: root.label-padding-right;
             padding-bottom: root.label-padding-bottom;
@@ -40,14 +73,32 @@ export component RDSButton {
                 vertical-alignment: root.vertical-alignment;
             }
         }
-        TouchArea {
+        touch := TouchArea {
             width: parent.width;
             height: parent.height;
+            pointer-event(event) => {
+                if (event.kind == PointerEventKind.down) {
+                    root.pressed();
+                } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
+                    root.released();
+                }
+            }
             clicked => root.clicked();
         }
     }
 }
 
+/*
+Component: RDSSelectButton
+Description: A larger selectable button with active state and shift-click support.
+Public members:
+- label: string - Text label for the button
+- active: bool - Active state of the button
+- button-width: length - Width of the button
+- button-height: length - Height of the button
+- clicked(): callback - Triggered when the button is clicked normally
+- shift-clicked(): callback - Triggered when the button is shift-clicked
+*/
 export component RDSSelectButton {
     in property <string> label;
     in property <bool> active;
@@ -116,6 +167,14 @@ export component RDSSelectButton {
     }
 }
 
+/*
+Component: RDSSequencerCell
+Description: A compact grid cell suitable for step sequencers.
+Public members:
+- active: bool - Active state of the cell
+- current: bool - Whether the cell is currently being played
+- clicked(): callback - Triggered when the cell is clicked
+*/
 export component RDSSequencerCell {
     in property <bool> active;
     in property <bool> current;

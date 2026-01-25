@@ -6,7 +6,7 @@ Description: A rotary knob component that supports both bounded and infinite rot
 Public members:
 - renderer: string - "hi-fi" (default) or "lo-fi"
 - indicator: string - "circle" (default), "line", or "caret"
-- indicator-color: color - color for lo-fi indicators
+- indicator-color: color - color for indicators
 - value: float - Current value
 - rotation-angle: angle - Current rotation angle
 - size: length - Size of the knob (width and height are bounded to this)
@@ -15,11 +15,20 @@ Public members:
 - scroll-sensitivity: float - Sensitivity for mouse scroll wheel
 - min-value: float - Minimum value (set equal to max-value for infinite mode - if not set, defaults to infinite)
 - max-value: float - Maximum value (set equal to min-value for infinite mode - if not set, defaults to infinite)
+- label: string - Text label for the knob
+- label-pos: string - Position of the label ("top-left", "top-center", "top-right", "center-left", "center-center", "center-right", "bottom-left", "bottom-center", "bottom-right")
+- label-width: length - Custom width for label area
+- label-height: length - Custom height for label area
+- label-txt-color: color - Color of the label text
+- label-bg-color: color - Background color of the label area
+- label-font-size: length - Font size for the label
+- label-font-weight: int - Font weight for the label
 - value-changed(float): callback - Triggered when the value changes via user interaction
 
 Example usage:
-- Basic bounded knob:
+- Basic bounded knob with label:
     RDSKnob {
+        label: "Gain";
         size: 64px;
         indicator-position: 20px;
         min-value: 0;

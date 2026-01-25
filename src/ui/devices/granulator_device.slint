@@ -1,6 +1,5 @@
-import { Button } from "std-widgets.slint";
-
-import { RDSKnob } from "../components/index.slint";
+import { Theme } from "../theme/index.slint";
+import { RDSKnob, RDSHeaderLabel, RDSCircleToggle } from "../components/index.slint";
 
 export component GranulatorDevice {
     in-out property <bool> mosaic-enabled: true;
@@ -35,191 +34,217 @@ export component GranulatorDevice {
 
     VerticalLayout {
         spacing: 8px;
-        width: parent.width;
 
-        Text { text: "Mosaic Controls"; color: #e4e4ea; font-size: 14px; }
-        HorizontalLayout {
-            spacing: 8px;
-            Button {
-                text: root.mosaic-enabled ? "Mosaic ON" : "Mosaic BYPASS";
-                clicked => root.toggle-mosaic-enabled();
+        // Device Name
+        RDSHeaderLabel {
+            text: "Granulator";
+            horizontal-alignment: left;
+            padding-horizontal: 12px;
+            padding-vertical: 6px;
+            right-padding: 12px;
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: center;
+                RDSCircleToggle {
+                    active: root.mosaic-enabled;
+                    label: "Bypass";
+                    label-active: "On";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
+                    clicked => root.toggle-mosaic-enabled();
+                }
             }
         }
 
-        VerticalLayout {
-            spacing: 0px;
+        // Device Controls
+        Rectangle {
+            background: #1e3a5f33;
+            border-width: 2px;
+            border-radius: 6px;
+            border-color: Theme.active.border-strong;
+            GridLayout {
+                padding-top: 30px;
+                padding-right: 12px;
+                padding-bottom: 12px;
+                padding-left: 12px;
+                spacing-horizontal: 36px;
+                spacing-vertical: 30px;
 
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-pitch;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-pitch = v; root.mosaic-pitch-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-rate;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-rate = v; root.mosaic-rate-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Size"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-size;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-size = v; root.mosaic-size-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Contour"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-contour;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-contour = v; root.mosaic-contour-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Warp"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-warp;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-warp = v; root.mosaic-warp-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Spray"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-spray;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-spray = v; root.mosaic-spray-changed(v); }
-                    }
-                }
-            }
-
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Pattern"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.mosaic-pattern;
-                        min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.mosaic-pattern = v; root.mosaic-pattern-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Wet"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                // Row 1 Controls
+                Row {
+                    // Wet
                     RDSKnob {
                         renderer: "lo-fi";
                         value: root.mosaic-wet;
                         min-value: 0; max-value: 1;
                         size: 48px; indicator-position: 15px;
+                        label: "Wet";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-wet = v; root.mosaic-wet-changed(v); }
                     }
+                    // Pitch
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-pitch;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Pitch";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-pitch = v; root.mosaic-pitch-changed(v); }
+                    }
+                    // Rate
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-rate;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Rate";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-rate = v; root.mosaic-rate-changed(v); }
+                    }
+                    // Size
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-size;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Size";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-size = v; root.mosaic-size-changed(v); }
+                    }
+                    // Contour
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-contour;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Contour";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-contour = v; root.mosaic-contour-changed(v); }
+                    }
+                    // Warp
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-warp;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Warp";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-warp = v; root.mosaic-warp-changed(v); }
+                    }
+                    // Spray
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-spray;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Spray";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-spray = v; root.mosaic-spray-changed(v); }
+                    }
                 }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Detune"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+
+                // Row 2 Controls
+                Row {
+                    // Pattern
+                    RDSKnob {
+                        renderer: "lo-fi";
+                        value: root.mosaic-pattern;
+                        min-value: 0; max-value: 1;
+                        size: 48px; indicator-position: 15px;
+                        label: "Pattern";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
+                        sensitivity: 0.01; scroll-sensitivity: 0.01;
+                        value-changed(v) => { root.mosaic-pattern = v; root.mosaic-pattern-changed(v); }
+                    }
+                    // Detune
                     RDSKnob {
                         renderer: "lo-fi";
                         value: root.mosaic-detune;
                         min-value: 0; max-value: 1;
                         size: 48px; indicator-position: 15px;
+                        label: "Detune";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-detune = v; root.mosaic-detune-changed(v); }
                     }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Spatial"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    // Spatial
                     RDSKnob {
                         renderer: "lo-fi";
                         value: root.mosaic-spatial;
                         min-value: 0; max-value: 1;
                         size: 48px; indicator-position: 15px;
+                        label: "Spatial";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-spatial = v; root.mosaic-spatial-changed(v); }
                     }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Rand Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    // Random Rate
                     RDSKnob {
                         renderer: "lo-fi";
                         value: root.mosaic-rand-rate;
                         min-value: 0; max-value: 1;
                         size: 48px; indicator-position: 15px;
+                        label: "Rand Rate";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-rand-rate = v; root.mosaic-rand-rate-changed(v); }
                     }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "Rand Size"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    // Random Size
                     RDSKnob {
                         renderer: "lo-fi";
                         value: root.mosaic-rand-size;
                         min-value: 0; max-value: 1;
                         size: 48px; indicator-position: 15px;
+                        label: "Rand Size";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-rand-size = v; root.mosaic-rand-size-changed(v); }
                     }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 60px;
-                    Text { text: "SOS"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                    // Sound-On-Sound (Overdub)
                     RDSKnob {
                         renderer: "lo-fi";
                         value: root.mosaic-sos;
                         min-value: 0; max-value: 1;
                         size: 48px; indicator-position: 15px;
+                        label: "SOS";
+                        label-pos: "top-center";
+                        label-font-size: 10px;
+                        label-font-weight: 500;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-sos = v; root.mosaic-sos-changed(v); }
                     }

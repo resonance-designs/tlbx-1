@@ -1,5 +1,17 @@
 import { Theme } from "../theme/index.slint";
 
+/*
+Component: RDSSlider
+Description: A versatile slider (fader) supporting vertical and horizontal orientations.
+Public members:
+- value: float - Current value
+- min-value: float - Minimum bounds
+- max-value: float - Maximum bounds
+- size: string - "small", "medium", or "large"
+- orientation: string - "vertical" or "horizontal"
+- height-override: length - Custom height (or width if horizontal)
+- value-changed(float): callback - Triggered when value changes
+*/
 export component RDSSlider inherits Rectangle {
     // Public properties
     in-out property <float> value: 0; // Current value

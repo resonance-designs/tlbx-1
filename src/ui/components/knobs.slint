@@ -23,6 +23,18 @@ Public members:
 - label-bg-color: color - Background color of the label area
 - label-font-size: length - Font size for the label
 - label-font-weight: int - Font weight for the label
+- readout-enabled: bool - Show/hide the readout
+- readout-text: string - Override text for the readout (defaults to value)
+- readout-mode: string - "raw" | "percent" | "literal"
+- readout-suffix: string - Optional suffix for raw mode (e.g., "Hz")
+- readout-literals: [string] - Literal labels for "literal" mode
+- readout-pos: string - Position of the readout ("top-left", "top-center", "top-right", "center-left", "center-center", "center-right", "bottom-left", "bottom-center", "bottom-right")
+- readout-width: length - Custom width for readout area
+- readout-height: length - Custom height for readout area
+- readout-txt-color: color - Color of the readout text
+- readout-bg-color: color - Background color of the readout area
+- readout-font-size: length - Font size for the readout
+- readout-font-weight: int - Font weight for the readout
 - value-changed(float): callback - Triggered when the value changes via user interaction
 
 Example usage:
@@ -56,6 +68,18 @@ export component RDSKnob inherits Rectangle {
     in-out property <length> label-font-size: 11px;
     in-out property <int> label-font-weight: 400;
     in-out property <string> label-pos: "bottom-center";
+    in-out property <bool> readout-enabled: true;
+    in-out property <string> readout-text: "";
+    in-out property <string> readout-mode: "raw";
+    in-out property <string> readout-suffix: "";
+    in-out property <[string]> readout-literals: [];
+    in-out property <string> readout-pos: "center-center";
+    in-out property <length> readout-width: root.size;
+    in-out property <length> readout-height: root.readout-font-size + 8px;
+    in-out property <color> readout-txt-color: Theme.active.ui_label_txt;
+    in-out property <color> readout-bg-color: transparent;
+    in-out property <length> readout-font-size: 11px;
+    in-out property <int> readout-font-weight: 400;
 
     in-out property <float> min-value: 0;
     in-out property <float> max-value: 0;
@@ -77,6 +101,40 @@ export component RDSKnob inherits Rectangle {
             ? -root.label-height - 4px
             : (root.label-pos == "center-left" || root.label-pos == "center-center" || root.label-pos == "center-right"
                 ? (root.height - root.label-height) / 2
+                : root.height + 4px);
+    private property <float> readout-value-trunc:
+        root.value < 0
+            ? Math.ceil(root.value * 100.0) / 100.0
+            : Math.floor(root.value * 100.0) / 100.0;
+    private property <float> readout-clamped: Math.max(0.0, Math.min(1.0, root.value));
+    private property <float> readout-percent: Math.floor(root.readout-clamped * 100.0);
+    private property <int> readout-literal-index:
+        root.readout-literals.length > 0
+            ? Math.round(root.readout-clamped * (root.readout-literals.length - 1))
+            : 0;
+    private property <string> readout-literal:
+        root.readout-literals.length > 0
+            ? root.readout-literals[root.readout-literal-index]
+            : "";
+    private property <string> readout-display:
+        root.readout-text != ""
+            ? root.readout-text
+            : (root.readout-mode == "percent"
+                ? (root.readout-percent + "%")
+                : (root.readout-mode == "literal"
+                    ? (root.readout-literal != "" ? root.readout-literal : root.readout-value-trunc)
+                    : (root.readout-value-trunc + root.readout-suffix)));
+    private property <length> readout-x:
+        root.readout-pos == "top-left" || root.readout-pos == "center-left" || root.readout-pos == "bottom-left"
+            ? -root.readout-width - 4px
+            : (root.readout-pos == "top-right" || root.readout-pos == "center-right" || root.readout-pos == "bottom-right"
+                ? root.width + 4px
+                : (root.width - root.readout-width) / 2);
+    private property <length> readout-y:
+        root.readout-pos == "top-left" || root.readout-pos == "top-center" || root.readout-pos == "top-right"
+            ? -root.readout-height - 4px
+            : (root.readout-pos == "center-left" || root.readout-pos == "center-center" || root.readout-pos == "center-right"
+                ? (root.height - root.readout-height) / 2
                 : root.height + 4px);
 
     width: root.size;
@@ -113,6 +171,23 @@ export component RDSKnob inherits Rectangle {
             color: root.label-txt-color;
             font-size: root.label-font-size;
             font-weight: root.label-font-weight;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    Rectangle {
+        visible: root.readout-enabled;
+        x: root.readout-x;
+        y: root.readout-y;
+        width: root.readout-width;
+        height: root.readout-height;
+        background: root.readout-bg-color;
+        Text {
+            text: root.readout-display;
+            color: root.readout-txt-color;
+            font-size: root.readout-font-size;
+            font-weight: root.readout-font-weight;
             horizontal-alignment: center;
             vertical-alignment: center;
         }

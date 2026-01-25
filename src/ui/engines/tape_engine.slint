@@ -139,6 +139,7 @@ export component TapeEngine inherits Rectangle {
     width: 1200px;
     background: transparent;
 
+    // Engine Container
     VerticalLayout {
         spacing: 8px;
         padding: 12px;
@@ -477,7 +478,7 @@ export component TapeEngine inherits Rectangle {
                 // Granulator Device
                 Rectangle {
                     width: (parent.width - 16px) / 2 - 15px;
-                    height: 208px;
+                    height: 250px;
                     GranulatorDevice {
                         mosaic-enabled <=> root.mosaic-enabled;
                         mosaic-pitch <=> root.mosaic-pitch;

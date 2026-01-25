@@ -95,6 +95,8 @@ const RING_DETUNE_CENTS: f32 = 20.0;
 const RING_DETUNE_RATE_HZ: f32 = 0.25;
 const RING_LFO_RATE_MIN_HZ: f32 = 0.1;
 const RING_LFO_RATE_MAX_HZ: f32 = 12.0;
+const ANIMATE_LFO_RATE_MIN_HZ: f32 = 0.01;
+const ANIMATE_LFO_RATE_MAX_HZ: f32 = 20.0;
 const METRONOME_CLICK_MS: f32 = 12.0;
 const METRONOME_CLICK_GAIN: f32 = 0.25;
 const METRONOME_COUNT_IN_MAX_TICKS: u32 = 8;
@@ -487,6 +489,8 @@ struct Track {
     kick_decay: AtomicU32,
     /// SynDRM kick attack (normalized 0..1).
     kick_attack: AtomicU32,
+    /// SynDRM kick pitch envelope amount (normalized 0..1).
+    kick_pitch_env_amount: AtomicU32,
     /// SynDRM kick drive (normalized 0..1).
     kick_drive: AtomicU32,
     /// SynDRM kick output level (normalized 0..1).
@@ -497,6 +501,8 @@ struct Track {
     kick_filter_cutoff: AtomicU32,
     /// SynDRM kick filter resonance (normalized 0..1).
     kick_filter_resonance: AtomicU32,
+    /// SynDRM kick filter pre-drive toggle.
+    kick_filter_pre_drive: AtomicBool,
     /// SynDRM kick sequencer grid (128 steps).
     kick_sequencer_grid: Arc<[AtomicBool; SYNDRM_STEPS]>,
     /// SynDRM kick sequencer current step.
@@ -528,6 +534,8 @@ struct Track {
     snare_filter_cutoff: AtomicU32,
     /// SynDRM snare filter resonance (normalized 0..1).
     snare_filter_resonance: AtomicU32,
+    /// SynDRM snare filter pre-drive toggle.
+    snare_filter_pre_drive: AtomicBool,
     /// SynDRM snare sequencer grid (128 steps).
     snare_sequencer_grid: Arc<[AtomicBool; SYNDRM_STEPS]>,
     /// SynDRM snare sequencer current step.
@@ -843,11 +851,13 @@ impl Default for Track {
             kick_pitch: AtomicU32::new(0.5f32.to_bits()),
             kick_decay: AtomicU32::new(0.5f32.to_bits()),
             kick_attack: AtomicU32::new(0.0f32.to_bits()),
+            kick_pitch_env_amount: AtomicU32::new(0.0f32.to_bits()),
             kick_drive: AtomicU32::new(0.0f32.to_bits()),
             kick_level: AtomicU32::new(1.0f32.to_bits()),
             kick_filter_type: AtomicU32::new(0),
             kick_filter_cutoff: AtomicU32::new(0.6f32.to_bits()),
             kick_filter_resonance: AtomicU32::new(0.2f32.to_bits()),
+            kick_filter_pre_drive: AtomicBool::new(true),
             kick_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
             kick_sequencer_step: AtomicI32::new(-1),
             kick_sequencer_phase: AtomicU32::new(0),
@@ -864,6 +874,7 @@ impl Default for Track {
             snare_filter_type: AtomicU32::new(0),
             snare_filter_cutoff: AtomicU32::new(0.6f32.to_bits()),
             snare_filter_resonance: AtomicU32::new(0.2f32.to_bits()),
+            snare_filter_pre_drive: AtomicBool::new(true),
             snare_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
             snare_sequencer_step: AtomicI32::new(-1),
             snare_sequencer_phase: AtomicU32::new(0),
@@ -1555,11 +1566,15 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.kick_pitch.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.kick_decay.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.kick_attack.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .kick_pitch_env_amount
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.kick_drive.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.kick_level.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.kick_filter_type.store(0, Ordering::Relaxed);
     track.kick_filter_cutoff.store(0.6f32.to_bits(), Ordering::Relaxed);
     track.kick_filter_resonance.store(0.2f32.to_bits(), Ordering::Relaxed);
+    track.kick_filter_pre_drive.store(true, Ordering::Relaxed);
     for i in 0..SYNDRM_STEPS {
         track.kick_sequencer_grid[i].store(false, Ordering::Relaxed);
     }
@@ -1578,6 +1593,7 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.snare_filter_type.store(0, Ordering::Relaxed);
     track.snare_filter_cutoff.store(0.6f32.to_bits(), Ordering::Relaxed);
     track.snare_filter_resonance.store(0.2f32.to_bits(), Ordering::Relaxed);
+    track.snare_filter_pre_drive.store(true, Ordering::Relaxed);
     for i in 0..SYNDRM_STEPS {
         track.snare_sequencer_grid[i].store(false, Ordering::Relaxed);
     }
@@ -1742,13 +1758,15 @@ impl TLBX1 {
             let beats = lfo_division_beats(lfo_x_division);
             (tempo / 60.0) / beats
         } else {
-            0.05 + lfo_x_rate * 10.0
+            ANIMATE_LFO_RATE_MIN_HZ
+                + lfo_x_rate * (ANIMATE_LFO_RATE_MAX_HZ - ANIMATE_LFO_RATE_MIN_HZ)
         };
         let lfo_y_rate_hz = if lfo_y_sync {
             let beats = lfo_division_beats(lfo_y_division);
             (tempo / 60.0) / beats
         } else {
-            0.05 + lfo_y_rate * 10.0
+            ANIMATE_LFO_RATE_MIN_HZ
+                + lfo_y_rate * (ANIMATE_LFO_RATE_MAX_HZ - ANIMATE_LFO_RATE_MIN_HZ)
         };
         let wt_lfo_amount = [
             f32::from_bits(
@@ -1813,25 +1831,29 @@ impl TLBX1 {
                 let beats = lfo_division_beats(wt_lfo_division[0]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[0] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    + wt_lfo_rate[0] * (ANIMATE_LFO_RATE_MAX_HZ - ANIMATE_LFO_RATE_MIN_HZ)
             },
             if wt_lfo_sync[1] {
                 let beats = lfo_division_beats(wt_lfo_division[1]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[1] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    + wt_lfo_rate[1] * (ANIMATE_LFO_RATE_MAX_HZ - ANIMATE_LFO_RATE_MIN_HZ)
             },
             if wt_lfo_sync[2] {
                 let beats = lfo_division_beats(wt_lfo_division[2]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[2] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    + wt_lfo_rate[2] * (ANIMATE_LFO_RATE_MAX_HZ - ANIMATE_LFO_RATE_MIN_HZ)
             },
             if wt_lfo_sync[3] {
                 let beats = lfo_division_beats(wt_lfo_division[3]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[3] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    + wt_lfo_rate[3] * (ANIMATE_LFO_RATE_MAX_HZ - ANIMATE_LFO_RATE_MIN_HZ)
             },
         ];
         let sample_start = [
@@ -2564,6 +2586,8 @@ impl TLBX1 {
             f32::from_bits(track.kick_decay.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut kick_attack_base =
             f32::from_bits(track.kick_attack.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let kick_pitch_env_amount =
+            f32::from_bits(track.kick_pitch_env_amount.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut kick_drive_base =
             f32::from_bits(track.kick_drive.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let track_muted = track.is_muted.load(Ordering::Relaxed);
@@ -2574,6 +2598,7 @@ impl TLBX1 {
             f32::from_bits(track.kick_filter_cutoff.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut kick_filter_resonance_base =
             f32::from_bits(track.kick_filter_resonance.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let kick_filter_pre_drive = track.kick_filter_pre_drive.load(Ordering::Relaxed);
         let mut snare_tone_base =
             f32::from_bits(track.snare_tone.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut snare_decay_base =
@@ -2591,6 +2616,7 @@ impl TLBX1 {
             f32::from_bits(track.snare_filter_cutoff.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut snare_filter_resonance_base =
             f32::from_bits(track.snare_filter_resonance.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let snare_filter_pre_drive = track.snare_filter_pre_drive.load(Ordering::Relaxed);
 
         let mut env = f32::from_bits(track.kick_env.load(Ordering::Relaxed));
         let mut pitch_env = f32::from_bits(track.kick_pitch_env.load(Ordering::Relaxed));
@@ -2625,7 +2651,8 @@ impl TLBX1 {
         let mut snare_filter_resonance = snare_filter_resonance_base;
 
         let mut decay_time = 0.05 + kick_decay * 1.5;
-        let mut pitch_decay_time = 0.01 + kick_decay * 0.25;
+        let mut pitch_decay_time = (0.01 + kick_decay * 0.25)
+            * (1.0 - 0.7 * kick_pitch_env_amount).max(0.1);
         let mut env_coeff = (-1.0 / (decay_time * sr)).exp();
         let mut attack_time = kick_attack * 0.01;
         let mut attack_samples = (attack_time * sr).round().max(0.0) as u32;
@@ -2636,7 +2663,7 @@ impl TLBX1 {
         };
         let mut pitch_coeff = (-1.0 / (pitch_decay_time * sr)).exp();
         let mut base_freq = 40.0 + kick_pitch * 120.0;
-        let mut sweep = base_freq * 2.5;
+        let mut sweep = base_freq * (kick_pitch_env_amount * 4.0);
         let mut drive = 1.0 + kick_drive * 8.0;
         let mut kick_cutoff_hz = cutoff_min * cutoff_span.powf(kick_filter_cutoff);
         let mut kick_q = 0.1 + kick_filter_resonance * 0.9;
@@ -2667,6 +2694,7 @@ impl TLBX1 {
             kick_pitch: &mut f32,
             kick_decay: &mut f32,
             kick_attack: &mut f32,
+            kick_pitch_env_amount: f32,
             kick_drive: &mut f32,
             kick_level: &mut f32,
             kick_filter_type: &mut u32,
@@ -2731,7 +2759,8 @@ impl TLBX1 {
                 *kick_filter_resonance = filter_resonance;
 
                 *decay_time = 0.05 + *kick_decay * 1.5;
-                *pitch_decay_time = 0.01 + *kick_decay * 0.25;
+                *pitch_decay_time = (0.01 + *kick_decay * 0.25)
+                    * (1.0 - 0.7 * kick_pitch_env_amount).max(0.1);
                 *env_coeff = (-1.0 / (*decay_time * sr)).exp();
                 *attack_time = *kick_attack * 0.01;
                 *attack_samples = (*attack_time * sr).round().max(0.0) as u32;
@@ -2742,7 +2771,7 @@ impl TLBX1 {
                 };
                 *pitch_coeff = (-1.0 / (*pitch_decay_time * sr)).exp();
                 *base_freq = 40.0 + *kick_pitch * 120.0;
-                *sweep = *base_freq * 2.5;
+                *sweep = *base_freq * (kick_pitch_env_amount * 4.0);
                 *drive = 1.0 + *kick_drive * 8.0;
                 *kick_cutoff_hz = cutoff_min * cutoff_span.powf(*kick_filter_cutoff);
                 *kick_q = 0.1 + *kick_filter_resonance * 0.9;
@@ -2778,7 +2807,8 @@ impl TLBX1 {
                 *kick_filter_resonance = *kick_filter_resonance_base;
 
                 *decay_time = 0.05 + *kick_decay * 1.5;
-                *pitch_decay_time = 0.01 + *kick_decay * 0.25;
+                *pitch_decay_time = (0.01 + *kick_decay * 0.25)
+                    * (1.0 - 0.7 * kick_pitch_env_amount).max(0.1);
                 *env_coeff = (-1.0 / (*decay_time * sr)).exp();
                 *attack_time = *kick_attack * 0.01;
                 *attack_samples = (*attack_time * sr).round().max(0.0) as u32;
@@ -2789,7 +2819,7 @@ impl TLBX1 {
                 };
                 *pitch_coeff = (-1.0 / (*pitch_decay_time * sr)).exp();
                 *base_freq = 40.0 + *kick_pitch * 120.0;
-                *sweep = *base_freq * 2.5;
+                *sweep = *base_freq * (kick_pitch_env_amount * 4.0);
                 *drive = 1.0 + *kick_drive * 8.0;
                 *kick_cutoff_hz = cutoff_min * cutoff_span.powf(*kick_filter_cutoff);
                 *kick_q = 0.1 + *kick_filter_resonance * 0.9;
@@ -2958,6 +2988,7 @@ impl TLBX1 {
                     &mut kick_pitch,
                     &mut kick_decay,
                     &mut kick_attack,
+                    kick_pitch_env_amount,
                     &mut kick_drive,
                     &mut kick_level,
                     &mut kick_filter_type,
@@ -3048,6 +3079,7 @@ impl TLBX1 {
                             &mut kick_pitch,
                             &mut kick_decay,
                             &mut kick_attack,
+                            kick_pitch_env_amount,
                             &mut kick_drive,
                             &mut kick_level,
                             &mut kick_filter_type,
@@ -3156,21 +3188,35 @@ impl TLBX1 {
             let mut osc_out = [0.0f32];
             dsp_state.kick_osc.tick(&[freq], &mut osc_out);
             let mut sample = osc_out[0] * env;
+            if kick_filter_pre_drive {
+                sample = Self::apply_syndrm_filter(
+                    kick_filter_type,
+                    sample,
+                    kick_cutoff_hz,
+                    kick_q,
+                    &mut *dsp_state.kick_filter_moog,
+                    &mut *dsp_state.kick_filter_lp,
+                    &mut *dsp_state.kick_filter_hp,
+                    &mut *dsp_state.kick_filter_bp,
+                );
+            }
             if kick_drive > 0.0 {
                 let mut drive_out = [0.0f32];
                 dsp_state.kick_drive.tick(&[sample * drive], &mut drive_out);
                 sample = drive_out[0];
             }
-            sample = Self::apply_syndrm_filter(
-                kick_filter_type,
-                sample,
-                kick_cutoff_hz,
-                kick_q,
-                &mut *dsp_state.kick_filter_moog,
-                &mut *dsp_state.kick_filter_lp,
-                &mut *dsp_state.kick_filter_hp,
-                &mut *dsp_state.kick_filter_bp,
-            );
+            if !kick_filter_pre_drive {
+                sample = Self::apply_syndrm_filter(
+                    kick_filter_type,
+                    sample,
+                    kick_cutoff_hz,
+                    kick_q,
+                    &mut *dsp_state.kick_filter_moog,
+                    &mut *dsp_state.kick_filter_lp,
+                    &mut *dsp_state.kick_filter_hp,
+                    &mut *dsp_state.kick_filter_bp,
+                );
+            }
             sample *= kick_level;
 
             if snare_env > 0.0 || snare_noise_env > 0.0 {
@@ -3182,21 +3228,35 @@ impl TLBX1 {
                 let noise_sample = noise_out[0] * snare_noise_env;
                 let mut snare_sample =
                     tone_sample * (1.0 - snare_snappy) + noise_sample * snare_snappy;
+                if snare_filter_pre_drive {
+                    snare_sample = Self::apply_syndrm_filter(
+                        snare_filter_type,
+                        snare_sample,
+                        snare_cutoff_hz,
+                        snare_q,
+                        &mut *dsp_state.snare_filter_moog,
+                        &mut *dsp_state.snare_filter_lp,
+                        &mut *dsp_state.snare_filter_hp,
+                        &mut *dsp_state.snare_filter_bp,
+                    );
+                }
                 let mut drive_out = [0.0f32];
                 dsp_state
                     .snare_drive
                     .tick(&[snare_sample * snare_drive_gain], &mut drive_out);
                 snare_sample = drive_out[0];
-                snare_sample = Self::apply_syndrm_filter(
-                    snare_filter_type,
-                    snare_sample,
-                    snare_cutoff_hz,
-                    snare_q,
-                    &mut *dsp_state.snare_filter_moog,
-                    &mut *dsp_state.snare_filter_lp,
-                    &mut *dsp_state.snare_filter_hp,
-                    &mut *dsp_state.snare_filter_bp,
-                );
+                if !snare_filter_pre_drive {
+                    snare_sample = Self::apply_syndrm_filter(
+                        snare_filter_type,
+                        snare_sample,
+                        snare_cutoff_hz,
+                        snare_q,
+                        &mut *dsp_state.snare_filter_moog,
+                        &mut *dsp_state.snare_filter_lp,
+                        &mut *dsp_state.snare_filter_hp,
+                        &mut *dsp_state.snare_filter_bp,
+                    );
+                }
                 sample += snare_sample * snare_level;
             }
 
@@ -5946,11 +6006,16 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("kick_pitch".to_string(), f(&track.kick_pitch));
     params.insert("kick_decay".to_string(), f(&track.kick_decay));
     params.insert("kick_attack".to_string(), f(&track.kick_attack));
+    params.insert(
+        "kick_pitch_env_amount".to_string(),
+        f(&track.kick_pitch_env_amount),
+    );
     params.insert("kick_drive".to_string(), f(&track.kick_drive));
     params.insert("kick_level".to_string(), f(&track.kick_level));
     params.insert("kick_filter_type".to_string(), u(&track.kick_filter_type));
     params.insert("kick_filter_cutoff".to_string(), f(&track.kick_filter_cutoff));
     params.insert("kick_filter_resonance".to_string(), f(&track.kick_filter_resonance));
+    params.insert("kick_filter_pre_drive".to_string(), b(&track.kick_filter_pre_drive));
     params.insert("snare_tone".to_string(), f(&track.snare_tone));
     params.insert("snare_decay".to_string(), f(&track.snare_decay));
     params.insert("snare_snappy".to_string(), f(&track.snare_snappy));
@@ -5960,6 +6025,7 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("snare_filter_type".to_string(), u(&track.snare_filter_type));
     params.insert("snare_filter_cutoff".to_string(), f(&track.snare_filter_cutoff));
     params.insert("snare_filter_resonance".to_string(), f(&track.snare_filter_resonance));
+    params.insert("snare_filter_pre_drive".to_string(), b(&track.snare_filter_pre_drive));
     params.insert("snare_tone".to_string(), f(&track.snare_tone));
     params.insert("snare_decay".to_string(), f(&track.snare_decay));
     params.insert("snare_snappy".to_string(), f(&track.snare_snappy));
@@ -6138,11 +6204,13 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.kick_pitch, "kick_pitch");
     sf(&track.kick_decay, "kick_decay");
     sf(&track.kick_attack, "kick_attack");
+    sf(&track.kick_pitch_env_amount, "kick_pitch_env_amount");
     sf(&track.kick_drive, "kick_drive");
     sf(&track.kick_level, "kick_level");
     su(&track.kick_filter_type, "kick_filter_type");
     sf(&track.kick_filter_cutoff, "kick_filter_cutoff");
     sf(&track.kick_filter_resonance, "kick_filter_resonance");
+    sb(&track.kick_filter_pre_drive, "kick_filter_pre_drive");
     sf(&track.snare_tone, "snare_tone");
     sf(&track.snare_decay, "snare_decay");
     sf(&track.snare_snappy, "snare_snappy");
@@ -6152,6 +6220,7 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     su(&track.snare_filter_type, "snare_filter_type");
     sf(&track.snare_filter_cutoff, "snare_filter_cutoff");
     sf(&track.snare_filter_resonance, "snare_filter_resonance");
+    sb(&track.snare_filter_pre_drive, "snare_filter_pre_drive");
     su(&track.syndrm_page, "syndrm_page");
     su(&track.syndrm_edit_lane, "syndrm_edit_lane");
     su(&track.syndrm_edit_step, "syndrm_edit_step");
@@ -7211,6 +7280,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].kick_decay.load(Ordering::Relaxed));
         let kick_attack =
             f32::from_bits(self.tracks[track_idx].kick_attack.load(Ordering::Relaxed));
+        let kick_pitch_env_amount =
+            f32::from_bits(self.tracks[track_idx].kick_pitch_env_amount.load(Ordering::Relaxed));
         let kick_drive =
             f32::from_bits(self.tracks[track_idx].kick_drive.load(Ordering::Relaxed));
         let kick_level =
@@ -7221,6 +7292,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].kick_filter_cutoff.load(Ordering::Relaxed));
         let kick_filter_resonance =
             f32::from_bits(self.tracks[track_idx].kick_filter_resonance.load(Ordering::Relaxed));
+        let kick_filter_pre_drive =
+            self.tracks[track_idx].kick_filter_pre_drive.load(Ordering::Relaxed);
         let kick_sequencer_current_step =
             self.tracks[track_idx].kick_sequencer_step.load(Ordering::Relaxed);
         let mut kick_sequencer_grid = Vec::with_capacity(SYNDRM_STEPS);
@@ -7246,6 +7319,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].snare_filter_cutoff.load(Ordering::Relaxed));
         let snare_filter_resonance =
             f32::from_bits(self.tracks[track_idx].snare_filter_resonance.load(Ordering::Relaxed));
+        let snare_filter_pre_drive =
+            self.tracks[track_idx].snare_filter_pre_drive.load(Ordering::Relaxed);
         let snare_sequencer_current_step =
             self.tracks[track_idx].snare_sequencer_step.load(Ordering::Relaxed);
         let mut snare_sequencer_grid = Vec::with_capacity(SYNDRM_STEPS);
@@ -7544,11 +7619,13 @@ impl SlintWindow {
         self.ui.set_kick_pitch(kick_pitch);
         self.ui.set_kick_decay(kick_decay);
         self.ui.set_kick_attack(kick_attack);
+        self.ui.set_kick_pitch_env_amount(kick_pitch_env_amount);
         self.ui.set_kick_drive(kick_drive);
         self.ui.set_kick_level(kick_level);
         self.ui.set_kick_filter_type(kick_filter_type as i32);
         self.ui.set_kick_filter_cutoff(kick_filter_cutoff);
         self.ui.set_kick_filter_resonance(kick_filter_resonance);
+        self.ui.set_kick_filter_pre_drive(kick_filter_pre_drive);
         self.ui
             .set_kick_sequencer_current_step(kick_sequencer_current_step);
         self.ui
@@ -7564,6 +7641,7 @@ impl SlintWindow {
         self.ui.set_snare_filter_type(snare_filter_type as i32);
         self.ui.set_snare_filter_cutoff(snare_filter_cutoff);
         self.ui.set_snare_filter_resonance(snare_filter_resonance);
+        self.ui.set_snare_filter_pre_drive(snare_filter_pre_drive);
         self.ui
             .set_snare_sequencer_current_step(snare_sequencer_current_step);
         self.ui
@@ -10174,6 +10252,17 @@ fn initialize_ui(
 
     let tracks_kick = Arc::clone(tracks);
     let params_kick = Arc::clone(params);
+    ui.on_kick_pitch_env_amount_changed(move |value| {
+        let track_idx = params_kick.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_kick[track_idx]
+                .kick_pitch_env_amount
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_kick = Arc::clone(tracks);
+    let params_kick = Arc::clone(params);
     ui.on_kick_drive_changed(move |value| {
         let track_idx = params_kick.selected_track.value().saturating_sub(1) as usize;
         if track_idx < NUM_TRACKS {
@@ -10224,6 +10313,17 @@ fn initialize_ui(
             tracks_kick[track_idx]
                 .kick_filter_resonance
                 .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_kick = Arc::clone(tracks);
+    let params_kick = Arc::clone(params);
+    ui.on_kick_filter_pre_drive_changed(move |value| {
+        let track_idx = params_kick.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_kick[track_idx]
+                .kick_filter_pre_drive
+                .store(value, Ordering::Relaxed);
         }
     });
 
@@ -10336,6 +10436,17 @@ fn initialize_ui(
             tracks_snare[track_idx]
                 .snare_filter_resonance
                 .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_filter_pre_drive_changed(move |value| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_snare[track_idx]
+                .snare_filter_pre_drive
+                .store(value, Ordering::Relaxed);
         }
     });
 

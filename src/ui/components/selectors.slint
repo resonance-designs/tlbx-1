@@ -457,3 +457,75 @@ export component RDSNumStepper {
         }
     }
 }
+
+export component RDSTextStepper {
+    in property <[string]> options;
+    in-out property <int> index: 0;
+    in property <string> font-family: Theme.active.font_readout;
+    in property <color> readout-background: Theme.active.background_main;
+    in property <color> readout-border-color: Theme.active.border_strong;
+    in property <length> readout-border-width: 1px;
+    in property <length> readout-border-radius: Theme.active.radius_medium;
+    in property <length> readout-width: 90px;
+    in property <length> readout-height: 32px;
+    in property <color> readout-text-color: Theme.active.text_primary;
+    in property <length> readout-text-size: 12px;
+    in property <int> readout-text-weight: 400;
+    in property <bool> button-tog: true;
+    callback index-changed(int);
+
+    private property <int> max-index: options.length > 0 ? options.length - 1 : 0;
+    private property <string> current-label: options.length > 0 ? options[index] : "";
+
+    width: button-tog ? 160px : readout-width;
+    height: readout-height;
+
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+
+        HorizontalLayout {
+            spacing: 6px;
+            padding-left: 8px;
+            padding-right: 8px;
+            alignment: center;
+
+            if (root.button-tog) : StepperButton {
+                y: parent.height / 4.5;
+                text: "\u{e5cb}"; // keyboard_arrow_left
+                clicked => {
+                    root.index = Math.max(0, root.index - 1);
+                    root.index-changed(root.index);
+                }
+            }
+
+            Rectangle {
+                width: root.readout-width;
+                height: root.readout-height;
+                background: root.readout-background;
+                border-width: root.readout-border-width;
+                border-color: root.readout-border-color;
+                border-radius: root.readout-border-radius;
+
+                Text {
+                    text: root.current-label;
+                    color: root.readout-text-color;
+                    font-family: root.font-family;
+                    font-size: root.readout-text-size;
+                    font-weight: root.readout-text-weight;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            if (root.button-tog) : StepperButton {
+                y: parent.height / 4.5;
+                text: "\u{e5cc}"; // keyboard_arrow_right
+                clicked => {
+                    root.index = Math.min(root.max-index, root.index + 1);
+                    root.index-changed(root.index);
+                }
+            }
+        }
+    }
+}

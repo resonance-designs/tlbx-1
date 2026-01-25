@@ -238,11 +238,13 @@ export component TLBX1UI inherits Window {
     in-out property <float> kick-pitch: 0.5;
     in-out property <float> kick-decay: 0.5;
     in-out property <float> kick-attack: 0.0;
+    in-out property <float> kick-pitch-env-amount: 0.0;
     in-out property <float> kick-drive: 0.0;
     in-out property <float> kick-level: 1.0;
     in-out property <int> kick-filter-type: 0;
     in-out property <float> kick-filter-cutoff: 0.6;
     in-out property <float> kick-filter-resonance: 0.2;
+    in-out property <bool> kick-filter-pre-drive: true;
     in-out property <[bool]> kick-sequencer-grid;
     in property <int> kick-sequencer-current-step: -1;
     in-out property <float> snare-tone: 0.5;
@@ -254,6 +256,7 @@ export component TLBX1UI inherits Window {
     in-out property <int> snare-filter-type: 0;
     in-out property <float> snare-filter-cutoff: 0.6;
     in-out property <float> snare-filter-resonance: 0.2;
+    in-out property <bool> snare-filter-pre-drive: true;
     in-out property <[bool]> snare-sequencer-grid;
     in property <int> snare-sequencer-current-step: -1;
     in-out property <int> syndrm-page: 0;
@@ -478,11 +481,13 @@ export component TLBX1UI inherits Window {
     callback kick-pitch-changed(value: float);
     callback kick-decay-changed(value: float);
     callback kick-attack-changed(value: float);
+    callback kick-pitch-env-amount-changed(value: float);
     callback kick-drive-changed(value: float);
     callback kick-level-changed(value: float);
     callback kick-filter-type-changed(index: int);
     callback kick-filter-cutoff-changed(value: float);
     callback kick-filter-resonance-changed(value: float);
+    callback kick-filter-pre-drive-changed(value: bool);
     callback kick-sequencer-grid-toggled(step: int);
     callback snare-tone-changed(value: float);
     callback snare-decay-changed(value: float);
@@ -493,6 +498,7 @@ export component TLBX1UI inherits Window {
     callback snare-filter-type-changed(index: int);
     callback snare-filter-cutoff-changed(value: float);
     callback snare-filter-resonance-changed(value: float);
+    callback snare-filter-pre-drive-changed(value: bool);
     callback snare-sequencer-grid-toggled(step: int);
     callback syndrm-page-changed(page: int);
     callback syndrm-edit-lane-changed(lane: int);
@@ -1265,11 +1271,13 @@ export component TLBX1UI inherits Window {
                                             kick-pitch <=> root.kick-pitch;
                                             kick-decay <=> root.kick-decay;
                                             kick-attack <=> root.kick-attack;
+                                            kick-pitch-env-amount <=> root.kick-pitch-env-amount;
                                             kick-drive <=> root.kick-drive;
                                             kick-level <=> root.kick-level;
                                             kick-filter-type <=> root.kick-filter-type;
                                             kick-filter-cutoff <=> root.kick-filter-cutoff;
                                             kick-filter-resonance <=> root.kick-filter-resonance;
+                                            kick-filter-pre-drive <=> root.kick-filter-pre-drive;
                                             kick-sequencer-grid <=> root.kick-sequencer-grid;
                                             kick-sequencer-current-step: root.kick-sequencer-current-step;
                                             snare-tone <=> root.snare-tone;
@@ -1281,6 +1289,7 @@ export component TLBX1UI inherits Window {
                                             snare-filter-type <=> root.snare-filter-type;
                                             snare-filter-cutoff <=> root.snare-filter-cutoff;
                                             snare-filter-resonance <=> root.snare-filter-resonance;
+                                            snare-filter-pre-drive <=> root.snare-filter-pre-drive;
                                             snare-sequencer-grid <=> root.snare-sequencer-grid;
                                             snare-sequencer-current-step: root.snare-sequencer-current-step;
                                             syndrm-page <=> root.syndrm-page;
@@ -1308,11 +1317,13 @@ export component TLBX1UI inherits Window {
                                             kick-pitch-changed(value) => { root.kick-pitch-changed(value); }
                                             kick-decay-changed(value) => { root.kick-decay-changed(value); }
                                             kick-attack-changed(value) => { root.kick-attack-changed(value); }
+                                            kick-pitch-env-amount-changed(value) => { root.kick-pitch-env-amount-changed(value); }
                                             kick-drive-changed(value) => { root.kick-drive-changed(value); }
                                             kick-level-changed(value) => { root.kick-level-changed(value); }
                                             kick-filter-type-changed(index) => { root.kick-filter-type-changed(index); }
                                             kick-filter-cutoff-changed(value) => { root.kick-filter-cutoff-changed(value); }
                                             kick-filter-resonance-changed(value) => { root.kick-filter-resonance-changed(value); }
+                                            kick-filter-pre-drive-changed(value) => { root.kick-filter-pre-drive-changed(value); }
                                             kick-sequencer-grid-toggled(step) => { root.kick-sequencer-grid-toggled(step); }
                                             snare-tone-changed(value) => { root.snare-tone-changed(value); }
                                             snare-decay-changed(value) => { root.snare-decay-changed(value); }
@@ -1323,6 +1334,7 @@ export component TLBX1UI inherits Window {
                                             snare-filter-type-changed(index) => { root.snare-filter-type-changed(index); }
                                             snare-filter-cutoff-changed(value) => { root.snare-filter-cutoff-changed(value); }
                                             snare-filter-resonance-changed(value) => { root.snare-filter-resonance-changed(value); }
+                                            snare-filter-pre-drive-changed(value) => { root.snare-filter-pre-drive-changed(value); }
                                             snare-sequencer-grid-toggled(step) => { root.snare-sequencer-grid-toggled(step); }
                                             syndrm-page-changed(page) => { root.syndrm-page-changed(page); }
                                             syndrm-edit-lane-changed(lane) => { root.syndrm-edit-lane-changed(lane); }

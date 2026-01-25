@@ -32,6 +32,7 @@ export component GranulatorDevice {
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
 
+    // Device Container
     VerticalLayout {
         spacing: 8px;
 
@@ -70,7 +71,7 @@ export component GranulatorDevice {
                 padding-right: 12px;
                 padding-bottom: 12px;
                 padding-left: 12px;
-                spacing-horizontal: 36px;
+                spacing-horizontal: 10px;
                 spacing-vertical: 30px;
 
                 // Row 1 Controls
@@ -80,7 +81,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-wet;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Wet";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -93,7 +94,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-pitch;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Pitch";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -106,7 +107,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-rate;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Rate";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -119,7 +120,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-size;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Size";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -132,7 +133,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-contour;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Contour";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -145,7 +146,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-warp;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Warp";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -158,7 +159,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-spray;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Spray";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -175,7 +176,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-pattern;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Pattern";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -188,7 +189,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-detune;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Detune";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -201,7 +202,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-spatial;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Spatial";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -214,7 +215,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-rand-rate;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Rand Rate";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -227,7 +228,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-rand-size;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "Rand Size";
                         label-pos: "top-center";
                         label-font-size: 10px;
@@ -240,7 +241,7 @@ export component GranulatorDevice {
                         renderer: "lo-fi";
                         value: root.mosaic-sos;
                         min-value: 0; max-value: 1;
-                        size: 48px; indicator-position: 15px;
+                        size: 70px; indicator-position: 25px;
                         label: "SOS";
                         label-pos: "top-center";
                         label-font-size: 10px;

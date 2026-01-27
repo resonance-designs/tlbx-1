@@ -116,6 +116,9 @@ export component TLBX1UI inherits Window {
     in property <[float]> vectorscope_y;
     in property <[float]> waveform;
     in property <int> playhead-index: 0;
+    in property <bool> tape-video-enabled: false;
+    in-out property <float> tape-video-duration: 0.0;
+    in property <image> tape-video-frame;
     in property <[string]> engine-types;
     in-out property <int> engine-index: 0;
     in-out property <bool> engine-loaded: false;
@@ -975,6 +978,9 @@ export component TLBX1UI inherits Window {
                                             waveform: root.waveform;
                                             waveform_time_labels: root.waveform_time_labels;
                                             playhead-index: root.playhead-index;
+                                            video-enabled: root.tape-video-enabled;
+                                            tape-video-duration: root.tape-video-duration;
+                                            video-frame: root.tape-video-frame;
                                             tape-speed <=> root.tape-speed;
                                             tape-rotate <=> root.tape-rotate;
                                             trigger-start <=> root.trigger-start;

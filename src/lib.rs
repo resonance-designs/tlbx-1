@@ -10,7 +10,10 @@
 use nih_plug::prelude::*;
 use cpal::traits::{DeviceTrait, HostTrait};
 use parking_lot::Mutex;
-use slint::{LogicalPosition, ModelRc, PhysicalSize, SharedString, VecModel};
+use slint::{
+    Image, LogicalPosition, ModelRc, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, SharedString,
+    VecModel,
+};
 use slint::platform::{
     self, Platform, PlatformError, PointerEventButton, WindowAdapter, WindowEvent,
 };
@@ -128,6 +131,19 @@ fn default_window_size() -> baseview::Size {
 
 include!(concat!(env!("OUT_DIR"), "/tlbx1.rs"));
 
+#[derive(Clone)]
+struct VideoFrame {
+    timestamp: f32,
+    data: Arc<Vec<u8>>,
+}
+
+struct VideoCache {
+    frames: Vec<VideoFrame>,
+    width: u32,
+    height: u32,
+    fps: f32,
+}
+
 struct Track {
     /// Audio data for the track. Each channel is a Vec of f32.
     samples: Arc<Mutex<Vec<Vec<f32>>>>,
@@ -135,6 +151,18 @@ struct Track {
     sample_path: Arc<Mutex<Option<PathBuf>>>,
     /// Pre-calculated waveform summary for fast drawing.
     waveform_summary: Arc<Mutex<Vec<f32>>>,
+    /// Cached video frames for the tape engine, if loaded.
+    video_cache: Arc<Mutex<Option<VideoCache>>>,
+    /// Whether a video stream is loaded for this track.
+    video_enabled: AtomicBool,
+    /// Video frame width.
+    video_width: AtomicU32,
+    /// Video frame height.
+    video_height: AtomicU32,
+    /// Video frame rate (fps) stored as f32 bits.
+    video_fps: AtomicU32,
+    /// Video cache version (increments on load).
+    video_cache_id: AtomicU32,
     /// Whether the track is currently recording.
     is_recording: AtomicBool,
     /// Pending play start after count-in.
@@ -663,6 +691,12 @@ impl Default for Track {
             samples: Arc::new(Mutex::new(vec![vec![]; 2])),
             sample_path: Arc::new(Mutex::new(None)),
             waveform_summary: Arc::new(Mutex::new(vec![0.0; WAVEFORM_SUMMARY_SIZE])),
+            video_cache: Arc::new(Mutex::new(None)),
+            video_enabled: AtomicBool::new(false),
+            video_width: AtomicU32::new(0),
+            video_height: AtomicU32::new(0),
+            video_fps: AtomicU32::new(0.0f32.to_bits()),
+            video_cache_id: AtomicU32::new(0),
             is_recording: AtomicBool::new(false),
             pending_play: AtomicBool::new(false),
             pending_record: AtomicBool::new(false),
@@ -1342,6 +1376,12 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.meter_left.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.meter_right.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.is_muted.store(false, Ordering::Relaxed);
+    track.video_enabled.store(false, Ordering::Relaxed);
+    track.video_width.store(0, Ordering::Relaxed);
+    track.video_height.store(0, Ordering::Relaxed);
+    track.video_fps.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.video_cache_id.fetch_add(1, Ordering::Relaxed);
+    *track.video_cache.lock() = None;
     track.tape_speed.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.tape_speed_smooth.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.tape_tempo.store(120.0f32.to_bits(), Ordering::Relaxed);
@@ -4235,27 +4275,72 @@ impl Plugin for TLBX1 {
                     return;
                 }
                 
-                match load_audio_file(&path) {
-                    Ok((new_samples, sample_rate)) => {
+                match load_media_file(&path) {
+                    Ok((new_samples, sample_rate, video)) => {
                         let mut samples = tracks[track_idx].samples.lock();
                         let mut summary = tracks[track_idx].waveform_summary.lock();
                         let mut sample_path = tracks[track_idx].sample_path.lock();
-                        
+                        let mut video_cache = tracks[track_idx].video_cache.lock();
+
                         *samples = new_samples;
                         *sample_path = Some(path.clone());
                         tracks[track_idx]
                             .sample_rate
                             .store(sample_rate, Ordering::Relaxed);
+
+                        if let Some(video) = video {
+                            tracks[track_idx]
+                                .video_enabled
+                                .store(true, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_width
+                                .store(video.width, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_height
+                                .store(video.height, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_fps
+                                .store(video.fps.to_bits(), Ordering::Relaxed);
+                            *video_cache = Some(video);
+                            tracks[track_idx]
+                                .video_cache_id
+                                .fetch_add(1, Ordering::Relaxed);
+                        } else {
+                            tracks[track_idx]
+                                .video_enabled
+                                .store(false, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_width
+                                .store(0, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_height
+                                .store(0, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_fps
+                                .store(0.0f32.to_bits(), Ordering::Relaxed);
+                            *video_cache = None;
+                            tracks[track_idx]
+                                .video_cache_id
+                                .fetch_add(1, Ordering::Relaxed);
+                        }
+
                         if !samples.is_empty() {
                             calculate_waveform_summary(&samples[0], &mut summary);
                         } else {
                             summary.fill(0.0);
                         }
-                        
-                        nih_log!("Loaded sample: {:?}", path);
+
+                        nih_log!("Loaded media: {:?}", path);
                     }
                     Err(e) => {
-                        nih_log!("Failed to load sample: {:?}", e);
+                        tracks[track_idx]
+                            .video_enabled
+                            .store(false, Ordering::Relaxed);
+                        tracks[track_idx]
+                            .video_cache_id
+                            .fetch_add(1, Ordering::Relaxed);
+                        *tracks[track_idx].video_cache.lock() = None;
+                        nih_log!("Failed to load media: {:?}", e);
                     }
                 }
             }
@@ -5916,6 +6001,244 @@ fn load_audio_file(
     Ok((samples, sample_rate))
 }
 
+fn image_from_rgba(width: u32, height: u32, data: &[u8]) -> Image {
+    let mut buffer = SharedPixelBuffer::<Rgba8Pixel>::new(width, height);
+    let pixels = buffer.make_mut_slice();
+    for (pixel, chunk) in pixels.iter_mut().zip(data.chunks_exact(4)) {
+        *pixel = Rgba8Pixel {
+            r: chunk[0],
+            g: chunk[1],
+            b: chunk[2],
+            a: chunk[3],
+        };
+    }
+    Image::from_rgba8(buffer)
+}
+
+#[derive(Debug)]
+enum MediaLoadError {
+    NoVideoStream,
+    Ffmpeg(String),
+}
+
+impl std::fmt::Display for MediaLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MediaLoadError::NoVideoStream => write!(f, "no video stream found"),
+            MediaLoadError::Ffmpeg(msg) => write!(f, "ffmpeg error: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for MediaLoadError {}
+
+fn load_media_file(
+    path: &std::path::Path,
+) -> Result<(Vec<Vec<f32>>, u32, Option<VideoCache>), Box<dyn std::error::Error>> {
+    match load_audio_video_ffmpeg(path) {
+        Ok((samples, sample_rate, video)) => Ok((samples, sample_rate, Some(video))),
+        Err(MediaLoadError::NoVideoStream) => {
+            load_audio_file(path).map(|(samples, sample_rate)| (samples, sample_rate, None))
+        }
+        Err(err) => Err(Box::new(err)),
+    }
+}
+
+fn load_audio_video_ffmpeg(
+    path: &std::path::Path,
+) -> Result<(Vec<Vec<f32>>, u32, VideoCache), MediaLoadError> {
+    use ffmpeg_next as ffmpeg;
+    use ffmpeg::format::Pixel;
+    use ffmpeg::media::Type;
+    use ffmpeg::software::scaling::Flags as ScalingFlags;
+    use ffmpeg::software::{resampling, scaling};
+    use ffmpeg::util::format::sample::{Sample, Type as SampleType};
+
+    static FFMPEG_INIT: Once = Once::new();
+    FFMPEG_INIT.call_once(|| {
+        let _ = ffmpeg::init();
+    });
+
+    let mut input = ffmpeg::format::input(&path).map_err(|e| {
+        MediaLoadError::Ffmpeg(format!("failed to open media: {e:?}"))
+    })?;
+
+    let video_stream = input.streams().best(Type::Video);
+    let audio_stream = input.streams().best(Type::Audio);
+
+    let video_stream = video_stream.ok_or(MediaLoadError::NoVideoStream)?;
+    let audio_stream = audio_stream.ok_or_else(|| {
+        MediaLoadError::Ffmpeg("no audio stream found".to_string())
+    })?;
+
+    let video_stream_index = video_stream.index();
+    let audio_stream_index = audio_stream.index();
+
+    let mut video_decoder = ffmpeg::codec::Context::from_parameters(video_stream.parameters())
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("video params: {e:?}")))?
+        .decoder()
+        .video()
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("video decoder: {e:?}")))?;
+    let mut audio_decoder = ffmpeg::codec::Context::from_parameters(audio_stream.parameters())
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("audio params: {e:?}")))?
+        .decoder()
+        .audio()
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("audio decoder: {e:?}")))?;
+
+    let width = video_decoder.width();
+    let height = video_decoder.height();
+
+    let mut scaler = scaling::Context::get(
+        video_decoder.format(),
+        width,
+        height,
+        Pixel::RGBA,
+        width,
+        height,
+        ScalingFlags::BILINEAR,
+    )
+    .map_err(|e| MediaLoadError::Ffmpeg(format!("scaler: {e:?}")))?;
+
+    let out_sample_format = Sample::F32(SampleType::Planar);
+    let mut resampler = resampling::Context::get(
+        audio_decoder.format(),
+        audio_decoder.channel_layout(),
+        audio_decoder.rate(),
+        out_sample_format,
+        audio_decoder.channel_layout(),
+        audio_decoder.rate(),
+    )
+    .map_err(|e| MediaLoadError::Ffmpeg(format!("resampler: {e:?}")))?;
+
+    let channels = audio_decoder.channel_layout().channels() as usize;
+    let mut samples: Vec<Vec<f32>> = vec![Vec::new(); channels.max(1)];
+    let mut frames: Vec<VideoFrame> = Vec::new();
+
+    let time_base = video_stream.time_base();
+    let fps = {
+        let rate = video_stream.avg_frame_rate();
+        if rate.denominator() != 0 {
+            rate.numerator() as f32 / rate.denominator() as f32
+        } else {
+            30.0
+        }
+    };
+
+    let mut video_frame = ffmpeg::frame::Video::empty();
+    let mut rgba_frame = ffmpeg::frame::Video::empty();
+    let mut audio_frame = ffmpeg::frame::Audio::empty();
+
+    for (stream, packet) in input.packets() {
+        if stream.index() == video_stream_index {
+            if video_decoder.send_packet(&packet).is_ok() {
+                while video_decoder.receive_frame(&mut video_frame).is_ok() {
+                    scaler
+                        .run(&video_frame, &mut rgba_frame)
+                        .map_err(|e| MediaLoadError::Ffmpeg(format!("scale: {e:?}")))?;
+                    let stride = rgba_frame.stride(0);
+                    let data = rgba_frame.data(0);
+                    let mut buffer = vec![0u8; (width * height * 4) as usize];
+                    for y in 0..height as usize {
+                        let row_start = y * stride;
+                        let row_end = row_start + (width * 4) as usize;
+                        let dst_start = y * (width * 4) as usize;
+                        let dst_end = dst_start + (width * 4) as usize;
+                        buffer[dst_start..dst_end].copy_from_slice(&data[row_start..row_end]);
+                    }
+                    let pts = video_frame.pts().unwrap_or(0);
+                    let timestamp = pts as f32 * time_base.numerator() as f32
+                        / time_base.denominator() as f32;
+                    frames.push(VideoFrame {
+                        timestamp,
+                        data: Arc::new(buffer),
+                    });
+                }
+            }
+        } else if stream.index() == audio_stream_index {
+            if audio_decoder.send_packet(&packet).is_ok() {
+                while audio_decoder.receive_frame(&mut audio_frame).is_ok() {
+                    let mut out = ffmpeg::frame::Audio::empty();
+                    resampler
+                        .run(&audio_frame, &mut out)
+                        .map_err(|e| MediaLoadError::Ffmpeg(format!("resample: {e:?}")))?;
+                    let out_samples = out.samples() as usize;
+                    let out_channels = out.channels() as usize;
+                    if samples.len() < out_channels {
+                        samples.resize_with(out_channels, Vec::new);
+                    }
+                    for ch in 0..out_channels {
+                        let data = out.data(ch);
+                        let data = unsafe {
+                            std::slice::from_raw_parts(
+                                data.as_ptr() as *const f32,
+                                out_samples,
+                            )
+                        };
+                        samples[ch].extend_from_slice(data);
+                    }
+                }
+            }
+        }
+    }
+
+    let _ = video_decoder.send_eof();
+    while video_decoder.receive_frame(&mut video_frame).is_ok() {
+        scaler
+            .run(&video_frame, &mut rgba_frame)
+            .map_err(|e| MediaLoadError::Ffmpeg(format!("scale: {e:?}")))?;
+        let stride = rgba_frame.stride(0);
+        let data = rgba_frame.data(0);
+        let mut buffer = vec![0u8; (width * height * 4) as usize];
+        for y in 0..height as usize {
+            let row_start = y * stride;
+            let row_end = row_start + (width * 4) as usize;
+            let dst_start = y * (width * 4) as usize;
+            let dst_end = dst_start + (width * 4) as usize;
+            buffer[dst_start..dst_end].copy_from_slice(&data[row_start..row_end]);
+        }
+        let pts = video_frame.pts().unwrap_or(0);
+        let timestamp = pts as f32 * time_base.numerator() as f32
+            / time_base.denominator() as f32;
+        frames.push(VideoFrame {
+            timestamp,
+            data: Arc::new(buffer),
+        });
+    }
+
+    let _ = audio_decoder.send_eof();
+    while audio_decoder.receive_frame(&mut audio_frame).is_ok() {
+        let mut out = ffmpeg::frame::Audio::empty();
+        resampler
+            .run(&audio_frame, &mut out)
+            .map_err(|e| MediaLoadError::Ffmpeg(format!("resample: {e:?}")))?;
+        let out_samples = out.samples() as usize;
+        let out_channels = out.channels() as usize;
+        if samples.len() < out_channels {
+            samples.resize_with(out_channels, Vec::new);
+        }
+        for ch in 0..out_channels {
+            let data = out.data(ch);
+            let data = unsafe {
+                std::slice::from_raw_parts(
+                    data.as_ptr() as *const f32,
+                    out_samples,
+                )
+            };
+            samples[ch].extend_from_slice(data);
+        }
+    }
+
+    let sample_rate = audio_decoder.rate() as u32;
+    let video = VideoCache {
+        frames,
+        width,
+        height,
+        fps: if fps.is_finite() && fps > 0.0 { fps } else { 30.0 },
+    };
+
+    Ok((samples, sample_rate, video))
+}
+
 fn save_track_sample(track: &Track, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let samples = track.samples.lock();
     if samples.is_empty() || samples[0].is_empty() {
@@ -6735,6 +7058,7 @@ struct SlintWindow {
     spectrum_model: std::rc::Rc<VecModel<f32>>,
     vectorscope_x_model: std::rc::Rc<VecModel<f32>>,
     vectorscope_y_model: std::rc::Rc<VecModel<f32>>,
+    video_frame_cache: Vec<Option<(u32, usize, Image)>>,
     sample_dialog_rx: std::sync::mpsc::Receiver<SampleDialogAction>,
     project_dialog_rx: std::sync::mpsc::Receiver<ProjectDialogAction>,
     sb_surface: softbuffer::Surface<SoftbufferWindowHandleAdapter, SoftbufferWindowHandleAdapter>,
@@ -6781,6 +7105,7 @@ impl SlintWindow {
             std::rc::Rc::new(VecModel::from(vec![0.0; VECTORSCOPE_POINTS]));
         let vectorscope_y_model =
             std::rc::Rc::new(VecModel::from(vec![0.0; VECTORSCOPE_POINTS]));
+        let video_frame_cache = vec![None; NUM_TRACKS];
         ui.set_waveform(ModelRc::from(waveform_model.clone()));
         ui.set_oscilloscope(ModelRc::from(oscilloscope_model.clone()));
         ui.set_spectrum(ModelRc::from(spectrum_model.clone()));
@@ -6900,6 +7225,7 @@ impl SlintWindow {
             spectrum_model,
             vectorscope_x_model,
             vectorscope_y_model,
+            video_frame_cache,
             sample_dialog_rx,
             project_dialog_rx,
             sb_surface,
@@ -7431,6 +7757,60 @@ impl SlintWindow {
             vec![0.0; WAVEFORM_SUMMARY_SIZE]
         };
 
+        let mut tape_video_enabled = self.tracks[track_idx].video_enabled.load(Ordering::Relaxed);
+        let mut tape_video_frame = Image::default();
+        let mut tape_video_duration = duration_secs;
+        if tape_video_enabled {
+            if let Some(cache_guard) = self.tracks[track_idx].video_cache.try_lock() {
+                if let Some(cache) = cache_guard.as_ref() {
+                    if cache.frames.is_empty() || cache.width == 0 || cache.height == 0 {
+                        tape_video_enabled = false;
+                    } else {
+                        if let Some(last_frame) = cache.frames.last() {
+                            tape_video_duration = last_frame.timestamp.max(0.0);
+                        }
+                        let fps = f32::from_bits(
+                            self.tracks[track_idx].video_fps.load(Ordering::Relaxed),
+                        )
+                        .max(1.0);
+                        let time_secs = if sample_rate > 0 {
+                            (play_pos / sample_rate as f32).max(0.0)
+                        } else {
+                            0.0
+                        };
+                        let mut frame_idx = (time_secs * fps).floor() as usize;
+                        if frame_idx >= cache.frames.len() {
+                            frame_idx = cache.frames.len().saturating_sub(1);
+                        }
+
+                        let cache_id =
+                            self.tracks[track_idx].video_cache_id.load(Ordering::Relaxed);
+                        let mut used_cache = false;
+                        if let Some((cached_id, cached_idx, cached_image)) =
+                            &self.video_frame_cache[track_idx]
+                        {
+                            if *cached_id == cache_id && *cached_idx == frame_idx {
+                                tape_video_frame = cached_image.clone();
+                                used_cache = true;
+                            }
+                        }
+
+                        if !used_cache {
+                            let frame = &cache.frames[frame_idx];
+                            let image = image_from_rgba(cache.width, cache.height, &frame.data);
+                            tape_video_frame = image.clone();
+                            self.video_frame_cache[track_idx] =
+                                Some((cache_id, frame_idx, image));
+                        }
+                    }
+                } else {
+                    tape_video_enabled = false;
+                }
+            } else {
+                tape_video_enabled = false;
+            }
+        }
+
         let oscilloscope = if let Some(scope) = self.visualizer.oscilloscope.try_lock() {
             scope.clone()
         } else {
@@ -7464,6 +7844,9 @@ impl SlintWindow {
         self.ui.set_meter_right(meter_right);
         self.ui.set_track_meter_left(track_meter_left);
         self.ui.set_track_meter_right(track_meter_right);
+        self.ui.set_tape_video_enabled(tape_video_enabled);
+        self.ui.set_tape_video_duration(tape_video_duration);
+        self.ui.set_tape_video_frame(tape_video_frame);
         self.ui.set_tape_speed(tape_speed);
         self.ui.set_tape_tempo(tape_tempo);
         self.ui.set_tempo_label(SharedString::from(format!("{tape_tempo:.0} BPM")));
@@ -8787,7 +9170,14 @@ fn initialize_ui(
         let sample_dialog_tx = sample_dialog_tx_load.clone();
         spawn_with_stack(move || {
             let path = rfd::FileDialog::new()
-                .add_filter("Audio", &["wav", "flac", "mp3", "ogg"])
+                .add_filter(
+                    "Media",
+                    &[
+                        "wav", "flac", "mp3", "ogg", "aif", "aiff", "m4a", "mp4", "mov", "mkv",
+                        "avi", "webm", "m4v",
+                    ],
+                )
+                .add_filter("All Files", &["*"])
                 .pick_file();
             let _ = sample_dialog_tx.send(SampleDialogAction::Load { track_idx, path });
         });

@@ -24,6 +24,8 @@ export component TapeEngine inherits Rectangle {
     in property <[float]> waveform;
     in property <[string]> waveform_time_labels;
     in property <int> playhead-index: 0;
+    in property <bool> video-enabled: false;
+    in property <image> video-frame;
 
     in-out property <float> tape-speed: 1.0;
     in-out property <float> tape-rotate: 0.0;
@@ -46,6 +48,7 @@ export component TapeEngine inherits Rectangle {
     in-out property <bool> tape-keylock: false;
     in-out property <bool> tape-monitor: false;
     in-out property <bool> tape-overdub: false;
+    in property <float> tape-video-duration: 0.0;
 
     in-out property <bool> mosaic-enabled: true;
     in-out property <float> mosaic-pitch: 0.0;
@@ -235,13 +238,28 @@ export component TapeEngine inherits Rectangle {
                         }
                     }
 
-                    RDSWaveformViz {
+                    Rectangle {
                         border-width: 2px;
                         width: parent.width - 420px;
                         height: 200px;
-                        waveform: root.waveform;
-                        waveform_time_labels: root.waveform_time_labels;
-                        playhead-index: root.playhead-index;
+                        border-radius: 6px;
+                        border-color: Theme.active.border-strong;
+                        clip: true;
+                        RDSWaveformViz {
+                            width: parent.width;
+                            height: parent.height;
+                            visible: !root.video-enabled;
+                            waveform: root.waveform;
+                            waveform_time_labels: root.waveform_time_labels;
+                            playhead-index: root.playhead-index;
+                        }
+                        Image {
+                            width: parent.width;
+                            height: parent.height;
+                            visible: root.video-enabled;
+                            source: root.video-frame;
+                            image-fit: contain;
+                        }
                     }
 
                     VerticalLayout {
@@ -267,8 +285,12 @@ export component TapeEngine inherits Rectangle {
                                             max-value: 1;
                                             size: 44px;
                                             indicator-position: 14px;
-                                            sensitivity: 0.01;
-                                            scroll-sensitivity: 0.01;
+                                            sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            infinite-rotary: root.video-enabled;
+                                            readout-text: root.video-enabled
+                                                ? ((Math.floor((root.trigger-start * root.tape-video-duration) * 100) / 100) + "s")
+                                                : "";
                                             value-changed(v) => {
                                                 root.trigger-start = v;
                                                 root.trigger-start-changed(v);
@@ -285,8 +307,12 @@ export component TapeEngine inherits Rectangle {
                                             max-value: 1;
                                             size: 44px;
                                             indicator-position: 14px;
-                                            sensitivity: 0.01;
-                                            scroll-sensitivity: 0.01;
+                                            sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            infinite-rotary: root.video-enabled;
+                                            readout-text: root.video-enabled
+                                                ? ((Math.floor((root.loop-start * root.tape-video-duration) * 100) / 100) + "s")
+                                                : "";
                                             value-changed(v) => {
                                                 root.loop-start = v;
                                                 root.loop-start-changed(v);
@@ -303,8 +329,12 @@ export component TapeEngine inherits Rectangle {
                                             max-value: 1;
                                             size: 44px;
                                             indicator-position: 14px;
-                                            sensitivity: 0.01;
-                                            scroll-sensitivity: 0.01;
+                                            sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            infinite-rotary: root.video-enabled;
+                                            readout-text: root.video-enabled
+                                                ? ((Math.floor((root.loop-length * root.tape-video-duration) * 100) / 100) + "s")
+                                                : "";
                                             value-changed(v) => {
                                                 root.loop-length = v;
                                                 root.loop-length-changed(v);

@@ -17,6 +17,7 @@ The UI is built with Slint in combination with the [Resonance Designs Slint UI C
 - Engine 4: Void Seed (generative drone engine)
 - RDS Slint UI Component Kit for shared UI controls and theming
 - Post-tape Mosaic granular buffer with bypass toggle (Granulator device)
+- Experimental: Tape engine can load video files and display playback in place of the waveform (audio still drives playback).
 - Project save/load (JSON)
 - Project/library browser for samples and saved projects
 - Standalone audio device settings (device, sample rate, buffer size)

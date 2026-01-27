@@ -27,6 +27,7 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 - Load the Tape engine per track via the Engine selector + Load Engine.
 - Use the **Audition** button for momentary playback of the selected track.
 - Use Tape controls for speed/tempo/loop/start/length/x‑fade/rotate and tape actions (reverse, freeze, keylock, monitor, overdub).
+- Experimental: Tape engine can load video files and display playback in place of the waveform (audio still drives playback).
 
 ## Animate Engine
 

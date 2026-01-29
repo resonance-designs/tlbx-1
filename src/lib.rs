@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.16
+ * Version: 0.1.17
  * Component: Core Logic
  */
 
@@ -91,6 +91,7 @@ const MOSAIC_SIZE_MAX_MS: f32 = 250.0;
 const MOSAIC_PITCH_SEMITONES: f32 = 36.0;
 const MOSAIC_DETUNE_CENTS: f32 = 25.0;
 const MOSAIC_PARAM_SMOOTH_MS: f32 = 20.0;
+const G8_GAIN_SMOOTH_MS: f32 = 5.0;
 const RING_PITCH_SEMITONES: f32 = 24.0;
 const RING_CUTOFF_MIN_HZ: f32 = 20.0;
 const RING_CUTOFF_MAX_HZ: f32 = 20_000.0;
@@ -385,6 +386,14 @@ struct Track {
     ring_low: [AtomicU32; 2],
     /// Ring filter band-pass state per channel.
     ring_band: [AtomicU32; 2],
+    /// G8 trance gate enabled.
+    g8_enabled: AtomicBool,
+    /// G8 rate division index (0 = 1, 1 = 1/2, 2 = 1/4, 3 = 1/8, 4 = 1/16).
+    g8_rate_index: AtomicU32,
+    /// G8 per-step gain values (0..1).
+    g8_steps: Arc<[AtomicU32; 32]>,
+    /// Smoothed G8 gate gain.
+    g8_gain_smooth: AtomicU32,
     /// Animate slot types (0 = wavetable, 1 = sample).
     animate_slot_types: [AtomicU32; 4],
     /// Animate slot wavetable indices.
@@ -811,6 +820,10 @@ impl Default for Track {
             ring_enabled: AtomicBool::new(false),
             ring_low: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             ring_band: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            g8_enabled: AtomicBool::new(false),
+            g8_rate_index: AtomicU32::new(0),
+            g8_steps: Arc::new(std::array::from_fn(|_| AtomicU32::new(1.0f32.to_bits()))),
+            g8_gain_smooth: AtomicU32::new(1.0f32.to_bits()),
             animate_slot_types: std::array::from_fn(|_| AtomicU32::new(0)),
             animate_slot_wavetables: std::array::from_fn(|_| AtomicU32::new(0)),
             animate_slot_samples: std::array::from_fn(|_| AtomicU32::new(0)),
@@ -1483,6 +1496,14 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
         track.ring_low[channel].store(0.0f32.to_bits(), Ordering::Relaxed);
         track.ring_band[channel].store(0.0f32.to_bits(), Ordering::Relaxed);
     }
+    track.g8_enabled.store(false, Ordering::Relaxed);
+    track.g8_rate_index.store(0, Ordering::Relaxed);
+    for step in track.g8_steps.iter() {
+        step.store(1.0f32.to_bits(), Ordering::Relaxed);
+    }
+    track
+        .g8_gain_smooth
+        .store(1.0f32.to_bits(), Ordering::Relaxed);
     if let Some(mut buffer) = track.mosaic_buffer.try_lock() {
         for channel in buffer.iter_mut() {
             channel.fill(0.0);
@@ -3568,6 +3589,9 @@ impl TLBX1 {
         track_output: &mut [Vec<f32>],
         num_buffer_samples: usize,
         global_tempo: f32,
+        master_step_count: i64,
+        master_phase: f32,
+        samples_per_step: f32,
     ) {
         if track.granular_type.load(Ordering::Relaxed) != 1 {
             return;
@@ -3725,20 +3749,33 @@ impl TLBX1 {
         } else {
             120.0
         };
-        let base_rate = if mosaic_rate <= 0.5 {
+        let sync_rate = mosaic_rate <= 0.5;
+        let mut sync_beats = None;
+        let base_rate = if sync_rate {
             let divisions = [
-                4.0_f32,
-                2.0,
+                1.5_f32,
                 1.0,
+                0.75,
+                (2.0 / 3.0),
                 0.5,
+                0.375,
+                (1.0 / 3.0),
                 0.25,
+                0.1875,
+                (1.0 / 6.0),
                 0.125,
+                0.09375,
+                (1.0 / 12.0),
                 0.0625,
+                0.046875,
+                (1.0 / 24.0),
                 0.03125,
+                (1.0 / 48.0),
             ];
             let t = (mosaic_rate / 0.5).clamp(0.0, 1.0);
             let idx = (t * (divisions.len().saturating_sub(1)) as f32).round() as usize;
             let beats = divisions[idx.min(divisions.len() - 1)];
+            sync_beats = Some(beats.max(0.0001));
             ((tempo / 60.0) / beats).clamp(MOSAIC_RATE_MIN, MOSAIC_RATE_MAX)
         } else {
             let free = ((mosaic_rate - 0.5) / 0.5).clamp(0.0, 1.0);
@@ -3772,23 +3809,70 @@ impl TLBX1 {
             }
         }
 
+        let interval_samples = if let (true, Some(beats), true) = (
+            sync_rate,
+            sync_beats,
+            samples_per_step.is_finite() && samples_per_step > 0.0,
+        ) {
+            (samples_per_step * beats * 4.0).max(1.0)
+        } else {
+            (sr as f32 / base_rate).max(1.0)
+        };
+        let base_global_phase = if samples_per_step.is_finite() && samples_per_step > 0.0 {
+            (master_step_count as f32 * samples_per_step) + master_phase
+        } else {
+            0.0
+        };
+        let base_global_step = if samples_per_step.is_finite() && samples_per_step > 0.0 {
+            master_step_count as f64 + (master_phase as f64 / samples_per_step as f64)
+        } else {
+            0.0
+        };
+        let steps_per_trigger = sync_beats
+            .map(|beats| (beats as f64) * 4.0)
+            .unwrap_or(0.0);
         for sample_idx in 0..num_buffer_samples {
-            if grain_pos >= grain_len as f32 {
+            let mut start_grain = false;
+            if sync_rate {
+                if steps_per_trigger > 0.0 && samples_per_step.is_finite() && samples_per_step > 0.0
+                {
+                    let step_pos =
+                        base_global_step + (sample_idx as f64 / samples_per_step as f64);
+                    let prev_step_pos = base_global_step
+                        + ((sample_idx as f64 - 1.0) / samples_per_step as f64);
+                    let bucket = (step_pos / steps_per_trigger).floor();
+                    let prev_bucket = (prev_step_pos / steps_per_trigger).floor();
+                    if bucket != prev_bucket {
+                        start_grain = true;
+                        grain_wait = 0;
+                    }
+                }
+            } else if grain_pos >= grain_len as f32 {
                 if grain_wait > 0 {
                     grain_wait = grain_wait.saturating_sub(1);
                     continue;
                 }
+                start_grain = true;
+            }
+
+            if start_grain {
                 let rand_rate = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
                 let rand_size = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
-                let mut rate = base_rate * (1.0 + mosaic_rand_rate * rand_rate * 0.5);
+                let mut rate = if sync_rate {
+                    base_rate
+                } else {
+                    base_rate * (1.0 + mosaic_rand_rate * rand_rate * 0.5)
+                };
                 rate = rate.clamp(MOSAIC_RATE_MIN, MOSAIC_RATE_MAX);
                 let mut size_ms = base_size_ms * (1.0 + mosaic_rand_size * rand_size * 0.5);
                 size_ms = size_ms.clamp(MOSAIC_SIZE_MIN_MS, MOSAIC_SIZE_MAX_MS);
                 grain_len = ((size_ms / 1000.0) * sr as f32).round() as usize;
                 grain_len = grain_len.clamp(1, mosaic_len);
                 let interval = (sr as f32 / rate).max(1.0);
-                let wait = (interval - grain_len as f32).max(0.0);
-                grain_wait = wait as usize;
+                if !sync_rate {
+                    let wait = (interval - grain_len as f32).max(0.0);
+                    grain_wait = wait as usize;
+                }
 
                 let rand_pos = next_mosaic_rand_unit(&mut rng_state);
                 let recent_pos = recent_write_pos as f32 / mosaic_len as f32;
@@ -4197,6 +4281,63 @@ impl TLBX1 {
                 .ring_noise_rng
                 .store(noise_rng, Ordering::Relaxed);
         }
+    }
+
+    fn process_track_g8(
+        track: &Track,
+        track_output: &mut [Vec<f32>],
+        num_buffer_samples: usize,
+        master_step_count: i64,
+        master_phase: f32,
+        samples_per_step: f32,
+        sample_rate: f32,
+    ) {
+        if !track.g8_enabled.load(Ordering::Relaxed) {
+            return;
+        }
+        if num_buffer_samples == 0 || track_output.is_empty() {
+            return;
+        }
+        if !samples_per_step.is_finite() || samples_per_step <= 0.0 {
+            return;
+        }
+
+        let rate_index = track.g8_rate_index.load(Ordering::Relaxed).min(4);
+        let division = match rate_index {
+            0 => 1.0,
+            1 => 0.5,
+            2 => 0.25,
+            3 => 0.125,
+            _ => 0.0625,
+        };
+        let step_len = (samples_per_step * division).max(1.0);
+        let base_global_phase = (master_step_count as f32 * samples_per_step) + master_phase;
+
+        let mut steps = [1.0f32; 32];
+        for i in 0..32 {
+            steps[i] = f32::from_bits(track.g8_steps[i].load(Ordering::Relaxed))
+                .clamp(0.0, 1.0);
+        }
+
+        let smoothing_samples = (sample_rate * (G8_GAIN_SMOOTH_MS / 1000.0)).max(1.0);
+        let mut smooth_gain =
+            f32::from_bits(track.g8_gain_smooth.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+
+        let num_channels = track_output.len();
+        for sample_idx in 0..num_buffer_samples {
+            let step_pos = (base_global_phase + sample_idx as f32) / step_len;
+            let step_idx = (step_pos.floor() as i64).rem_euclid(32) as usize;
+            let target_gain = steps[step_idx];
+            smooth_gain += (target_gain - smooth_gain) / smoothing_samples;
+            let gain = smooth_gain.clamp(0.0, 1.0);
+            for channel_idx in 0..num_channels {
+                track_output[channel_idx][sample_idx] *= gain;
+            }
+        }
+
+        track
+            .g8_gain_smooth
+            .store(smooth_gain.to_bits(), Ordering::Relaxed);
     }
 }
 
@@ -5203,8 +5344,20 @@ impl Plugin for TLBX1 {
                 &mut self.track_buffer,
                 buffer.samples(),
                 global_tempo,
+                master_step_count,
+                master_phase,
+                samples_per_step,
             );
             Self::process_track_ring(track, &mut self.track_buffer, buffer.samples(), global_tempo);
+            Self::process_track_g8(
+                track,
+                &mut self.track_buffer,
+                buffer.samples(),
+                master_step_count,
+                master_phase,
+                samples_per_step,
+                master_sr,
+            );
 
             let mix_gain = if track_muted && engine_type != 1 { 0.0 } else { 1.0 };
             // Sum track buffer to master output and calculate final peaks
@@ -6320,6 +6473,11 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("ring_noise_rate_mode".to_string(), u(&track.ring_noise_rate_mode));
     params.insert("ring_scale".to_string(), u(&track.ring_scale));
     params.insert("ring_enabled".to_string(), b(&track.ring_enabled));
+    params.insert("g8_enabled".to_string(), b(&track.g8_enabled));
+    params.insert("g8_rate_index".to_string(), u(&track.g8_rate_index));
+    for i in 0..32 {
+        params.insert(format!("g8_step_{}", i), f(&track.g8_steps[i]));
+    }
 
     for i in 0..4 {
         params.insert(format!("animate_slot_type_{}", i), u(&track.animate_slot_types[i]));
@@ -6518,6 +6676,11 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     su(&track.ring_noise_rate_mode, "ring_noise_rate_mode");
     su(&track.ring_scale, "ring_scale");
     sb(&track.ring_enabled, "ring_enabled");
+    sb(&track.g8_enabled, "g8_enabled");
+    su(&track.g8_rate_index, "g8_rate_index");
+    for i in 0..32 {
+        sf(&track.g8_steps[i], &format!("g8_step_{}", i));
+    }
 
     for i in 0..4 {
         su(&track.animate_slot_types[i], &format!("animate_slot_type_{}", i));
@@ -7387,6 +7550,11 @@ impl SlintWindow {
         let mosaic_enabled = self.tracks[track_idx].mosaic_enabled.load(Ordering::Relaxed);
         let ring_enabled = self.tracks[track_idx].ring_enabled.load(Ordering::Relaxed);
         let ring_decay_mode = self.tracks[track_idx].ring_decay_mode.load(Ordering::Relaxed);
+        let g8_enabled = self.tracks[track_idx].g8_enabled.load(Ordering::Relaxed);
+        let g8_rate_index = self.tracks[track_idx].g8_rate_index.load(Ordering::Relaxed);
+        let g8_steps: Vec<f32> = (0..32)
+            .map(|i| f32::from_bits(self.tracks[track_idx].g8_steps[i].load(Ordering::Relaxed)))
+            .collect();
         let engine_loaded = self.tracks[track_idx].engine_type.load(Ordering::Relaxed) != 0;
         let active_engine_type = self.tracks[track_idx].engine_type.load(Ordering::Relaxed);
 
@@ -7897,6 +8065,10 @@ impl SlintWindow {
         self.ui.set_mosaic_enabled(mosaic_enabled);
         self.ui.set_ring_enabled(ring_enabled);
         self.ui.set_ring_decay_mode(ring_decay_mode as i32);
+        self.ui.set_g8_enabled(g8_enabled);
+        self.ui.set_g8_rate_index(g8_rate_index as i32);
+        self.ui
+            .set_g8_steps(ModelRc::from(std::rc::Rc::new(VecModel::from(g8_steps))));
         self.ui.set_engine_loaded(engine_loaded);
         self.ui.set_active_engine_type(active_engine_type as i32);
 
@@ -9707,6 +9879,42 @@ fn initialize_ui(
             tracks_ring[track_idx]
                 .ring_enabled
                 .store(!enabled, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_g8 = Arc::clone(tracks);
+    let params_g8 = Arc::clone(params);
+    ui.on_toggle_g8_enabled(move || {
+        let track_idx = params_g8.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let enabled = tracks_g8[track_idx].g8_enabled.load(Ordering::Relaxed);
+            tracks_g8[track_idx]
+                .g8_enabled
+                .store(!enabled, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_g8 = Arc::clone(tracks);
+    let params_g8 = Arc::clone(params);
+    ui.on_g8_rate_selected(move |index| {
+        let track_idx = params_g8.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let rate_index = index.clamp(0, 4) as u32;
+            tracks_g8[track_idx]
+                .g8_rate_index
+                .store(rate_index, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_g8 = Arc::clone(tracks);
+    let params_g8 = Arc::clone(params);
+    ui.on_g8_step_changed(move |index, value| {
+        let track_idx = params_g8.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let step_idx = index.clamp(0, 31) as usize;
+            let clamped = value.clamp(0.0, 1.0);
+            tracks_g8[track_idx].g8_steps[step_idx]
+                .store(clamped.to_bits(), Ordering::Relaxed);
         }
     });
 

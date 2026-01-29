@@ -20,7 +20,7 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 ## Tracks
 
 - Use the Track 1–4 buttons to select the active track.
-- Each track can load a sample and run the Tape engine + Mosaic device, or load Animate/SynDRM.
+- Each track can load a sample and run the Tape engine + downstream devices (Mosaic, Ring, G8), or load Animate/SynDRM/Void Seed.
 
 ## Tape Engine
 
@@ -56,12 +56,19 @@ This manual covers the current TLBX-1 workflow as of the latest Mosaic update.
 - Mosaic runs after Tape and draws from a 4‑second buffer.
 - Mosaic ON/BYPASS toggles granular processing per track.
 - Pitch is bipolar (±36 semitones); contour is bipolar; other params are unipolar.
+- Rate is BPM‑synced in the first half (1, 1/2, 1/4, 1/8, 1/16) and free‑rate past the midpoint.
 - All Mosaic parameters are smoothed to avoid zipper noise.
 
 ## Ring Device (Silk)
 
 - Ring runs after Tape and Mosaic in the per‑track device chain.
 - Ring provides filter/modulation processing per track with a wet/dry mix.
+
+## G8 Device (Trance Gate)
+
+- G8 runs after Ring at the end of the per‑track device chain.
+- 32 steps per track, with a selectable rate division (1, 1/2, 1/4, 1/8, 1/16).
+- Each step sets a level from 0%–100% and gates the signal to that level.
 
 ## Audio Settings (Standalone)
 

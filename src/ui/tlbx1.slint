@@ -3,7 +3,7 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.16
+ * Version: 0.1.17
  * Component: UI Definitions
  */
 
@@ -124,6 +124,14 @@ export component TLBX1UI inherits Window {
     in-out property <bool> engine-loaded: false;
     in-out property <bool> mosaic-enabled: true;
     in-out property <bool> ring-enabled: false;
+    in-out property <bool> g8-enabled: true;
+    in-out property <int> g8-rate-index: 0;
+    in-out property <[float]> g8-steps: [
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ];
     in-out property <bool> metronome-enabled: false;
     in-out property <float> metronome-count-in: 0.0;
     in-out property <bool> metronome-count-playback: false;
@@ -363,6 +371,9 @@ export component TLBX1UI inherits Window {
     callback ring-noise-rate-mode-selected(index: int);
     callback ring-scale-selected(index: int);
     callback toggle-ring-enabled();
+    callback toggle-g8-enabled();
+    callback g8-rate-selected(index: int);
+    callback g8-step-changed(index: int, value: float);
     callback toggle-metronome();
     callback metronome-count-in-changed(value: float);
     callback toggle-metronome-count-playback();
@@ -982,6 +993,7 @@ export component TLBX1UI inherits Window {
                                             tape-video-duration: root.tape-video-duration;
                                             video-frame: root.tape-video-frame;
                                             tape-speed <=> root.tape-speed;
+                                            tape-tempo: root.tape-tempo;
                                             tape-rotate <=> root.tape-rotate;
                                             trigger-start <=> root.trigger-start;
                                             loop-start <=> root.loop-start;
@@ -1014,6 +1026,9 @@ export component TLBX1UI inherits Window {
                                             mosaic-rand-rate <=> root.mosaic-rand-rate;
                                             mosaic-rand-size <=> root.mosaic-rand-size;
                                             mosaic-sos <=> root.mosaic-sos;
+                                            g8-enabled <=> root.g8-enabled;
+                                            g8-rate-index <=> root.g8-rate-index;
+                                            g8-steps <=> root.g8-steps;
                                             ring-enabled <=> root.ring-enabled;
                                             ring-cutoff <=> root.ring-cutoff;
                                             ring-resonance <=> root.ring-resonance;
@@ -1067,6 +1082,9 @@ export component TLBX1UI inherits Window {
                                             mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
                                             mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
                                             mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
+                                            toggle-g8-enabled => root.toggle-g8-enabled();
+                                            g8-rate-selected(index) => { root.g8-rate-selected(index); }
+                                            g8-step-changed(index, value) => { root.g8-step-changed(index, value); }
                                             toggle-ring-enabled => root.toggle-ring-enabled();
                                             ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
                                             ring-resonance-changed(value) => { root.ring-resonance-changed(value); }

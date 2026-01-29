@@ -26,12 +26,6 @@ npm run docs:install
 npm run docs:dev
 ```
 
-## End-User Documentation (Storybook)
-
-```bash
-npm run storybook
-```
-
 ## Local Docs Deployment
 
 ```bash
@@ -143,11 +137,12 @@ Packaging expects these environment variables:
 - `src/ui/engines/void_seed_engine.slint` contains the Void Seed engine UI component
 - `src/ui/devices/granulator_device.slint` contains the Mosaic/Granulator device UI component
 - `src/ui/devices/silk_device.slint` contains the Ring/Silk device UI component
+- `src/ui/devices/g8_device.slint` contains the G8 trance gate device UI component
 - `src/ui/globals.slint` contains shared UI globals (e.g., keybed bus)
 - `src/ui/components/viz.slint` contains visualizer and meter components
 - `src/ui/components/` contains shared controls (RDS Slint UI Component Kit)
 - `docs/` contains Markdown developer docs
-- `docs-site/` contains the Docusaurus and Storybook tooling
+- `docs-site/` contains the Docusaurus documentation site
 
 ## UI Component Kit
 

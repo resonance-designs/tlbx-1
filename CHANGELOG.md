@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.17] - 2026-01-29
+
+- Added G8 trance gate device (32-step per-track gate) with UI and DSP, placed after Ring in the downstream chain.
+- Added Granulator rate sync behavior: first half of the control locks to BPM divisions (1, 1/2, 1/4, 1/8, 1/16); second half is free-rate.
+- Documentation updates for G8 and Mosaic rate sync.
+
 ## [0.1.16] - 2026-01-27
 
 - Significant UI updates to the main app header/bar.

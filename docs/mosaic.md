@@ -9,7 +9,7 @@ The Mosaic device is a post-tape granular processor fed by a 4-second buffer.
 ## Controls
 
 - **Pitch** (bipolar): ±36 semitones around center.
-- **Rate**: grains per second.
+- **Rate**: first half locks to BPM divisions (1, 1/2, 1/4, 1/8, 1/16). Past the midpoint it becomes free‑rate (grains per second).
 - **Size**: grain length.
 - **Contour** (bipolar): envelope shape.
 - **Warp / Spray / Pattern**: position bias, randomness, and ordering.

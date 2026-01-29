@@ -1,0 +1,122 @@
+import { Theme } from "../theme/index.slint";
+import { RDSHeaderLabel, RDSCircleToggle, RDSComboBox } from "../components/index.slint";
+
+/*
+Device: G8
+Description: 32-step trance gate with per-step level bars and quantized rate.
+*/
+export component G8Device {
+    in property <length> bar-width: 12px;
+    in property <length> bar-spacing: 4px;
+    in-out property <bool> gate-enabled: true;
+    in-out property <int> gate-rate-index: 0;
+    in property <[string]> gate-rate-options: ["1", "1/2", "1/4", "1/8", "1/16"];
+    in-out property <[float]> gate-steps: [
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ];
+
+    callback toggle-gate-enabled();
+    callback gate-rate-selected(index: int);
+    callback gate-step-changed(index: int, value: float);
+
+    VerticalLayout {
+        spacing: 8px;
+
+        RDSHeaderLabel {
+            text: "G8 Trance Gate";
+            horizontal-alignment: left;
+            padding-horizontal: 12px;
+            padding-vertical: 6px;
+            right-padding: 12px;
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: center;
+                Text {
+                    text: "Rate";
+                    color: #b9b9bf;
+                    font-size: 11px;
+                }
+                RDSComboBox {
+                    width: 90px;
+                    height: 22px;
+                    model: root.gate-rate-options;
+                    current-index: root.gate-rate-index;
+                    selected => {
+                        root.gate-rate-index = self.current-index;
+                        root.gate-rate-selected(self.current-index);
+                    }
+                }
+                RDSCircleToggle {
+                    active: root.gate-enabled;
+                    label: "Bypass";
+                    label-active: "On";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
+                    clicked => root.toggle-gate-enabled();
+                }
+            }
+        }
+
+        Rectangle {
+            background: #1e3a5f33;
+            border-width: 2px;
+            border-radius: 6px;
+            border-color: Theme.active.border-strong;
+            height: 140px;
+            clip: true;
+
+            HorizontalLayout {
+                padding-top: 10px;
+                padding-right: 10px;
+                padding-bottom: 10px;
+                padding-left: 10px;
+                spacing: root.bar-spacing;
+                alignment: center;
+
+                for s in 32 : Rectangle {
+                    width: root.bar-width;
+                    height: parent.height;
+                    background: Theme.active.background_raised;
+                    border-width: 1px;
+                    border-color: Theme.active.border_subtle;
+                    border-radius: 4px;
+                    clip: true;
+
+                    Rectangle {
+                        x: 0px;
+                        width: parent.width;
+                        height: parent.height * root.gate-steps[s];
+                        y: parent.height - self.height;
+                        background: Theme.active.accent_secondary;
+                        border-radius: 3px;
+                    }
+
+                    TouchArea {
+                        width: parent.width;
+                        height: parent.height;
+                        pointer-event(event) => {
+                            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                                let next = Math.max(0.0, Math.min(1.0, 1.0 - (self.mouse-y / self.height)));
+                                root.gate-steps[s] = next;
+                                root.gate-step-changed(s, next);
+                            }
+                        }
+                        moved => {
+                            if (self.pressed) {
+                                let next = Math.max(0.0, Math.min(1.0, 1.0 - (self.mouse-y / self.height)));
+                                root.gate-steps[s] = next;
+                                root.gate-step-changed(s, next);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

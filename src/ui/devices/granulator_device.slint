@@ -32,6 +32,24 @@ export component GranulatorDevice {
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
 
+    private property <[string]> rate-division-labels: [
+        "1.", "1", "1/2.", "1T", "1/2", "1/4.", "1/2T", "1/4",
+        "1/8.", "1/4T", "1/8", "1/16.", "1/8T", "1/16",
+        "1/32.", "1/16T", "1/32", "1/32T"
+    ];
+    private property <int> rate-division-index:
+        root.mosaic-rate <= 0.5
+            ? Math.round((root.mosaic-rate / 0.5) * (root.rate-division-labels.length - 1))
+            : 0;
+    private property <string> rate-division-label:
+        root.rate-division-labels[
+            Math.max(0, Math.min(root.rate-division-labels.length - 1, root.rate-division-index))
+        ];
+    private property <string> rate-readout:
+        root.mosaic-rate <= 0.5
+            ? root.rate-division-label
+            : ("Free " + Math.round(((root.mosaic-rate - 0.5) / 0.5) * 100) + "%");
+
     // Device Container
     VerticalLayout {
         spacing: 8px;
@@ -112,6 +130,7 @@ export component GranulatorDevice {
                         label-pos: "top-center";
                         label-font-size: 10px;
                         label-font-weight: 500;
+                        readout-text: root.rate-readout;
                         sensitivity: 0.01; scroll-sensitivity: 0.01;
                         value-changed(v) => { root.mosaic-rate = v; root.mosaic-rate-changed(v); }
                     }

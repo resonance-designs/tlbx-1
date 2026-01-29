@@ -13,6 +13,7 @@ import {
 } from "../components/index.slint";
 import { GranulatorDevice } from "../devices/granulator_device.slint";
 import { SilkDevice } from "../devices/silk_device.slint";
+import { G8Device } from "../devices/g8_device.slint";
 
 export component TapeEngine inherits Rectangle {
     in property <bool> is-recording: false;
@@ -28,6 +29,7 @@ export component TapeEngine inherits Rectangle {
     in property <image> video-frame;
 
     in-out property <float> tape-speed: 1.0;
+    in property <float> tape-tempo: 120.0;
     in-out property <float> tape-rotate: 0.0;
     in-out property <float> trigger-start: 0.0;
     in-out property <float> loop-start: 0.0;
@@ -49,6 +51,91 @@ export component TapeEngine inherits Rectangle {
     in-out property <bool> tape-monitor: false;
     in-out property <bool> tape-overdub: false;
     in property <float> tape-video-duration: 0.0;
+
+    private property <[string]> tape-rate-labels: [
+        "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16"
+    ];
+    private property <[float]> tape-rate-bars: [
+        1.0 / 64.0,
+        1.0 / 32.0,
+        1.0 / 16.0,
+        1.0 / 8.0,
+        1.0 / 4.0,
+        1.0 / 2.0,
+        1.0,
+        2.0,
+        4.0,
+        8.0,
+        16.0
+    ];
+    private property <int> tape-rate-index:
+        Math.round((Math.abs(root.tape-speed) / 4.0) * (root.tape-rate-labels.length - 1));
+    private property <string> tape-rate-label:
+        root.tape-rate-labels[
+            Math.max(0, Math.min(root.tape-rate-labels.length - 1, root.tape-rate-index))
+        ];
+    private property <float> tape-rate-bars-selected:
+        root.tape-rate-bars[
+            Math.max(0, Math.min(root.tape-rate-bars.length - 1, root.tape-rate-index))
+        ];
+    private property <string> tape-speed-readout:
+        root.tape-rate-mode == 1
+            ? root.tape-rate-label
+            : (root.tape-rate-mode == 2
+                ? "Tempo 1.5x"
+                : (root.tape-rate-mode == 3
+                    ? "Tempo 0.67x"
+                    : (Math.round(root.tape-speed * 100) / 100 + "x")));
+    private property <string> tape-rotate-readout:
+        root.tape-video-duration > 0
+            ? ((Math.floor((root.tape-rotate * root.tape-video-duration) * 100) / 100) + "s")
+            : "--";
+    private property <string> tape-trigger-readout:
+        root.tape-video-duration > 0
+            ? ((Math.floor((root.trigger-start * root.tape-video-duration) * 100) / 100) + "s")
+            : "--";
+    private property <string> tape-loop-start-readout:
+        root.tape-video-duration > 0
+            ? ((Math.floor((root.loop-start * root.tape-video-duration) * 100) / 100) + "s")
+            : "--";
+    private property <float> tape-bars-total:
+        root.tape-video-duration > 0
+            ? (root.tape-video-duration / ((60.0 / Math.max(1.0, root.tape-tempo)) * 4.0))
+            : 0.0;
+    private property <float> tape-speed-factor:
+        root.tape-rate-mode == 1
+            ? 1.0
+            : Math.max(0.0001, Math.abs(root.tape-speed));
+    private property <float> tape-bars-effective:
+        root.tape-rate-mode == 1
+            ? root.tape-rate-bars-selected
+            : (root.tape-bars-total / root.tape-speed-factor);
+    private property <float> tape-loop-bars:
+        root.tape-bars-effective * root.loop-length;
+    private property <int> tape-loop-bars-whole:
+        Math.floor(root.tape-loop-bars);
+    private property <int> tape-loop-beats:
+        Math.round((root.tape-loop-bars - root.tape-loop-bars-whole) * 4.0);
+    private property <string> tape-loop-bars-readout:
+        root.tape-bars-total > 0
+            ? (root.tape-loop-bars-whole <= 0
+                ? (Math.max(0, Math.min(4, root.tape-loop-beats)) + " beats")
+                : (Math.max(0, Math.min(4, root.tape-loop-beats)) == 0
+                    ? (root.tape-loop-bars-whole + " bars")
+                    : (root.tape-loop-bars-whole + " bars " + Math.max(0, Math.min(4, root.tape-loop-beats)) + " beats")))
+            : (Math.round(root.loop-length * 100) + "%");
+    private property <string> tape-loop-length-readout:
+        root.tape-rate-mode == 1
+            ? root.tape-loop-bars-readout
+            : (root.tape-video-duration > 0
+                ? ((Math.floor((root.loop-length * root.tape-video-duration) * 100) / 100) + "s")
+                : "--");
+    private property <string> tape-glide-readout:
+        Math.round(root.tape-glide * 100) + "%";
+    private property <string> tape-sos-readout:
+        Math.round(root.tape-sos * 100) + "%";
+    private property <string> tape-xfade-readout:
+        Math.round((root.loop-xfade / 0.5) * 100) + "%";
 
     in-out property <bool> mosaic-enabled: true;
     in-out property <float> mosaic-pitch: 0.0;
@@ -81,6 +168,15 @@ export component TapeEngine inherits Rectangle {
     in-out property <float> ring-waves-rate: 0.5;
     in-out property <float> ring-noise: 0.0;
     in-out property <float> ring-noise-rate: 0.5;
+
+    in-out property <bool> g8-enabled: true;
+    in-out property <int> g8-rate-index: 0;
+    in-out property <[float]> g8-steps: [
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ];
 
     callback load-sample();
     callback save-sample();
@@ -138,6 +234,9 @@ export component TapeEngine inherits Rectangle {
     callback ring-waves-rate-changed(value: float);
     callback ring-noise-changed(value: float);
     callback ring-noise-rate-changed(value: float);
+    callback toggle-g8-enabled();
+    callback g8-rate-selected(index: int);
+    callback g8-step-changed(index: int, value: float);
 
     width: 1200px;
     background: transparent;
@@ -288,9 +387,7 @@ export component TapeEngine inherits Rectangle {
                                             sensitivity: root.video-enabled ? 0.001 : 0.01;
                                             scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
                                             infinite-rotary: root.video-enabled;
-                                            readout-text: root.video-enabled
-                                                ? ((Math.floor((root.trigger-start * root.tape-video-duration) * 100) / 100) + "s")
-                                                : "";
+                                            readout-text: root.tape-trigger-readout;
                                             value-changed(v) => {
                                                 root.trigger-start = v;
                                                 root.trigger-start-changed(v);
@@ -310,9 +407,7 @@ export component TapeEngine inherits Rectangle {
                                             sensitivity: root.video-enabled ? 0.001 : 0.01;
                                             scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
                                             infinite-rotary: root.video-enabled;
-                                            readout-text: root.video-enabled
-                                                ? ((Math.floor((root.loop-start * root.tape-video-duration) * 100) / 100) + "s")
-                                                : "";
+                                            readout-text: root.tape-loop-start-readout;
                                             value-changed(v) => {
                                                 root.loop-start = v;
                                                 root.loop-start-changed(v);
@@ -332,9 +427,7 @@ export component TapeEngine inherits Rectangle {
                                             sensitivity: root.video-enabled ? 0.001 : 0.01;
                                             scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
                                             infinite-rotary: root.video-enabled;
-                                            readout-text: root.video-enabled
-                                                ? ((Math.floor((root.loop-length * root.tape-video-duration) * 100) / 100) + "s")
-                                                : "";
+                                            readout-text: root.tape-loop-length-readout;
                                             value-changed(v) => {
                                                 root.loop-length = v;
                                                 root.loop-length-changed(v);
@@ -353,6 +446,7 @@ export component TapeEngine inherits Rectangle {
                                             indicator-position: 14px;
                                             sensitivity: 0.01;
                                             scroll-sensitivity: 0.01;
+                                            readout-text: root.tape-rotate-readout;
                                             value-changed(v) => {
                                                 root.tape-rotate = v;
                                                 root.tape-rotate-changed(v);
@@ -373,6 +467,7 @@ export component TapeEngine inherits Rectangle {
                                             indicator-position: 14px;
                                             sensitivity: 0.05;
                                             scroll-sensitivity: 0.05;
+                                            readout-text: root.tape-speed-readout;
                                             value-changed(v) => {
                                                 root.tape-speed = v;
                                                 root.tape-speed-changed(v);
@@ -391,6 +486,7 @@ export component TapeEngine inherits Rectangle {
                                             indicator-position: 14px;
                                             sensitivity: 0.01;
                                             scroll-sensitivity: 0.01;
+                                            readout-text: root.tape-glide-readout;
                                             value-changed(v) => {
                                                 root.tape-glide = v;
                                                 root.tape-glide-changed(v);
@@ -409,6 +505,7 @@ export component TapeEngine inherits Rectangle {
                                             indicator-position: 14px;
                                             sensitivity: 0.01;
                                             scroll-sensitivity: 0.01;
+                                            readout-text: root.tape-sos-readout;
                                             value-changed(v) => {
                                                 root.tape-sos = v;
                                                 root.tape-sos-changed(v);
@@ -427,6 +524,7 @@ export component TapeEngine inherits Rectangle {
                                             indicator-position: 14px;
                                             sensitivity: 0.005;
                                             scroll-sensitivity: 0.005;
+                                            readout-text: root.tape-xfade-readout;
                                             value-changed(v) => {
                                                 root.loop-xfade = v;
                                                 root.loop-xfade-changed(v);
@@ -576,6 +674,22 @@ export component TapeEngine inherits Rectangle {
                         ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
                         ring-noise-changed(value) => { root.ring-noise-changed(value); }
                         ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 22px;
+                Rectangle {
+                    width: parent.width;
+                    height: 200px;
+                    G8Device {
+                        gate-enabled <=> root.g8-enabled;
+                        gate-rate-index <=> root.g8-rate-index;
+                        gate-steps <=> root.g8-steps;
+                        toggle-gate-enabled => root.toggle-g8-enabled();
+                        gate-rate-selected(index) => { root.g8-rate-selected(index); }
+                        gate-step-changed(index, value) => { root.g8-step-changed(index, value); }
                     }
                 }
             }

@@ -20,12 +20,6 @@ npm run docs:install
 npm run docs:dev
 ```
 
-## Build Storybook (End-User MDX)
-
-```bash
-npm run storybook
-```
-
 ## Packaging
 
 Run the cross-platform packaging pipeline (OS-specific output):

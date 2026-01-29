@@ -180,7 +180,7 @@
 ## Ongoing: Tooling + Docs
 
 - [x] Add Docusaurus docs site
-- [x] Add Storybook MDX end-user docs
+- [x] Fold Storybook MDX end-user docs into Docusaurus
 - [x] Add developer onboarding docs
 - [x] Add cross-platform packaging scripts (NSIS/pkgbuild/Linux staging)
 - [x] Bundle docs site with installers and expose in-app Docs link

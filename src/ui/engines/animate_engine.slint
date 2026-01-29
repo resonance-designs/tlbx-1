@@ -8,6 +8,7 @@ import {
 } from "../components/index.slint";
 import { RDSKeybedBus } from "../globals.slint";
 import { GranulatorDevice } from "../devices/granulator_device.slint";
+import { G8Device } from "../devices/g8_device.slint";
 
 export component AnimateEngine {
     in property <[string]> animate-slot-types;
@@ -183,6 +184,14 @@ export component AnimateEngine {
     in-out property <float> mosaic-rand-size: 0.0;
     in-out property <float> mosaic-sos: 0.0;
     in-out property <bool> mosaic-enabled: true;
+    in-out property <bool> g8-enabled: true;
+    in-out property <int> g8-rate-index: 0;
+    in-out property <[float]> g8-steps: [
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ];
     callback toggle-mosaic-enabled();
     callback mosaic-pitch-changed(value: float);
     callback mosaic-rate-changed(value: float);
@@ -197,6 +206,9 @@ export component AnimateEngine {
     callback mosaic-rand-rate-changed(value: float);
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
+    callback toggle-g8-enabled();
+    callback g8-rate-selected(index: int);
+    callback g8-step-changed(index: int, value: float);
 
     callback toggle-track-mute();
 
@@ -1235,6 +1247,22 @@ export component AnimateEngine {
                         mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
                         mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
                         mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 22px;
+                Rectangle {
+                    width: parent.width;
+                    height: 200px;
+                    G8Device {
+                        gate-enabled <=> root.g8-enabled;
+                        gate-rate-index <=> root.g8-rate-index;
+                        gate-steps <=> root.g8-steps;
+                        toggle-gate-enabled => root.toggle-g8-enabled();
+                        gate-rate-selected(index) => { root.g8-rate-selected(index); }
+                        gate-step-changed(index, value) => { root.g8-step-changed(index, value); }
                     }
                 }
             }

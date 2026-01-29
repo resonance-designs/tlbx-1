@@ -1,6 +1,6 @@
 # TLBX-1
 
-![Static Badge](https://img.shields.io/badge/Version-0.1.15-orange)
+![Static Badge](https://img.shields.io/badge/Version-0.1.16-orange)
 
 TLBX-1 is a 4-track audio toolbox built in Rust. It features different audio engines, one of which is inspired by the Torso S-4 workflow. It runs as a standalone app and as a plugin via nih-plug, with a Slint-based UI.
 The UI is built with Slint in combination with the [Resonance Designs Slint UI Component Kit](https://github.com/resonance-designs/rds-slint-ui-kit).
@@ -17,6 +17,7 @@ The UI is built with Slint in combination with the [Resonance Designs Slint UI C
 - Engine 4: Void Seed (generative drone engine)
 - RDS Slint UI Component Kit for shared UI controls and theming
 - Post-tape Mosaic granular buffer with bypass toggle (Granulator device)
+- Experimental: Tape engine can load video files and display playback in place of the waveform (audio still drives playback).
 - Project save/load (JSON)
 - Project/library browser for samples and saved projects
 - Standalone audio device settings (device, sample rate, buffer size)

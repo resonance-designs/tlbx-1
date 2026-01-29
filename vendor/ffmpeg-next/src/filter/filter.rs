@@ -1,0 +1,121 @@
+use std::ffi::CStr;
+use std::marker::PhantomData;
+use std::str::from_utf8_unchecked;
+
+use super::{Flags, Pad};
+use ffi::*;
+
+pub struct Filter {
+    ptr: *mut AVFilter,
+}
+
+impl Filter {
+    pub unsafe fn wrap(ptr: *mut AVFilter) -> Self {
+        Filter { ptr }
+    }
+
+    pub unsafe fn as_ptr(&self) -> *const AVFilter {
+        self.ptr as *const _
+    }
+
+    pub unsafe fn as_mut_ptr(&mut self) -> *mut AVFilter {
+        self.ptr
+    }
+}
+
+impl Filter {
+    pub fn name(&self) -> &str {
+        unsafe { from_utf8_unchecked(CStr::from_ptr((*self.as_ptr()).name).to_bytes()) }
+    }
+
+    pub fn description(&self) -> Option<&str> {
+        unsafe {
+            let ptr = (*self.as_ptr()).description;
+
+            if ptr.is_null() {
+                None
+            } else {
+                Some(from_utf8_unchecked(CStr::from_ptr(ptr).to_bytes()))
+            }
+        }
+    }
+
+    pub fn inputs(&self) -> Option<PadIter> {
+        unsafe {
+            let ptr = (*self.as_ptr()).inputs;
+
+            if ptr.is_null() {
+                None
+            } else {
+                Some(PadIter::new((*self.as_ptr()).inputs, pad_count(ptr)))
+            }
+        }
+    }
+
+    pub fn outputs(&self) -> Option<PadIter> {
+        unsafe {
+            let ptr = (*self.as_ptr()).outputs;
+
+            if ptr.is_null() {
+                None
+            } else {
+                Some(PadIter::new((*self.as_ptr()).outputs, pad_count(ptr)))
+            }
+        }
+    }
+
+    pub fn flags(&self) -> Flags {
+        unsafe { Flags::from_bits_truncate((*self.as_ptr()).flags) }
+    }
+}
+
+fn pad_count(ptr: *const AVFilterPad) -> isize {
+    let mut count: i32 = 0;
+    loop {
+        let name = unsafe { avfilter_pad_get_name(ptr, count) };
+        if name.is_null() {
+            break;
+        }
+        count += 1;
+        if count > 64 {
+            break;
+        }
+    }
+    count as isize
+}
+
+pub struct PadIter<'a> {
+    ptr: *const AVFilterPad,
+    count: isize,
+    cur: isize,
+
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<'a> PadIter<'a> {
+    pub fn new(ptr: *const AVFilterPad, count: isize) -> Self {
+        PadIter {
+            ptr,
+            count,
+            cur: 0,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a> Iterator for PadIter<'a> {
+    type Item = Pad<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            if self.cur >= self.count {
+                return None;
+            }
+
+            let pad = Pad::wrap(self.ptr, self.cur);
+            self.cur += 1;
+
+            Some(pad)
+        }
+    }
+}

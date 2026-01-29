@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.16] - 2026-01-27
+
+- Significant UI updates to the main app header/bar.
+- Removed Storybook and folded it's content into docusaurus site.
+- Improved some UI components.
+- Attempting to implement a shift-modifier for click action on track buttons to mute the track.
+- Significant UI updates to the Tape-Deck engine, Granulator device, and Silk device.
+- Updated to latest version of the RD Slint UI Component Kit.
+- Rearranged the SynDRM interface
+- Did some rewiring for pre/post filter processing on SynDRM tracks
+- Improved knob, label, and selector components
+- Added code comments
+- Added options for pre/post filter switching per drum track on the SynDRM engine
+- Added pitch envelope to SynDRM kick drum
+- More SynDRM UI improvements
+- Can now switch drum channel filters between pre/post of overdrive
+- Changed range of LFO's in Animate engine
+- Experimental: Tape engine can load video files and display playback in place of the waveform (audio still drives playback).
+
 ## [0.1.15] - 2026-01-23
 
 - Cleaned build warnings by removing unused fields/helpers and tightening follow_host_tempo field usage across TLBX1/SlintEditor/SlintWindow, plus simplified loops.

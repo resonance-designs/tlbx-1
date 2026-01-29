@@ -1,7 +1,9 @@
 import { Button } from "std-widgets.slint";
 
+import { Theme } from "../theme/index.slint";
 import {
     RDSHeaderLabel,
+    RDSButton,
     RDSSlider,
     RDSVertVUMeter,
     RDSKnob,
@@ -12,7 +14,7 @@ import {
 import { GranulatorDevice } from "../devices/granulator_device.slint";
 import { SilkDevice } from "../devices/silk_device.slint";
 
-export component TapeEngine {
+export component TapeEngine inherits Rectangle {
     in property <bool> is-recording: false;
 
     in-out property <float> track-level: 1.0;
@@ -22,6 +24,8 @@ export component TapeEngine {
     in property <[float]> waveform;
     in property <[string]> waveform_time_labels;
     in property <int> playhead-index: 0;
+    in property <bool> video-enabled: false;
+    in property <image> video-frame;
 
     in-out property <float> tape-speed: 1.0;
     in-out property <float> tape-rotate: 0.0;
@@ -44,6 +48,7 @@ export component TapeEngine {
     in-out property <bool> tape-keylock: false;
     in-out property <bool> tape-monitor: false;
     in-out property <bool> tape-overdub: false;
+    in property <float> tape-video-duration: 0.0;
 
     in-out property <bool> mosaic-enabled: true;
     in-out property <float> mosaic-pitch: 0.0;
@@ -134,403 +139,453 @@ export component TapeEngine {
     callback ring-noise-changed(value: float);
     callback ring-noise-rate-changed(value: float);
 
+    width: 1200px;
+    background: transparent;
+
+    // Engine Container
     VerticalLayout {
         spacing: 8px;
-        width: parent.width;
         padding: 12px;
 
+        // Engine Title
         RDSHeaderLabel {
             text: "Tape-Deck";
             horizontal-alignment: left;
             padding-horizontal: 12px;
             padding-vertical: 6px;
-        }
-
-        HorizontalLayout {
-            spacing: 8px;
-            width: parent.width - 100px;
-            Button {
-                text: "Load Sample";
-                clicked => root.load-sample();
-            }
-            Button {
-                text: "Save Sample";
-                clicked => root.save-sample();
-            }
-            Button {
-                text: root.is-recording ? "Stop Record" : "Record";
-                clicked => root.toggle-record();
-            }
-            Rectangle {
-                width: 80px;
-                height: 28px;
-                background: ta.pressed ? #4a0d7a : #2a2a35;
-                border-radius: 4px;
-                border-color: #3f3f4a;
-                border-width: 1px;
-                Text {
-                    text: "Audition";
-                    color: #f0f0f2;
-                    font-size: 11px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
-                ta := TouchArea {
-                    pointer-event(event) => {
-                        if (event.kind == PointerEventKind.down) {
-                            root.audition-start();
-                        } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
-                            root.audition-end();
-                        }
-                    }
-                }
-            }
-        }
-
-        HorizontalLayout {
-            width: parent.width;
-            spacing: 12px;
-            height: 200px;
-
-            RDSSlider {
-                value: root.track-level;
-                min-value: 0;
-                max-value: 1;
-                orientation: "vertical";
-                size: "small";
-                height-override: 200px;
-                width: 40px;
-                value-changed(v) => {
-                    root.track-level = v;
-                    root.track-level-changed(v);
-                }
-            }
-
-            VerticalLayout {
-                width: 32px;
-                height: 200px;
+            right-padding: 12px;
+            HorizontalLayout {
                 spacing: 6px;
-                HorizontalLayout {
-                    spacing: 4px;
-                    RDSVertVUMeter { level: root.track-meter-left; fill-color: #34d399; height: 200px; }
-                    RDSVertVUMeter { level: root.track-meter-right; fill-color: #60a5fa; height: 200px; }
+                alignment: center;
+                RDSCircleToggle {
+                    y: 2px;
+                    active: !root.track-muted;
+                    label: "Mute";
+                    label-active: "Live";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
+                    clicked => root.toggle-track-mute();
                 }
             }
+        }
 
-            RDSWaveformViz {
-                width: parent.width - 420px;
-                height: 200px;
-                waveform: root.waveform;
-                waveform_time_labels: root.waveform_time_labels;
-                playhead-index: root.playhead-index;
-            }
-
-            Rectangle {
-                width: 286px;
-                height: 200px;
-                background: #121216;
-                border-radius: 6px;
-                border-color: #2a2a35;
-                border-width: 1px;
-
-                GridLayout {
+        // Engine Controls
+        Rectangle {
+            background: #1e3a5f33;
+            border-width: 2px;
+            border-radius: 6px;
+            border-color: Theme.active.border-strong;
+            VerticalLayout {
+                HorizontalLayout {
+                    spacing: 8px;
                     padding: 12px;
-                    spacing-horizontal: 28px;
-                    spacing-vertical: 10px;
-                    Row {
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "T.Start"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.trigger-start;
-                                min-value: 0;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.trigger-start = v;
-                                    root.trigger-start-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "L.Start"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.loop-start;
-                                min-value: 0;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.loop-start = v;
-                                    root.loop-start-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "Length"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.loop-length;
-                                min-value: 0.01;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.loop-length = v;
-                                    root.loop-length-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "Rotate"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.tape-rotate;
-                                min-value: 0;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.tape-rotate = v;
-                                    root.tape-rotate-changed(v);
-                                }
-                            }
+                    RDSButton {
+                        label: "Load Sample";
+                        layout-stretch: 1;
+                        border-width: 2px;
+                        clicked => root.load-sample();
+                    }
+                    RDSButton {
+                        label: "Save Sample";
+                        layout-stretch: 1;
+                        border-width: 2px;
+                        clicked => root.save-sample();
+                    }
+                    RDSButton {
+                        label: root.is-recording ? "Stop Record" : "Record";
+                        layout-stretch: 1;
+                        border-width: 2px;
+                        clicked => root.toggle-record();
+                    }
+                    RDSButton {
+                        label: "Audition";
+                        layout-stretch: 1;
+                        border-width: 2px;
+                        pressed => root.audition-start();
+                        released => root.audition-end();
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-right: 12px;
+                    padding-bottom: 12px;
+                    padding-left: 12px;
+                    RDSSlider {
+                        value: root.track-level;
+                        min-value: 0;
+                        max-value: 1;
+                        orientation: "vertical";
+                        size: "small";
+                        height-override: 200px;
+                        width: 40px;
+                        value-changed(v) => {
+                            root.track-level = v;
+                            root.track-level-changed(v);
                         }
                     }
-                    Row {
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "Speed"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.tape-speed;
-                                min-value: -4;
-                                max-value: 4;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.05;
-                                scroll-sensitivity: 0.05;
-                                value-changed(v) => {
-                                    root.tape-speed = v;
-                                    root.tape-speed-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "Glide"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.tape-glide;
-                                min-value: 0;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.tape-glide = v;
-                                    root.tape-glide-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "SOS"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.tape-sos;
-                                min-value: 0;
-                                max-value: 1;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.01;
-                                scroll-sensitivity: 0.01;
-                                value-changed(v) => {
-                                    root.tape-sos = v;
-                                    root.tape-sos-changed(v);
-                                }
-                            }
-                        }
-                        VerticalLayout {
-                            spacing: 4px;
-                            Text { text: "XFade"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
-                            RDSKnob {
-                                renderer: "lo-fi";
-                                value: root.loop-xfade;
-                                min-value: 0;
-                                max-value: 0.5;
-                                size: 44px;
-                                indicator-position: 14px;
-                                sensitivity: 0.005;
-                                scroll-sensitivity: 0.005;
-                                value-changed(v) => {
-                                    root.loop-xfade = v;
-                                    root.loop-xfade-changed(v);
-                                }
-                            }
-                        }
-                    }
-                    Row {
+
+                    VerticalLayout {
+                        width: 72px;
+                        height: 200px;
+                        padding-left: 8px;
                         HorizontalLayout {
-                            colspan: 4;
-                            spacing: 12px;
-                            alignment: space-between;
-                            VerticalLayout {
-                                spacing: 2px;
-                                width: 130px;
-                                Text { text: "Rate Mode"; color: #b9b9bf; font-size: 10px; }
-                                RDSComboBox {
-                                    width: 100px;
-                                    height: 24px;
-                                    model: root.tape-rate-modes;
-                                    current-index: root.tape-rate-mode;
-                                    selected => {
-                                        root.tape-rate-mode = self.current-index;
-                                        root.tape-rate-mode-selected(self.current-index);
+                            spacing: 4px;
+                            RDSVertVUMeter { level: root.track-meter-left; fill-color: #34d399; width: 24px; height: 200px; }
+                            RDSVertVUMeter { level: root.track-meter-right; fill-color: #60a5fa; width: 24px; height: 200px; }
+                        }
+                    }
+
+                    Rectangle {
+                        border-width: 2px;
+                        width: parent.width - 420px;
+                        height: 200px;
+                        border-radius: 6px;
+                        border-color: Theme.active.border-strong;
+                        clip: true;
+                        RDSWaveformViz {
+                            width: parent.width;
+                            height: parent.height;
+                            visible: !root.video-enabled;
+                            waveform: root.waveform;
+                            waveform_time_labels: root.waveform_time_labels;
+                            playhead-index: root.playhead-index;
+                        }
+                        Image {
+                            width: parent.width;
+                            height: parent.height;
+                            visible: root.video-enabled;
+                            source: root.video-frame;
+                            image-fit: contain;
+                        }
+                    }
+
+                    VerticalLayout {
+                        padding-left: 12px;
+                        Rectangle {
+                            background: #121216;
+                            border-radius: 6px;
+                            border-color: #2a2a35;
+                            border-width: 2px;
+
+                            GridLayout {
+                                padding: 12px;
+                                spacing-horizontal: 24px;
+                                spacing-vertical: 10px;
+                                Row {
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "T.Start"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.trigger-start;
+                                            min-value: 0;
+                                            max-value: 1;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            infinite-rotary: root.video-enabled;
+                                            readout-text: root.video-enabled
+                                                ? ((Math.floor((root.trigger-start * root.tape-video-duration) * 100) / 100) + "s")
+                                                : "";
+                                            value-changed(v) => {
+                                                root.trigger-start = v;
+                                                root.trigger-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "L.Start"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.loop-start;
+                                            min-value: 0;
+                                            max-value: 1;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            infinite-rotary: root.video-enabled;
+                                            readout-text: root.video-enabled
+                                                ? ((Math.floor((root.loop-start * root.tape-video-duration) * 100) / 100) + "s")
+                                                : "";
+                                            value-changed(v) => {
+                                                root.loop-start = v;
+                                                root.loop-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "Length"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.loop-length;
+                                            min-value: 0.01;
+                                            max-value: 1;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            scroll-sensitivity: root.video-enabled ? 0.001 : 0.01;
+                                            infinite-rotary: root.video-enabled;
+                                            readout-text: root.video-enabled
+                                                ? ((Math.floor((root.loop-length * root.tape-video-duration) * 100) / 100) + "s")
+                                                : "";
+                                            value-changed(v) => {
+                                                root.loop-length = v;
+                                                root.loop-length-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "Rotate"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.tape-rotate;
+                                            min-value: 0;
+                                            max-value: 1;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: 0.01;
+                                            scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.tape-rotate = v;
+                                                root.tape-rotate-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "Speed"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.tape-speed;
+                                            min-value: -4;
+                                            max-value: 4;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: 0.05;
+                                            scroll-sensitivity: 0.05;
+                                            value-changed(v) => {
+                                                root.tape-speed = v;
+                                                root.tape-speed-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "Glide"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.tape-glide;
+                                            min-value: 0;
+                                            max-value: 1;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: 0.01;
+                                            scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.tape-glide = v;
+                                                root.tape-glide-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "SOS"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.tape-sos;
+                                            min-value: 0;
+                                            max-value: 1;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: 0.01;
+                                            scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.tape-sos = v;
+                                                root.tape-sos-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text { text: "XFade"; color: #b9b9bf; font-size: 10px; horizontal-alignment: center; }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.loop-xfade;
+                                            min-value: 0;
+                                            max-value: 0.5;
+                                            size: 44px;
+                                            indicator-position: 14px;
+                                            sensitivity: 0.005;
+                                            scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.loop-xfade = v;
+                                                root.loop-xfade-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+                                Row {
+                                    HorizontalLayout {
+                                        colspan: 4;
+                                        spacing: 12px;
+                                        alignment: space-between;
+                                        VerticalLayout {
+                                            spacing: 2px;
+                                            width: 126px;
+                                            Text { text: "Rate Mode"; color: #b9b9bf; font-size: 10px; }
+                                            RDSComboBox {
+                                                width: 110px;
+                                                height: 24px;
+                                                model: root.tape-rate-modes;
+                                                current-index: root.tape-rate-mode;
+                                                selected => {
+                                                    root.tape-rate-mode = self.current-index;
+                                                    root.tape-rate-mode-selected(self.current-index);
+                                                }
+                                            }
+                                        }
+                                        VerticalLayout {
+                                            spacing: 2px;
+                                            width: 120px;
+                                            Text { text: "Loop Mode"; color: #b9b9bf; font-size: 10px; }
+                                            RDSComboBox {
+                                                width: 110px;
+                                                height: 24px;
+                                                model: root.loop-modes;
+                                                current-index: root.loop-mode;
+                                                selected => {
+                                                    root.loop-mode = self.current-index;
+                                                    root.loop-mode-selected(self.current-index);
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
-                            VerticalLayout {
-                                spacing: 2px;
-                                width: 130px;
-                                Text { text: "Loop Mode"; color: #b9b9bf; font-size: 10px; }
-                                RDSComboBox {
-                                    width: 100px;
-                                    height: 24px;
-                                    model: root.loop-modes;
-                                    current-index: root.loop-mode;
-                                    selected => {
-                                        root.loop-mode = self.current-index;
-                                        root.loop-mode-selected(self.current-index);
-                                    }
-                                }
-                            }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 16px;
+                    width: parent.width;
+
+                    VerticalLayout {
+                        spacing: 12px;
+                        HorizontalLayout {
+                            spacing: 8px;
+                            padding-right: 12px;
+                            padding-bottom: 12px;
+                            padding-left: 12px;
+                            RDSButton { label: root.loop-enabled ? "Loop On" : "Loop Off"; clicked => root.toggle-loop-enabled(); }
+                            RDSButton { label: root.tape-reverse ? "Reverse On" : "Reverse Off"; clicked => root.toggle-tape-reverse(); }
+                            RDSButton { label: root.tape-freeze ? "Freeze On" : "Freeze Off"; clicked => root.toggle-tape-freeze(); }
+                            RDSButton { label: root.tape-keylock ? "Keylock On" : "Keylock Off"; clicked => root.toggle-tape-keylock(); }
+                            RDSButton { label: root.tape-monitor ? "Monitor On" : "Monitor Off"; clicked => root.toggle-tape-monitor(); }
+                            RDSButton { label: root.tape-overdub ? "Overdub On" : "Overdub Off"; clicked => root.toggle-tape-overdub(); }
                         }
                     }
                 }
             }
         }
 
+        // Downstream Devices
         VerticalLayout {
-            spacing: 12px;
-
+            width: parent.width;
             HorizontalLayout {
-                spacing: 16px;
-                width: parent.width;
+                spacing: 22px;
 
-                VerticalLayout {
-                    spacing: 12px;
-                    HorizontalLayout {
-                        spacing: 8px;
-                        HorizontalLayout {
-                            spacing: 6px;
-                            Text {
-                                text: "Mute";
-                                color: #b9b9bf;
-                                font-size: 11px;
-                                vertical-alignment: center;
-                            }
-                            RDSCircleToggle {
-                                active: root.track-muted;
-                                clicked => root.toggle-track-mute();
-                            }
-                        }
-                        Button { text: root.loop-enabled ? "Loop On" : "Loop Off"; clicked => root.toggle-loop-enabled(); }
-                        Button { text: root.tape-reverse ? "Reverse On" : "Reverse Off"; clicked => root.toggle-tape-reverse(); }
-                        Button { text: root.tape-freeze ? "Freeze On" : "Freeze Off"; clicked => root.toggle-tape-freeze(); }
-                        Button { text: root.tape-keylock ? "Keylock On" : "Keylock Off"; clicked => root.toggle-tape-keylock(); }
-                        Button { text: root.tape-monitor ? "Monitor On" : "Monitor Off"; clicked => root.toggle-tape-monitor(); }
-                        Button { text: root.tape-overdub ? "Overdub On" : "Overdub Off"; clicked => root.toggle-tape-overdub(); }
+                // Granulator Device
+                Rectangle {
+                    width: (parent.width - 16px) / 2 - 15px;
+                    height: 250px;
+                    GranulatorDevice {
+                        mosaic-enabled <=> root.mosaic-enabled;
+                        mosaic-pitch <=> root.mosaic-pitch;
+                        mosaic-rate <=> root.mosaic-rate;
+                        mosaic-size <=> root.mosaic-size;
+                        mosaic-contour <=> root.mosaic-contour;
+                        mosaic-warp <=> root.mosaic-warp;
+                        mosaic-spray <=> root.mosaic-spray;
+                        mosaic-pattern <=> root.mosaic-pattern;
+                        mosaic-wet <=> root.mosaic-wet;
+                        mosaic-detune <=> root.mosaic-detune;
+                        mosaic-spatial <=> root.mosaic-spatial;
+                        mosaic-rand-rate <=> root.mosaic-rand-rate;
+                        mosaic-rand-size <=> root.mosaic-rand-size;
+                        mosaic-sos <=> root.mosaic-sos;
+                        toggle-mosaic-enabled => root.toggle-mosaic-enabled();
+                        mosaic-pitch-changed(value) => { root.mosaic-pitch-changed(value); }
+                        mosaic-rate-changed(value) => { root.mosaic-rate-changed(value); }
+                        mosaic-size-changed(value) => { root.mosaic-size-changed(value); }
+                        mosaic-contour-changed(value) => { root.mosaic-contour-changed(value); }
+                        mosaic-warp-changed(value) => { root.mosaic-warp-changed(value); }
+                        mosaic-spray-changed(value) => { root.mosaic-spray-changed(value); }
+                        mosaic-pattern-changed(value) => { root.mosaic-pattern-changed(value); }
+                        mosaic-wet-changed(value) => { root.mosaic-wet-changed(value); }
+                        mosaic-detune-changed(value) => { root.mosaic-detune-changed(value); }
+                        mosaic-spatial-changed(value) => { root.mosaic-spatial-changed(value); }
+                        mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
+                        mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
+                        mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
                     }
                 }
-            }
 
-            HorizontalLayout {
-                spacing: 16px;
-                width: parent.width;
-
-                GranulatorDevice {
-                    width: (parent.width - 16px) / 2;
-                    mosaic-enabled <=> root.mosaic-enabled;
-                    mosaic-pitch <=> root.mosaic-pitch;
-                    mosaic-rate <=> root.mosaic-rate;
-                    mosaic-size <=> root.mosaic-size;
-                    mosaic-contour <=> root.mosaic-contour;
-                    mosaic-warp <=> root.mosaic-warp;
-                    mosaic-spray <=> root.mosaic-spray;
-                    mosaic-pattern <=> root.mosaic-pattern;
-                    mosaic-wet <=> root.mosaic-wet;
-                    mosaic-detune <=> root.mosaic-detune;
-                    mosaic-spatial <=> root.mosaic-spatial;
-                    mosaic-rand-rate <=> root.mosaic-rand-rate;
-                    mosaic-rand-size <=> root.mosaic-rand-size;
-                    mosaic-sos <=> root.mosaic-sos;
-                    toggle-mosaic-enabled => root.toggle-mosaic-enabled();
-                    mosaic-pitch-changed(value) => { root.mosaic-pitch-changed(value); }
-                    mosaic-rate-changed(value) => { root.mosaic-rate-changed(value); }
-                    mosaic-size-changed(value) => { root.mosaic-size-changed(value); }
-                    mosaic-contour-changed(value) => { root.mosaic-contour-changed(value); }
-                    mosaic-warp-changed(value) => { root.mosaic-warp-changed(value); }
-                    mosaic-spray-changed(value) => { root.mosaic-spray-changed(value); }
-                    mosaic-pattern-changed(value) => { root.mosaic-pattern-changed(value); }
-                    mosaic-wet-changed(value) => { root.mosaic-wet-changed(value); }
-                    mosaic-detune-changed(value) => { root.mosaic-detune-changed(value); }
-                    mosaic-spatial-changed(value) => { root.mosaic-spatial-changed(value); }
-                    mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
-                    mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
-                    mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
-                }
-
-                SilkDevice {
-                    width: (parent.width - 16px) / 2;
-                    ring-enabled <=> root.ring-enabled;
-                    ring-cutoff <=> root.ring-cutoff;
-                    ring-resonance <=> root.ring-resonance;
-                    ring-decay <=> root.ring-decay;
-                    ring-pitch <=> root.ring-pitch;
-                    ring-decay-modes: root.ring-decay-modes;
-                    ring-decay-mode <=> root.ring-decay-mode;
-                    ring-slope <=> root.ring-slope;
-                    ring-tone <=> root.ring-tone;
-                    ring-tilt <=> root.ring-tilt;
-                    ring-wet <=> root.ring-wet;
-                    ring-detune <=> root.ring-detune;
-                    ring-waves <=> root.ring-waves;
-                    ring-waves-rate <=> root.ring-waves-rate;
-                    ring-noise <=> root.ring-noise;
-                    ring-noise-rate <=> root.ring-noise-rate;
-                    toggle-ring-enabled => root.toggle-ring-enabled();
-                    ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
-                    ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
-                    ring-decay-changed(value) => { root.ring-decay-changed(value); }
-                    ring-pitch-changed(value) => { root.ring-pitch-changed(value); }
-                    ring-decay-mode-selected(index) => { root.ring-decay-mode-selected(index); }
-                    ring-slope-changed(value) => { root.ring-slope-changed(value); }
-                    ring-tone-changed(value) => { root.ring-tone-changed(value); }
-                    ring-tilt-changed(value) => { root.ring-tilt-changed(value); }
-                    ring-wet-changed(value) => { root.ring-wet-changed(value); }
-                    ring-detune-changed(value) => { root.ring-detune-changed(value); }
-                    ring-waves-changed(value) => { root.ring-waves-changed(value); }
-                    ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
-                    ring-noise-changed(value) => { root.ring-noise-changed(value); }
-                    ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
+                // Silk Device
+                Rectangle {
+                    width: (parent.width - 16px) / 2 - 15px;
+                    SilkDevice {
+                        ring-enabled <=> root.ring-enabled;
+                        ring-cutoff <=> root.ring-cutoff;
+                        ring-resonance <=> root.ring-resonance;
+                        ring-decay <=> root.ring-decay;
+                        ring-pitch <=> root.ring-pitch;
+                        ring-decay-modes: root.ring-decay-modes;
+                        ring-decay-mode <=> root.ring-decay-mode;
+                        ring-slope <=> root.ring-slope;
+                        ring-tone <=> root.ring-tone;
+                        ring-tilt <=> root.ring-tilt;
+                        ring-wet <=> root.ring-wet;
+                        ring-detune <=> root.ring-detune;
+                        ring-waves <=> root.ring-waves;
+                        ring-waves-rate <=> root.ring-waves-rate;
+                        ring-noise <=> root.ring-noise;
+                        ring-noise-rate <=> root.ring-noise-rate;
+                        toggle-ring-enabled => root.toggle-ring-enabled();
+                        ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
+                        ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
+                        ring-decay-changed(value) => { root.ring-decay-changed(value); }
+                        ring-pitch-changed(value) => { root.ring-pitch-changed(value); }
+                        ring-decay-mode-selected(index) => { root.ring-decay-mode-selected(index); }
+                        ring-slope-changed(value) => { root.ring-slope-changed(value); }
+                        ring-tone-changed(value) => { root.ring-tone-changed(value); }
+                        ring-tilt-changed(value) => { root.ring-tilt-changed(value); }
+                        ring-wet-changed(value) => { root.ring-wet-changed(value); }
+                        ring-detune-changed(value) => { root.ring-detune-changed(value); }
+                        ring-waves-changed(value) => { root.ring-waves-changed(value); }
+                        ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
+                        ring-noise-changed(value) => { root.ring-noise-changed(value); }
+                        ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
+                    }
                 }
             }
         }
     }
+}
+
+// Preview helper for the Slint VS Code extension.
+export component TapeEnginePreview inherits Window {
+    width: 1200px;
+    height: 760px;
+    TapeEngine { width: 1200px; height: 760px; }
 }

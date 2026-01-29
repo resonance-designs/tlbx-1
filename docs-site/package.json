@@ -1,13 +1,11 @@
 {
   "name": "tlbx-docs",
   "private": true,
-  "version": "0.1.15",
+  "version": "0.1.16",
   "scripts": {
     "start": "docusaurus start",
     "build": "docusaurus build",
-    "serve": "docusaurus serve",
-    "storybook": "storybook dev -p 6006 -c .storybook",
-    "storybook:build": "storybook build -c .storybook"
+    "serve": "docusaurus serve"
   },
   "dependencies": {
     "@docusaurus/core": "^3.5.2",
@@ -17,10 +15,5 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
-  "devDependencies": {
-    "@storybook/addon-docs": "^8.4.0",
-    "@storybook/blocks": "^8.4.0",
-    "@storybook/html": "^8.4.0",
-    "storybook": "^8.4.0"
-  }
+  "devDependencies": {}
 }

@@ -10,22 +10,111 @@ Public members:
 
 export component RDSCircleToggle {
     in property <bool> active;
+    in property <string> label: "";
+    in property <string> label-active: "";
+    in property <color> label-color: Theme.active.text_secondary;
+    in property <color> label-active-color: root.label-color;
+    in property <length> label-font-size: Theme.active.font_small;
+    in property <int> label-font-weight: 400;
+    in property <string> label-pos: "right";
     callback clicked();
 
-    width: 14px;
-    height: 14px;
+    private property <string> label-text: root.active ? root.label-active : root.label;
+    private property <bool> has-label: label-text != "";
+    private property <bool> label-right: root.label-pos == "right";
+    private property <bool> label-left: root.label-pos == "left";
+    private property <bool> label-top: root.label-pos == "top";
+    private property <bool> label-bottom: root.label-pos == "bottom";
+    private property <length> label-gap: 6px;
+    private property <length> label-block-height: root.label-font-size + 4px;
+    private property <length> label-block-width: label_metrics.preferred-width;
+
+    width: root.has-label && (root.label-left || root.label-right)
+        ? (14px + root.label-gap + root.label-block-width)
+        : (root.has-label && (root.label-top || root.label-bottom) ? Math.max(14px, root.label-block-width) : 14px);
+    height: root.has-label && (root.label-top || root.label-bottom)
+        ? (14px + root.label-gap + root.label-block-height)
+        : 14px;
 
     Rectangle {
         width: parent.width;
         height: parent.height;
-        background: root.active
-            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
-            : (ta.pressed ? Theme.active.border_strong : Theme.active.border_subtle);
-        border-radius: 999px;
-        border-color: root.active
-            ? (ta.pressed ? Theme.active.accent_primary : Theme.active.accent_highlight)
-            : (ta.has-hover ? Theme.active.border_subtle : Theme.active.border_strong);
-        border-width: 1px;
+        background: transparent;
+
+        label_metrics := Text {
+            text: root.label-text;
+            font-size: root.label-font-size;
+            font-weight: root.label-font-weight;
+            visible: false;
+        }
+
+        if (root.label-top || root.label-bottom) : VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            spacing: root.label-gap;
+            alignment: center;
+            if (root.label-top && root.has-label) : Text {
+                text: root.label-text;
+                color: root.active ? root.label-active-color : root.label-color;
+                font-size: root.label-font-size;
+                font-weight: root.label-font-weight;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                width: 14px;
+                height: 14px;
+                background: root.active
+                    ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
+                    : (ta.pressed ? Theme.active.border_strong : Theme.active.border_subtle);
+                border-radius: 999px;
+                border-color: root.active
+                    ? (ta.pressed ? Theme.active.accent_primary : Theme.active.accent_highlight)
+                    : (ta.has-hover ? Theme.active.border_subtle : Theme.active.border_strong);
+                border-width: 1px;
+            }
+            if (root.label-bottom && root.has-label) : Text {
+                text: root.label-text;
+                color: root.active ? root.label-active-color : root.label-color;
+                font-size: root.label-font-size;
+                font-weight: root.label-font-weight;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        if (root.label-left || root.label-right || !root.has-label) : HorizontalLayout {
+            width: parent.width;
+            height: parent.height;
+            spacing: root.label-gap;
+            alignment: center;
+            if (root.label-left && root.has-label) : Text {
+                text: root.label-text;
+                color: root.active ? root.label-active-color : root.label-color;
+                font-size: root.label-font-size;
+                font-weight: root.label-font-weight;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                width: 14px;
+                height: 14px;
+                background: root.active
+                    ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
+                    : (ta.pressed ? Theme.active.border_strong : Theme.active.border_subtle);
+                border-radius: 999px;
+                border-color: root.active
+                    ? (ta.pressed ? Theme.active.accent_primary : Theme.active.accent_highlight)
+                    : (ta.has-hover ? Theme.active.border_subtle : Theme.active.border_strong);
+                border-width: 1px;
+            }
+            if (root.label-right && root.has-label) : Text {
+                text: root.label-text;
+                color: root.active ? root.label-active-color : root.label-color;
+                font-size: root.label-font-size;
+                font-weight: root.label-font-weight;
+                vertical-alignment: center;
+            }
+        }
 
         ta := TouchArea {
             width: parent.width;
@@ -40,9 +129,16 @@ Component: RDSToggle
 Description: A toggle button that displays different icons based on its state.
 Public members:
 - active: bool - Current toggle state
-- on-icon: string - Material Icon character/name to display when active
-- off-icon: string - Material Icon character/name to display when inactive
-- icon-color: color - Color of the icon
+- on-icon: string - Icon to display when active
+- off-icon: string - Icon to display when inactive
+- background: color - Background color
+- active-background: color - Background color when active
+- border-color: color - Border color
+- active-border-color: color - Border color when active
+- border-width: length - Border width
+- active-border-width: length - Border width when active
+- text-color: color - Color of the text/icon
+- icon-color: color - Color of the icon (defaults to text-color)
 - icon-size: length - Size of the icon
 - clicked(): callback - Triggered when the toggle is clicked
 */
@@ -50,7 +146,14 @@ export component RDSToggle {
     in-out property <bool> active;
     in property <string> on-icon: "stop";
     in property <string> off-icon: "play_arrow";
-    in property <color> icon-color: Theme.active.text_primary;
+    in property <color> background: Theme.active.background_main;
+    in property <color> active-background: Theme.active.accent_primary;
+    in property <color> border-color: Theme.active.border_strong;
+    in property <color> active-border-color: Theme.active.accent_primary;
+    in property <length> border-width: 1px;
+    in property <length> active-border-width: root.border-width;
+    in property <color> text-color: Theme.active.text_primary;
+    in property <color> icon-color: root.text-color;
     in property <length> icon-size: 20px;
     callback clicked();
 
@@ -61,11 +164,11 @@ export component RDSToggle {
         height: parent.height;
         clip: true;
         border-radius: Theme.active.radius_small;
-        border-color: root.active ? Theme.active.accent_primary : Theme.active.border_strong;
-        border-width: 1px;
+        border-color: root.active ? root.active-border-color : root.border-color;
+        border-width: root.active ? root.active-border-width : root.border-width;
         background: root.active
-            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : Theme.active.accent_primary))
-            : (ta.pressed ? Theme.active.border_strong : (ta.has-hover ? Theme.active.background_raised : Theme.active.background_main));
+            ? (ta.pressed ? Theme.active.accent_secondary : (ta.has-hover ? Theme.active.accent_highlight : root.active-background))
+            : (ta.pressed ? Theme.active.border_strong : (ta.has-hover ? Theme.active.background_raised : root.background));
 
         Text {
             text: root.active ? root.on-icon : root.off-icon;

@@ -1,22 +1,30 @@
+import { Button } from "std-widgets.slint";
+
+import { Theme } from "../theme/index.slint";
 import {
+    RDSHeaderLabel,
     RDSCircleToggle,
     RDSComboBox,
     RDSKnob,
+    RDSNumStepper,
+    RDSTextStepper,
     RDSSelectButton,
     RDSSequencerCell
 } from "../components/index.slint";
 
-export component SynDRMEngine {
+export component SynDRMEngine inherits Rectangle {
     in property <[string]> filter-types;
     in-out property <bool> track-muted: false;
     in-out property <float> kick-pitch: 0.5;
     in-out property <float> kick-decay: 0.5;
     in-out property <float> kick-attack: 0.0;
+    in-out property <float> kick-pitch-env-amount: 0.0;
     in-out property <float> kick-drive: 0.0;
     in-out property <float> kick-level: 1.0;
     in-out property <int> kick-filter-type: 0;
     in-out property <float> kick-filter-cutoff: 0.6;
     in-out property <float> kick-filter-resonance: 0.2;
+    in-out property <bool> kick-filter-pre-drive: true;
     in-out property <[bool]> kick-sequencer-grid;
     in property <int> kick-sequencer-current-step: -1;
 
@@ -29,6 +37,7 @@ export component SynDRMEngine {
     in-out property <int> snare-filter-type: 0;
     in-out property <float> snare-filter-cutoff: 0.6;
     in-out property <float> snare-filter-resonance: 0.2;
+    in-out property <bool> snare-filter-pre-drive: true;
     in-out property <[bool]> snare-sequencer-grid;
     in property <int> snare-sequencer-current-step: -1;
 
@@ -61,11 +70,13 @@ export component SynDRMEngine {
     callback kick-pitch-changed(value: float);
     callback kick-decay-changed(value: float);
     callback kick-attack-changed(value: float);
+    callback kick-pitch-env-amount-changed(value: float);
     callback kick-drive-changed(value: float);
     callback kick-level-changed(value: float);
     callback kick-filter-type-changed(index: int);
     callback kick-filter-cutoff-changed(value: float);
     callback kick-filter-resonance-changed(value: float);
+    callback kick-filter-pre-drive-changed(value: bool);
     callback kick-sequencer-grid-toggled(step: int);
 
     callback snare-tone-changed(value: float);
@@ -77,6 +88,7 @@ export component SynDRMEngine {
     callback snare-filter-type-changed(index: int);
     callback snare-filter-cutoff-changed(value: float);
     callback snare-filter-resonance-changed(value: float);
+    callback snare-filter-pre-drive-changed(value: bool);
     callback snare-sequencer-grid-toggled(step: int);
 
     callback syndrm-page-changed(page: int);
@@ -127,733 +139,825 @@ export component SynDRMEngine {
     callback syndrm-clear-both-all-all();
     callback toggle-track-mute();
 
-    VerticalLayout {
-        spacing: 10px;
-        width: parent.width;
+    width: 1200px;
+    background: transparent;
 
-        HorizontalLayout {
-            spacing: 10px;
-            Text { text: "SynDRM"; color: #f0f0f2; font-size: 15px; }
+    // Engine Container
+    VerticalLayout {
+        spacing: 8px;
+        padding: 12px;
+
+        // Engine Title & Mute
+        RDSHeaderLabel {
+            text: "SynDRM";
+            horizontal-alignment: left;
+            padding-horizontal: 12px;
+            padding-vertical: 6px;
+            right-padding: 12px;
             HorizontalLayout {
                 spacing: 6px;
-                Text { text: "Mute"; color: #b9b9bf; font-size: 11px; }
+                alignment: center;
                 RDSCircleToggle {
-                    active: root.track-muted;
+                    y: 2px;
+                    active: !root.track-muted;
+                    label: "Mute";
+                    label-active: "Live";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
                     clicked => root.toggle-track-mute();
                 }
             }
         }
 
-        VerticalLayout {
-            spacing: 6px;
-            Text { text: "Kick"; color: #b9b9bf; font-size: 11px; }
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-pitch;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-pitch = v; root.kick-pitch-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-decay;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-decay = v; root.kick-decay-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-attack;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-attack = v; root.kick-attack-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-drive;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-drive = v; root.kick-drive-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-level;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-level = v; root.kick-level-changed(v); }
-                    }
-                }
-            }
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 100px;
-                    Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.filter-types;
-                        current-index: root.kick-filter-type;
-                        selected => {
-                            root.kick-filter-type = self.current-index;
-                            root.kick-filter-type-changed(self.current-index);
-                        }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-filter-cutoff;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-filter-cutoff = v; root.kick-filter-cutoff-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.kick-filter-resonance;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.kick-filter-resonance = v; root.kick-filter-resonance-changed(v); }
-                    }
-                }
-            }
-        }
-
-        VerticalLayout {
-            spacing: 6px;
-            Text { text: "Snare"; color: #b9b9bf; font-size: 11px; }
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-tone;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-tone = v; root.snare-tone-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-decay;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-decay = v; root.snare-decay-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-attack;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-attack = v; root.snare-attack-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Snap"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-snappy;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-snappy = v; root.snare-snappy-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-drive;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-drive = v; root.snare-drive-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-level;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-level = v; root.snare-level-changed(v); }
-                    }
-                }
-            }
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 100px;
-                    Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.filter-types;
-                        current-index: root.snare-filter-type;
-                        selected => {
-                            root.snare-filter-type = self.current-index;
-                            root.snare-filter-type-changed(self.current-index);
-                        }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-filter-cutoff;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-filter-cutoff = v; root.snare-filter-cutoff-changed(v); }
-                    }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    width: 50px;
-                    Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                    RDSKnob {
-                        renderer: "lo-fi";
-                        value: root.snare-filter-resonance;
-                        min-value: 0.0; max-value: 1.0;
-                        size: 32px; indicator-position: 10px;
-                        sensitivity: 0.01; scroll-sensitivity: 0.01;
-                        value-changed(v) => { root.snare-filter-resonance = v; root.snare-filter-resonance-changed(v); }
-                    }
-                }
-            }
-        }
-
-        VerticalLayout {
-            spacing: 6px;
-
-            HorizontalLayout {
-                spacing: 16px;
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Page"; color: #b9b9bf; font-size: 11px; }
-                    HorizontalLayout {
-                        spacing: 6px;
-                        RDSSelectButton {
-                            label: "<";
-                            active: false;
-                            clicked => {
-                                root.syndrm-page = root.syndrm-page > 0 ? root.syndrm-page - 1 : 0;
-                                root.syndrm-page-changed(root.syndrm-page);
-                            }
-                        }
-                        Text {
-                            text: root.syndrm-page + 1;
-                            color: #b9b9bf;
-                            font-size: 12px;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                            width: 24px;
-                        }
-                        RDSSelectButton {
-                            label: ">";
-                            active: false;
-                            clicked => {
-                                root.syndrm-page = root.syndrm-page < 7 ? root.syndrm-page + 1 : 7;
-                                root.syndrm-page-changed(root.syndrm-page);
-                            }
-                        }
-                    }
-                }
-
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Edit Step"; color: #b9b9bf; font-size: 11px; }
-                    HorizontalLayout {
-                        spacing: 6px;
-                        RDSSelectButton {
-                            label: "Up";
-                            active: false;
-                            clicked => {
-                                root.syndrm-edit-step = root.syndrm-edit-step > 0 ? root.syndrm-edit-step - 1 : 0;
-                                root.syndrm-edit-step-changed(root.syndrm-edit-step);
-                            }
-                        }
-                        Text {
-                            text: root.syndrm-edit-step + 1;
-                            color: #b9b9bf;
-                            font-size: 12px;
-                            horizontal-alignment: center;
-                            vertical-alignment: center;
-                            width: 28px;
-                        }
-                        RDSSelectButton {
-                            label: "Down";
-                            active: false;
-                            clicked => {
-                                root.syndrm-edit-step = root.syndrm-edit-step < 127 ? root.syndrm-edit-step + 1 : 127;
-                                root.syndrm-edit-step-changed(root.syndrm-edit-step);
-                            }
-                        }
-                    }
-                }
-
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Hold"; color: #b9b9bf; font-size: 11px; }
-                    HorizontalLayout {
-                        spacing: 6px;
-                        RDSCircleToggle {
-                            active: root.syndrm-step-hold;
-                            clicked => {
-                                root.syndrm-step-hold = !root.syndrm-step-hold;
-                                root.syndrm-step-hold-changed(root.syndrm-step-hold);
-                            }
-                        }
-                        Text { text: root.syndrm-step-hold ? "On" : "Off"; color: #b9b9bf; font-size: 11px; }
-                    }
-                }
-
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Step Mod"; color: #b9b9bf; font-size: 11px; }
-                    HorizontalLayout {
-                        spacing: 6px;
-                        RDSCircleToggle {
-                            active: root.syndrm-step-override;
-                            clicked => {
-                                root.syndrm-step-override = !root.syndrm-step-override;
-                                root.syndrm-step-override-changed(root.syndrm-step-override);
-                            }
-                        }
-                        Text { text: root.syndrm-step-override ? "On" : "Off"; color: #b9b9bf; font-size: 11px; }
-                    }
-                }
-            }
-
-            HorizontalLayout {
-                spacing: 8px;
-                Text { text: "Lane"; color: #b9b9bf; font-size: 11px; width: 40px; }
-                RDSSelectButton {
-                    label: "Kick";
-                    active: root.syndrm-edit-lane == 0;
-                    clicked => {
-                        root.syndrm-edit-lane = 0;
-                        root.syndrm-edit-lane-changed(0);
-                    }
-                }
-                RDSSelectButton {
-                    label: "Snare";
-                    active: root.syndrm-edit-lane == 1;
-                    clicked => {
-                        root.syndrm-edit-lane = 1;
-                        root.syndrm-edit-lane-changed(1);
-                    }
-                }
-            }
-
+        // Engine Controls
+        Rectangle {
+            background: #1e3a5f33;
+            border-width: 2px;
+            border-radius: 6px;
+            border-color: Theme.active.border-strong;
             VerticalLayout {
-                spacing: 6px;
-                visible: root.syndrm-edit-lane == 0;
-                Text { text: "Kick Step Params"; color: #b9b9bf; font-size: 11px; }
                 HorizontalLayout {
-                    spacing: 12px;
+                    spacing: 8px;
                     VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-pitch;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-pitch = v; root.syndrm-step-kick-pitch-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-decay;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-decay = v; root.syndrm-step-kick-decay-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-attack;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-attack = v; root.syndrm-step-kick-attack-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-drive;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-drive = v; root.syndrm-step-kick-drive-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-level;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-level = v; root.syndrm-step-kick-level-changed(v); }
-                        }
-                    }
-                }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 100px;
-                        Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
-                        RDSComboBox {
-                            width: 100px;
-                            model: root.filter-types;
-                            current-index: root.syndrm-step-kick-filter-type;
-                            selected => {
-                                root.syndrm-step-kick-filter-type = self.current-index;
-                                root.syndrm-step-kick-filter-type-changed(self.current-index);
+                        GridLayout {
+                            padding: 12px;
+                            spacing-horizontal: 12px;
+                            spacing-vertical: 4px;
+                            Row {
+                                VerticalLayout {
+                                    // Kick Drum Label
+                                    RDSHeaderLabel {
+                                        text: "Kick";
+                                        width: 160px;
+                                        bg-color: #fff;
+                                        border-r-bl: 0;
+                                        border-r-br: 0;
+                                    }
+                                    // Kick Drum Controls
+                                    Rectangle {
+                                        width: 160px;
+                                        border-width: 1px;
+                                        border-color: #fff;
+                                        GridLayout {
+                                            padding-top: 30px;
+                                            padding-right: 8px;
+                                            padding-bottom: 8px;
+                                            padding-left: 8px;
+                                            spacing-horizontal: 12px;
+                                            spacing-vertical: 30px;
+                                            // Row 1 Controls
+                                            Row {
+                                                // Pitch
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-pitch;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Pitch";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-pitch = v; root.kick-pitch-changed(v); }
+                                                }
+                                                // Pitch Envelope
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-pitch-env-amount;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "P Env";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => {
+                                                        root.kick-pitch-env-amount = v;
+                                                        root.kick-pitch-env-amount-changed(v);
+                                                    }
+                                                }
+                                                // Kick Overdrive
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-drive;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Drive";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-drive = v; root.kick-drive-changed(v); }
+                                                }
+                                            }
+                                            Row {
+                                                // Kick Attack
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-attack;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Attack";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-attack = v; root.kick-attack-changed(v); }
+                                                }
+                                                // Kick Decay
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-decay;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Decay";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-decay = v; root.kick-decay-changed(v); }
+                                                }
+                                                // Kick Level
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-level;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Level";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-level = v; root.kick-level-changed(v); }
+                                                }
+                                            }
+                                            Row {
+                                                // Filter Type
+                                                HorizontalLayout {
+                                                    colspan: 2;
+                                                    spacing: 4px;
+                                                    width: 144px;
+                                                    VerticalLayout {
+                                                        spacing: 4px;
+                                                        width: 144px;
+                                                        RDSComboBox {
+                                                            width: 144px;
+                                                            model: root.filter-types;
+                                                            current-index: root.kick-filter-type;
+                                                            selected => {
+                                                                root.kick-filter-type = self.current-index;
+                                                                root.kick-filter-type-changed(self.current-index);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Row {
+                                                // Filter Cutoff
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-filter-cutoff;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Cut";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-filter-cutoff = v; root.kick-filter-cutoff-changed(v); }
+                                                }
+                                                // Filter Resonance
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.kick-filter-resonance;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 40px; indicator-position: 12px;
+                                                    label: "Res";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.kick-filter-resonance = v; root.kick-filter-resonance-changed(v); }
+                                                }
+                                                // Filter Order (Pre or Post Overdrive)
+                                                HorizontalLayout {
+                                                    padding-top: 12px;
+                                                    RDSCircleToggle {
+                                                        active: root.kick-filter-pre-drive;
+                                                        label: "Post";
+                                                        label-active: "Pre";
+                                                        label-pos: "left";
+                                                        label-color: #b9b9bf;
+                                                        label-active-color: Theme.active.text_primary;
+                                                        label-font-size: 11px;
+                                                        label-font-weight: 500;
+                                                        clicked => {
+                                                            root.kick-filter-pre-drive = !root.kick-filter-pre-drive;
+                                                            root.kick-filter-pre-drive-changed(root.kick-filter-pre-drive);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                VerticalLayout {
+                                    // Snare Drum Label
+                                    RDSHeaderLabel {
+                                        text: "Snare";
+                                        width: 160px;
+                                        bg-color: #fff;
+                                        border-r-bl: 0;
+                                        border-r-br: 0;
+                                    }
+                                    // Snare Drum Container
+                                    Rectangle {
+                                        width: 160px;
+                                        border-width: 1px;
+                                        border-color: #fff;
+                                        GridLayout {
+                                            padding-top: 30px;
+                                            padding-right: 8px;
+                                            padding-bottom: 8px;
+                                            padding-left: 8px;
+                                            spacing-horizontal: 12px;
+                                            spacing-vertical: 30px;
+                                            Row {
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-tone;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Tone";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-tone = v; root.snare-tone-changed(v); }
+                                                }
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-decay;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Decay";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-decay = v; root.snare-decay-changed(v); }
+                                                }
+                                            }
+                                            Row {
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-attack;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Attack";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-attack = v; root.snare-attack-changed(v); }
+                                                }
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-snappy;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Snap";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-snappy = v; root.snare-snappy-changed(v); }
+                                                }
+                                            }
+                                            Row {
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-drive;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Drive";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-drive = v; root.snare-drive-changed(v); }
+                                                }
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-level;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Level";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-level = v; root.snare-level-changed(v); }
+                                                }
+                                            }
+                                            Row {
+                                                HorizontalLayout {
+                                                    colspan: 2;
+                                                    spacing: 4px;
+                                                    width: 144px;
+                                                    VerticalLayout {
+                                                        spacing: 4px;
+                                                        width: 144px;
+                                                        Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
+                                                        RDSComboBox {
+                                                            width: 144px;
+                                                            model: root.filter-types;
+                                                            current-index: root.snare-filter-type;
+                                                            selected => {
+                                                                root.snare-filter-type = self.current-index;
+                                                                root.snare-filter-type-changed(self.current-index);
+                                                            }
+                                                        }
+                                                        HorizontalLayout {
+                                                            spacing: 6px;
+                                                            alignment: center;
+                                                            RDSCircleToggle {
+                                                                active: root.snare-filter-pre-drive;
+                                                                label: "Post";
+                                                                label-active: "Pre";
+                                                                label-pos: "left";
+                                                                label-color: #b9b9bf;
+                                                                label-active-color: Theme.active.text_primary;
+                                                                label-font-size: 11px;
+                                                                label-font-weight: 500;
+                                                                clicked => {
+                                                                    root.snare-filter-pre-drive = !root.snare-filter-pre-drive;
+                                                                    root.snare-filter-pre-drive-changed(root.snare-filter-pre-drive);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Row {
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-filter-cutoff;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Cut";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-filter-cutoff = v; root.snare-filter-cutoff-changed(v); }
+                                                }
+                                                RDSKnob {
+                                                    renderer: "lo-fi";
+                                                    value: root.snare-filter-resonance;
+                                                    min-value: 0.0; max-value: 1.0;
+                                                    size: 32px; indicator-position: 10px;
+                                                    label: "Res";
+                                                    label-pos: "top-center";
+                                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                                    value-changed(v) => { root.snare-filter-resonance = v; root.snare-filter-resonance-changed(v); }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-filter-cutoff;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-filter-cutoff = v; root.syndrm-step-kick-filter-cutoff-changed(v); }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 16px;
+
+            Rectangle {
+                width: parent.width * 0.7;
+                VerticalLayout {
+                    spacing: 4px;
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Text { text: "Kick"; width: 40px; color: #b9b9bf; font-size: 11px; }
+                        for s in 16 : RDSSequencerCell {
+                            property <int> step-index: root.syndrm-page * 16 + s;
+                            active: root.kick-sequencer-grid[step-index];
+                            current: step-index == root.kick-sequencer-current-step;
+                            clicked => { root.kick-sequencer-grid-toggled(step-index); }
                         }
                     }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-kick-filter-resonance;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-kick-filter-resonance = v; root.syndrm-step-kick-filter-resonance-changed(v); }
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Text { text: "Snare"; width: 40px; color: #b9b9bf; font-size: 11px; }
+                        for s in 16 : RDSSequencerCell {
+                            property <int> step-index: root.syndrm-page * 16 + s;
+                            active: root.snare-sequencer-grid[step-index];
+                            current: step-index == root.snare-sequencer-current-step;
+                            clicked => { root.snare-sequencer-grid-toggled(step-index); }
                         }
                     }
                 }
             }
 
-            VerticalLayout {
-                spacing: 6px;
-                visible: root.syndrm-edit-lane == 1;
-                Text { text: "Snare Step Params"; color: #b9b9bf; font-size: 11px; }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-tone;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-tone = v; root.syndrm-step-snare-tone-changed(v); }
+            Rectangle {
+                width: parent.width * 0.3;
+                VerticalLayout {
+                    spacing: 6px;
+
+                    HorizontalLayout {
+                        spacing: 16px;
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Page"; color: #b9b9bf; font-size: 11px; }
+                            RDSNumStepper {
+                                value: root.syndrm-page;
+                                min-value: 0;
+                                max-value: 7;
+                                step: 1;
+                                pad-digits: 2;
+                                allow-editing: false;
+                                button-pos: "left-right";
+                                readout-width: 36px;
+                                readout-height: 26px;
+                                readout-text-size: 12px;
+                                readout-text-weight: 400;
+                                value-changed(v) => {
+                                    root.syndrm-page = v;
+                                    root.syndrm-page-changed(root.syndrm-page);
+                                }
+                            }
                         }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-decay;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-decay = v; root.syndrm-step-snare-decay-changed(v); }
+
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Edit Step"; color: #b9b9bf; font-size: 11px; }
+                            RDSNumStepper {
+                                value: root.syndrm-edit-step;
+                                min-value: 0;
+                                max-value: 127;
+                                step: 1;
+                                pad-digits: 3;
+                                allow-editing: false;
+                                button-pos: "left-right";
+                                readout-width: 42px;
+                                readout-height: 26px;
+                                readout-text-size: 12px;
+                                readout-text-weight: 400;
+                                value-changed(v) => {
+                                    root.syndrm-edit-step = v;
+                                    root.syndrm-edit-step-changed(root.syndrm-edit-step);
+                                }
+                            }
                         }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-attack;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-attack = v; root.syndrm-step-snare-attack-changed(v); }
+
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Hold"; color: #b9b9bf; font-size: 11px; }
+                            HorizontalLayout {
+                                spacing: 6px;
+                                RDSCircleToggle {
+                                    active: root.syndrm-step-hold;
+                                    clicked => {
+                                        root.syndrm-step-hold = !root.syndrm-step-hold;
+                                        root.syndrm-step-hold-changed(root.syndrm-step-hold);
+                                    }
+                                }
+                                Text { text: root.syndrm-step-hold ? "On" : "Off"; color: #b9b9bf; font-size: 11px; }
+                            }
                         }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Snap"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-snappy;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-snappy = v; root.syndrm-step-snare-snappy-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-drive;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-drive = v; root.syndrm-step-snare-drive-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-level;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-level = v; root.syndrm-step-snare-level-changed(v); }
-                        }
-                    }
-                }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 100px;
-                        Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
-                        RDSComboBox {
-                            width: 100px;
-                            model: root.filter-types;
-                            current-index: root.syndrm-step-snare-filter-type;
-                            selected => {
-                                root.syndrm-step-snare-filter-type = self.current-index;
-                                root.syndrm-step-snare-filter-type-changed(self.current-index);
+
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Step Mod"; color: #b9b9bf; font-size: 11px; }
+                            HorizontalLayout {
+                                spacing: 6px;
+                                RDSCircleToggle {
+                                    active: root.syndrm-step-override;
+                                    clicked => {
+                                        root.syndrm-step-override = !root.syndrm-step-override;
+                                        root.syndrm-step-override-changed(root.syndrm-step-override);
+                                    }
+                                }
+                                Text { text: root.syndrm-step-override ? "On" : "Off"; color: #b9b9bf; font-size: 11px; }
                             }
                         }
                     }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-filter-cutoff;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-filter-cutoff = v; root.syndrm-step-snare-filter-cutoff-changed(v); }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text { text: "Lane"; color: #b9b9bf; font-size: 11px; width: 40px; }
+                        RDSTextStepper {
+                            options: ["Kick", "Snare"];
+                            index: root.syndrm-edit-lane;
+                            readout-width: 80px;
+                            readout-height: 26px;
+                            readout-text-size: 12px;
+                            readout-text-weight: 400;
+                            index-changed(v) => {
+                                root.syndrm-edit-lane = v;
+                                root.syndrm-edit-lane-changed(root.syndrm-edit-lane);
+                            }
                         }
                     }
+
                     VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.syndrm-step-snare-filter-resonance;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 32px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.syndrm-step-snare-filter-resonance = v; root.syndrm-step-snare-filter-resonance-changed(v); }
+                        spacing: 6px;
+                        visible: root.syndrm-edit-lane == 0;
+                        Text { text: "Kick Step Params"; color: #b9b9bf; font-size: 11px; }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Pitch"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-pitch;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-pitch = v; root.syndrm-step-kick-pitch-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-decay;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-decay = v; root.syndrm-step-kick-decay-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-attack;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-attack = v; root.syndrm-step-kick-attack-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-drive;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-drive = v; root.syndrm-step-kick-drive-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-level;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-level = v; root.syndrm-step-kick-level-changed(v); }
+                                }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 100px;
+                                Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
+                                RDSComboBox {
+                                    width: 100px;
+                                    model: root.filter-types;
+                                    current-index: root.syndrm-step-kick-filter-type;
+                                    selected => {
+                                        root.syndrm-step-kick-filter-type = self.current-index;
+                                        root.syndrm-step-kick-filter-type-changed(self.current-index);
+                                    }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-filter-cutoff;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-filter-cutoff = v; root.syndrm-step-kick-filter-cutoff-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-kick-filter-resonance;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-kick-filter-resonance = v; root.syndrm-step-kick-filter-resonance-changed(v); }
+                                }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        visible: root.syndrm-edit-lane == 1;
+                        Text { text: "Snare Step Params"; color: #b9b9bf; font-size: 11px; }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Tone"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-tone;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-tone = v; root.syndrm-step-snare-tone-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Decay"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-decay;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-decay = v; root.syndrm-step-snare-decay-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Attack"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-attack;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-attack = v; root.syndrm-step-snare-attack-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Snap"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-snappy;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-snappy = v; root.syndrm-step-snare-snappy-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Drive"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-drive;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-drive = v; root.syndrm-step-snare-drive-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-level;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-level = v; root.syndrm-step-snare-level-changed(v); }
+                                }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 100px;
+                                Text { text: "Filter"; color: #b9b9bf; font-size: 11px; }
+                                RDSComboBox {
+                                    width: 100px;
+                                    model: root.filter-types;
+                                    current-index: root.syndrm-step-snare-filter-type;
+                                    selected => {
+                                        root.syndrm-step-snare-filter-type = self.current-index;
+                                        root.syndrm-step-snare-filter-type-changed(self.current-index);
+                                    }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-filter-cutoff;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-filter-cutoff = v; root.syndrm-step-snare-filter-cutoff-changed(v); }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.syndrm-step-snare-filter-resonance;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 32px; indicator-position: 10px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => { root.syndrm-step-snare-filter-resonance = v; root.syndrm-step-snare-filter-resonance-changed(v); }
+                                }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        Text { text: "Randomize"; color: #b9b9bf; font-size: 11px; }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text { text: "Steps"; color: #b9b9bf; font-size: 11px; }
+                                RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-randomize-steps-lane-page(); } }
+                                RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-randomize-steps-lane-all(); } }
+                                RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-randomize-steps-all-page(); } }
+                                RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-randomize-steps-all-all(); } }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text { text: "Params"; color: #b9b9bf; font-size: 11px; }
+                                RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-randomize-params-lane-page(); } }
+                                RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-randomize-params-lane-all(); } }
+                                RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-randomize-params-all-page(); } }
+                                RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-randomize-params-all-all(); } }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text { text: "Both"; color: #b9b9bf; font-size: 11px; }
+                                RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-randomize-both-lane-page(); } }
+                                RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-randomize-both-lane-all(); } }
+                                RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-randomize-both-all-page(); } }
+                                RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-randomize-both-all-all(); } }
+                            }
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 6px;
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text { text: "Clear"; color: #b9b9bf; font-size: 11px; }
+                            RDSCircleToggle {
+                                active: root.syndrm-show-clear;
+                                clicked => { root.syndrm-show-clear = !root.syndrm-show-clear; }
+                            }
+                            Text { text: root.syndrm-show-clear ? "On" : "Off"; color: #b9b9bf; font-size: 11px; }
+                        }
+                        if (root.syndrm-show-clear) : HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text { text: "Steps"; color: #b9b9bf; font-size: 11px; }
+                                RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-clear-steps-lane-page(); } }
+                                RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-clear-steps-lane-all(); } }
+                                RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-clear-steps-all-page(); } }
+                                RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-clear-steps-all-all(); } }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text { text: "Params"; color: #b9b9bf; font-size: 11px; }
+                                RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-clear-params-lane-page(); } }
+                                RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-clear-params-lane-all(); } }
+                                RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-clear-params-all-page(); } }
+                                RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-clear-params-all-all(); } }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text { text: "Both"; color: #b9b9bf; font-size: 11px; }
+                                RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-clear-both-lane-page(); } }
+                                RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-clear-both-lane-all(); } }
+                                RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-clear-both-all-page(); } }
+                                RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-clear-both-all-all(); } }
+                            }
                         }
                     }
                 }
             }
         }
 
-        VerticalLayout {
-            spacing: 6px;
-            Text { text: "Randomize"; color: #b9b9bf; font-size: 11px; }
-            HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Steps"; color: #b9b9bf; font-size: 11px; }
-                    RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-randomize-steps-lane-page(); } }
-                    RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-randomize-steps-lane-all(); } }
-                    RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-randomize-steps-all-page(); } }
-                    RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-randomize-steps-all-all(); } }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Params"; color: #b9b9bf; font-size: 11px; }
-                    RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-randomize-params-lane-page(); } }
-                    RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-randomize-params-lane-all(); } }
-                    RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-randomize-params-all-page(); } }
-                    RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-randomize-params-all-all(); } }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Both"; color: #b9b9bf; font-size: 11px; }
-                    RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-randomize-both-lane-page(); } }
-                    RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-randomize-both-lane-all(); } }
-                    RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-randomize-both-all-page(); } }
-                    RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-randomize-both-all-all(); } }
-                }
-            }
-        }
-
-        VerticalLayout {
-            spacing: 6px;
-            HorizontalLayout {
-                spacing: 8px;
-                Text { text: "Clear"; color: #b9b9bf; font-size: 11px; }
-                RDSCircleToggle {
-                    active: root.syndrm-show-clear;
-                    clicked => { root.syndrm-show-clear = !root.syndrm-show-clear; }
-                }
-                Text { text: root.syndrm-show-clear ? "On" : "Off"; color: #b9b9bf; font-size: 11px; }
-            }
-            if (root.syndrm-show-clear) : HorizontalLayout {
-                spacing: 12px;
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Steps"; color: #b9b9bf; font-size: 11px; }
-                    RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-clear-steps-lane-page(); } }
-                    RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-clear-steps-lane-all(); } }
-                    RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-clear-steps-all-page(); } }
-                    RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-clear-steps-all-all(); } }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Params"; color: #b9b9bf; font-size: 11px; }
-                    RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-clear-params-lane-page(); } }
-                    RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-clear-params-lane-all(); } }
-                    RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-clear-params-all-page(); } }
-                    RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-clear-params-all-all(); } }
-                }
-                VerticalLayout {
-                    spacing: 4px;
-                    Text { text: "Both"; color: #b9b9bf; font-size: 11px; }
-                    RDSSelectButton { label: "Lane+Page"; active: false; clicked => { root.syndrm-clear-both-lane-page(); } }
-                    RDSSelectButton { label: "Lane+All"; active: false; clicked => { root.syndrm-clear-both-lane-all(); } }
-                    RDSSelectButton { label: "All+Page"; active: false; clicked => { root.syndrm-clear-both-all-page(); } }
-                    RDSSelectButton { label: "All+All"; active: false; clicked => { root.syndrm-clear-both-all-all(); } }
-                }
-            }
-        }
-
-        VerticalLayout {
-            spacing: 4px;
-            HorizontalLayout {
-                spacing: 6px;
-                Text { text: "Kick"; width: 40px; color: #b9b9bf; font-size: 11px; }
-                for s in 16 : RDSSequencerCell {
-                    property <int> step-index: root.syndrm-page * 16 + s;
-                    active: root.kick-sequencer-grid[step-index];
-                    current: step-index == root.kick-sequencer-current-step;
-                    clicked => { root.kick-sequencer-grid-toggled(step-index); }
-                }
-            }
-            HorizontalLayout {
-                spacing: 6px;
-                Text { text: "Snare"; width: 40px; color: #b9b9bf; font-size: 11px; }
-                for s in 16 : RDSSequencerCell {
-                    property <int> step-index: root.syndrm-page * 16 + s;
-                    active: root.snare-sequencer-grid[step-index];
-                    current: step-index == root.snare-sequencer-current-step;
-                    clicked => { root.snare-sequencer-grid-toggled(step-index); }
-                }
-            }
-        }
     }
 }

@@ -1,5 +1,13 @@
 import { Theme } from "../theme/index.slint";
 
+/*
+Component: RDSWaveformViz
+Description: Visualizes a static waveform with an optional playhead.
+Public members:
+- waveform: [float] - Amplitude values (0.0 to 1.0)
+- waveform_time_labels: [string] - Time markers for the X-axis
+- playhead-index: int - Current position in the waveform array
+*/
 export component RDSWaveformViz inherits Rectangle {
     in property <[float]> waveform;
     in property <[string]> waveform_time_labels;
@@ -71,9 +79,18 @@ export component RDSWaveformViz inherits Rectangle {
     }
 }
 
+/*
+Component: RDSVUMeter
+Description: A horizontal VU meter.
+Public members:
+- level: float - Signal level (0.0 to 1.0)
+- fill-color: color - Color of the level indicator
+- vu-border-width: length - Width of the meter border
+*/
 export component RDSVUMeter {
     in property <float> level;
     in property <color> fill-color: Theme.active.meter_normal;
+    in property <length> vu-border-width: 2px;
     property <float> clamped-level: Math.max(0.0, Math.min(1.0, root.level));
 
     width: 140px;
@@ -85,7 +102,7 @@ export component RDSVUMeter {
         background: Theme.active.background_main;
         border-radius: Theme.active.radius_medium;
         border-color: Theme.active.border_subtle;
-        border-width: 1px;
+        border-width: root.vu-border-width;
 
         Rectangle {
             width: Math.max(4px, root.clamped-level * parent.width);
@@ -96,9 +113,18 @@ export component RDSVUMeter {
     }
 }
 
+/*
+Component: RDSVertVUMeter
+Description: A vertical VU meter.
+Public members:
+- level: float - Signal level (0.0 to 1.0)
+- fill-color: color - Color of the level indicator
+- vu-border-width: length - Width of the meter border
+*/
 export component RDSVertVUMeter {
     in property <float> level;
     in property <color> fill-color: Theme.active.meter_normal;
+    in property <length> vu-border-width: 2px;
     property <float> clamped-level: Math.max(0.0, Math.min(1.0, root.level));
 
     width: 12px;
@@ -110,7 +136,7 @@ export component RDSVertVUMeter {
         background: Theme.active.background_main;
         border-radius: Theme.active.radius_medium;
         border-color: Theme.active.border_subtle;
-        border-width: 1px;
+        border-width: root.vu-border-width;
 
         Rectangle {
             width: parent.width;
@@ -122,6 +148,12 @@ export component RDSVertVUMeter {
     }
 }
 
+/*
+Component: RDSOscilloscopeViz
+Description: Visualizes a real-time signal as an oscilloscope trace.
+Public members:
+- oscilloscope: [float] - Signal samples
+*/
 export component RDSOscilloscopeViz inherits Rectangle {
     in property <[float]> oscilloscope;
     background: transparent;
@@ -139,6 +171,12 @@ export component RDSOscilloscopeViz inherits Rectangle {
     }
 }
 
+/*
+Component: RDSSpectrumViz
+Description: Visualizes frequency spectrum data as vertical bars.
+Public members:
+- spectrum: [float] - Magnitude values per frequency bin
+*/
 export component RDSSpectrumViz inherits Rectangle {
     in property <[float]> spectrum;
     background: transparent;
@@ -156,6 +194,13 @@ export component RDSSpectrumViz inherits Rectangle {
     }
 }
 
+/*
+Component: RDSVectorscopeViz
+Description: Visualizes phase relationship between two signals (L/R).
+Public members:
+- vectorscope_x: [float] - Left channel signal samples
+- vectorscope_y: [float] - Right channel signal samples
+*/
 export component RDSVectorscopeViz inherits Rectangle {
     in property <[float]> vectorscope_x;
     in property <[float]> vectorscope_y;

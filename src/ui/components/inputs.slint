@@ -78,6 +78,26 @@ component KeybedKey inherits Rectangle {
     }
 }
 
+/*
+Component: RDSNumericKeypad
+Description: A numeric keypad for entering values, with committed and cleared callbacks.
+Public members:
+- current-value: float - The current value to display
+- input-text: string - The raw input text
+- pad-digits: int - Number of digits to pad readout
+- allow-negative: bool - Whether negative values are allowed
+- num-only: bool - If true, only integers are allowed (no decimal/negative)
+- input-int: int - Integer part of input
+- input-decimal: int - Decimal part of input
+- input-has-value: bool - Internal state
+- input-negative: bool - Internal state
+- input-decimal-active: bool - Internal state
+- parsed-value: float - The resulting float value
+- input-changed(string): callback - Triggered on input change
+- committed(float): callback - Triggered when "OK" or "Enter" is pressed
+- cleared(): callback - Triggered when cleared
+- commit(): function - Programmatically commit the current input
+*/
 export component RDSNumericKeypad {
     in property <float> current-value: 0.0;
     in-out property <string> input-text: "";
@@ -342,7 +362,6 @@ export component RDSNumericKeypad {
             }
             HorizontalLayout {
                 spacing: 6px;
-                visible: !root.num-only;
                 KeypadButton {
                     label: "Del";
                     clicked => {
@@ -357,12 +376,14 @@ export component RDSNumericKeypad {
                 }
                 KeypadButton {
                     label: ".";
+                    visible: !root.num-only;
                     clicked => {
                         root.handle-decimal();
                     }
                 }
                 KeypadButton {
                     label: "-";
+                    visible: root.allow-negative;
                     clicked => {
                         root.handle-negative();
                     }
@@ -376,6 +397,23 @@ export component RDSNumericKeypad {
     }
 }
 
+/*
+Component: RDSXYPad
+Description: A 2D XY pad for controlling two parameters simultaneously.
+Public members:
+- value-x: float - X-axis value (0.0 to 1.0)
+- value-y: float - Y-axis value (0.0 to 1.0)
+- pad-background: color - Background color
+- pad-border-color: color - Border color
+- grid-color: color - Color of the grid lines
+- handle-color: color - Color of the touch handle
+- glow-color: color - Color of the handle glow
+- handle-size: length - Size of the handle
+- border-radius: length - Radius of the pad corners
+- grid-lines: int - Number of grid lines
+- value-x-changed(float): callback - Triggered when X changes
+- value-y-changed(float): callback - Triggered when Y changes
+*/
 export component RDSXYPad {
     in-out property <float> value-x: 0.5;
     in-out property <float> value-y: 0.5;
@@ -452,6 +490,16 @@ export component RDSXYPad {
     }
 }
 
+/*
+Component: RDSKeybed
+Description: A virtual musical keyboard (piano keys).
+Public members:
+- octaves: int - Number of octaves to display
+- scale: string - Highlighted scale ("chromatic", "major", "minor", "pentatonic", "blues")
+- size: length - Width of a single white key
+- base-note: int - MIDI note number for the first key
+- note-triggered(int): callback - Triggered when a key is pressed
+*/
 export component RDSKeybed {
     in property <int> octaves: 2;
     in property <string> scale: "chromatic";

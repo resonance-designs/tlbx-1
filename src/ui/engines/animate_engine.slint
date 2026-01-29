@@ -7,6 +7,7 @@ import {
     RDSKeybed
 } from "../components/index.slint";
 import { RDSKeybedBus } from "../globals.slint";
+import { GranulatorDevice } from "../devices/granulator_device.slint";
 
 export component AnimateEngine {
     in property <[string]> animate-slot-types;
@@ -167,6 +168,35 @@ export component AnimateEngine {
     callback animate-slot-d-sample-start-changed(value: float);
     callback animate-slot-d-loop-start-changed(value: float);
     callback animate-slot-d-loop-end-changed(value: float);
+
+    in-out property <float> mosaic-pitch: 0.0;
+    in-out property <float> mosaic-rate: 0.5;
+    in-out property <float> mosaic-size: 0.5;
+    in-out property <float> mosaic-contour: 0.5;
+    in-out property <float> mosaic-warp: 0.0;
+    in-out property <float> mosaic-spray: 0.0;
+    in-out property <float> mosaic-pattern: 0.0;
+    in-out property <float> mosaic-wet: 0.0;
+    in-out property <float> mosaic-detune: 0.0;
+    in-out property <float> mosaic-spatial: 0.0;
+    in-out property <float> mosaic-rand-rate: 0.0;
+    in-out property <float> mosaic-rand-size: 0.0;
+    in-out property <float> mosaic-sos: 0.0;
+    in-out property <bool> mosaic-enabled: true;
+    callback toggle-mosaic-enabled();
+    callback mosaic-pitch-changed(value: float);
+    callback mosaic-rate-changed(value: float);
+    callback mosaic-size-changed(value: float);
+    callback mosaic-contour-changed(value: float);
+    callback mosaic-warp-changed(value: float);
+    callback mosaic-spray-changed(value: float);
+    callback mosaic-pattern-changed(value: float);
+    callback mosaic-wet-changed(value: float);
+    callback mosaic-detune-changed(value: float);
+    callback mosaic-spatial-changed(value: float);
+    callback mosaic-rand-rate-changed(value: float);
+    callback mosaic-rand-size-changed(value: float);
+    callback mosaic-sos-changed(value: float);
 
     callback toggle-track-mute();
 
@@ -364,7 +394,8 @@ export component AnimateEngine {
                             value: root.animate-slot-a-wt-lfo-rate;
                             min-value: 0.0; max-value: 1.0;
                             size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                            infinite-rotary: true;
                             value-changed(v) => { root.animate-slot-a-wt-lfo-rate = v; root.animate-slot-a-wt-lfo-rate-changed(v); }
                         }
                         if root.animate-slot-a-wt-lfo-sync : RDSComboBox {
@@ -581,7 +612,8 @@ export component AnimateEngine {
                             value: root.animate-slot-b-wt-lfo-rate;
                             min-value: 0.0; max-value: 1.0;
                             size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                            infinite-rotary: true;
                             value-changed(v) => { root.animate-slot-b-wt-lfo-rate = v; root.animate-slot-b-wt-lfo-rate-changed(v); }
                         }
                         if root.animate-slot-b-wt-lfo-sync : RDSComboBox {
@@ -757,7 +789,8 @@ export component AnimateEngine {
                             value: root.animate-slot-c-wt-lfo-rate;
                             min-value: 0.0; max-value: 1.0;
                             size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                            infinite-rotary: true;
                             value-changed(v) => { root.animate-slot-c-wt-lfo-rate = v; root.animate-slot-c-wt-lfo-rate-changed(v); }
                         }
                         if root.animate-slot-c-wt-lfo-sync : RDSComboBox {
@@ -933,7 +966,8 @@ export component AnimateEngine {
                             value: root.animate-slot-d-wt-lfo-rate;
                             min-value: 0.0; max-value: 1.0;
                             size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                            infinite-rotary: true;
                             value-changed(v) => { root.animate-slot-d-wt-lfo-rate = v; root.animate-slot-d-wt-lfo-rate-changed(v); }
                         }
                         if root.animate-slot-d-wt-lfo-sync : RDSComboBox {
@@ -1043,7 +1077,8 @@ export component AnimateEngine {
                             value: root.animate-lfo-x-rate;
                             min-value: 0.0; max-value: 1.0;
                             size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                            infinite-rotary: true;
                             value-changed(v) => { root.animate-lfo-x-rate = v; root.animate-lfo-x-rate-changed(v); }
                         }
                     }
@@ -1103,7 +1138,8 @@ export component AnimateEngine {
                             value: root.animate-lfo-y-rate;
                             min-value: 0.0; max-value: 1.0;
                             size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                            infinite-rotary: true;
                             value-changed(v) => { root.animate-lfo-y-rate = v; root.animate-lfo-y-rate-changed(v); }
                         }
                     }
@@ -1157,6 +1193,48 @@ export component AnimateEngine {
                         keybed-last-note = note;
                         RDSKeybedBus.last-note = note;
                         RDSKeybedBus.note-triggered(note);
+                    }
+                }
+            }
+        }
+
+        // Downstream Devices
+        VerticalLayout {
+            width: parent.width;
+            HorizontalLayout {
+                spacing: 22px;
+                Rectangle {
+                    width: parent.width;
+                    height: 250px;
+                    GranulatorDevice {
+                        mosaic-enabled <=> root.mosaic-enabled;
+                        mosaic-pitch <=> root.mosaic-pitch;
+                        mosaic-rate <=> root.mosaic-rate;
+                        mosaic-size <=> root.mosaic-size;
+                        mosaic-contour <=> root.mosaic-contour;
+                        mosaic-warp <=> root.mosaic-warp;
+                        mosaic-spray <=> root.mosaic-spray;
+                        mosaic-pattern <=> root.mosaic-pattern;
+                        mosaic-wet <=> root.mosaic-wet;
+                        mosaic-detune <=> root.mosaic-detune;
+                        mosaic-spatial <=> root.mosaic-spatial;
+                        mosaic-rand-rate <=> root.mosaic-rand-rate;
+                        mosaic-rand-size <=> root.mosaic-rand-size;
+                        mosaic-sos <=> root.mosaic-sos;
+                        toggle-mosaic-enabled => root.toggle-mosaic-enabled();
+                        mosaic-pitch-changed(value) => { root.mosaic-pitch-changed(value); }
+                        mosaic-rate-changed(value) => { root.mosaic-rate-changed(value); }
+                        mosaic-size-changed(value) => { root.mosaic-size-changed(value); }
+                        mosaic-contour-changed(value) => { root.mosaic-contour-changed(value); }
+                        mosaic-warp-changed(value) => { root.mosaic-warp-changed(value); }
+                        mosaic-spray-changed(value) => { root.mosaic-spray-changed(value); }
+                        mosaic-pattern-changed(value) => { root.mosaic-pattern-changed(value); }
+                        mosaic-wet-changed(value) => { root.mosaic-wet-changed(value); }
+                        mosaic-detune-changed(value) => { root.mosaic-detune-changed(value); }
+                        mosaic-spatial-changed(value) => { root.mosaic-spatial-changed(value); }
+                        mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
+                        mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
+                        mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
                     }
                 }
             }

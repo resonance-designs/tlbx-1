@@ -1,6 +1,6 @@
 [package]
 name = "tlbx-1"
-version = "0.1.15"
+version = "0.1.16"
 edition = "2024"
 
 [lib]
@@ -17,6 +17,7 @@ keyboard-types = { version = "0.6.2", default-features = false }
 # ... rest of dependencies ...
 fundsp = "0.20"
 symphonia = { version = "0.5", features = ["all"] }
+ffmpeg-next = "6"
 cpal = "0.15"
 parking_lot = "0.12"
 hound = "3.4"
@@ -54,3 +55,7 @@ renderer-vulkan = ["slint/renderer-skia-vulkan", "slint/std", "slint/backend-win
 
 [profile.dev]
 opt-level = 1
+
+[patch.crates-io]
+ffmpeg-sys-next = { path = "vendor/ffmpeg-sys-next" }
+ffmpeg-next = { path = "vendor/ffmpeg-next" }

@@ -1,6 +1,6 @@
 {
   "name": "tlbx-1",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "description": "Project tooling for docs and scripting",
   "scripts": {
@@ -10,6 +10,7 @@
     "tlbx:dev-bt": "set RUST_BACKTRACE=1&& cargo run",
     "tlbx:dev-bt-opengl": "set RUST_BACKTRACE=1&& cargo run --features renderer-opengl",
     "tlbx:dev-bt-vulkan": "set RUST_BACKTRACE=1&& cargo run --features renderer-vulkan",
+    "tlbx:dev-bt-log-opengl": "powershell -NoProfile -Command \"$env:RUST_BACKTRACE='1'; cargo run --features renderer-opengl 2>&1 | Tee-Object -FilePath .\\build.log\"",
     "tlbx:build": "node scripts/packaging/build.js",
     "tlbx:dev-docs": "node scripts/deploy-docs.js",
     "tlbx:dev-all": "node scripts/dev-build-run.js",

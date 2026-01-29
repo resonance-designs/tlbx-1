@@ -3,14 +3,17 @@
  * Copyright (C) 2026 Richard Bakos @ Resonance Designs.
  * Author: Richard Bakos <info@resonancedesigns.dev>
  * Website: https://resonancedesigns.dev
- * Version: 0.1.15
+ * Version: 0.1.16
  * Component: Core Logic
  */
 
 use nih_plug::prelude::*;
 use cpal::traits::{DeviceTrait, HostTrait};
 use parking_lot::Mutex;
-use slint::{LogicalPosition, ModelRc, PhysicalSize, SharedString, VecModel};
+use slint::{
+    Image, LogicalPosition, ModelRc, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, SharedString,
+    VecModel,
+};
 use slint::platform::{
     self, Platform, PlatformError, PointerEventButton, WindowAdapter, WindowEvent,
 };
@@ -80,7 +83,7 @@ pub const RECORD_MAX_SAMPLES: usize = RECORD_MAX_SECONDS * RECORD_MAX_SAMPLE_RAT
 pub const MOSAIC_BUFFER_SECONDS: usize = 4;
 pub const MOSAIC_BUFFER_SAMPLES: usize = MOSAIC_BUFFER_SECONDS * RECORD_MAX_SAMPLE_RATE;
 pub const MOSAIC_BUFFER_CHANNELS: usize = 2;
-pub const MOSAIC_OUTPUT_GAIN: f32 = 1.0;
+pub const MOSAIC_OUTPUT_GAIN: f32 = 1.5;
 const MOSAIC_RATE_MIN: f32 = 2.0;
 const MOSAIC_RATE_MAX: f32 = 60.0;
 const MOSAIC_SIZE_MIN_MS: f32 = 10.0;
@@ -95,6 +98,8 @@ const RING_DETUNE_CENTS: f32 = 20.0;
 const RING_DETUNE_RATE_HZ: f32 = 0.25;
 const RING_LFO_RATE_MIN_HZ: f32 = 0.1;
 const RING_LFO_RATE_MAX_HZ: f32 = 12.0;
+const ANIMATE_LFO_RATE_MIN_HZ: f32 = 0.01;
+const ANIMATE_LFO_RATE_MAX_HZ: f32 = 20.0;
 const METRONOME_CLICK_MS: f32 = 12.0;
 const METRONOME_CLICK_GAIN: f32 = 0.25;
 const METRONOME_COUNT_IN_MAX_TICKS: u32 = 8;
@@ -126,6 +131,19 @@ fn default_window_size() -> baseview::Size {
 
 include!(concat!(env!("OUT_DIR"), "/tlbx1.rs"));
 
+#[derive(Clone)]
+struct VideoFrame {
+    timestamp: f32,
+    data: Arc<Vec<u8>>,
+}
+
+struct VideoCache {
+    frames: Vec<VideoFrame>,
+    width: u32,
+    height: u32,
+    fps: f32,
+}
+
 struct Track {
     /// Audio data for the track. Each channel is a Vec of f32.
     samples: Arc<Mutex<Vec<Vec<f32>>>>,
@@ -133,6 +151,18 @@ struct Track {
     sample_path: Arc<Mutex<Option<PathBuf>>>,
     /// Pre-calculated waveform summary for fast drawing.
     waveform_summary: Arc<Mutex<Vec<f32>>>,
+    /// Cached video frames for the tape engine, if loaded.
+    video_cache: Arc<Mutex<Option<VideoCache>>>,
+    /// Whether a video stream is loaded for this track.
+    video_enabled: AtomicBool,
+    /// Video frame width.
+    video_width: AtomicU32,
+    /// Video frame height.
+    video_height: AtomicU32,
+    /// Video frame rate (fps) stored as f32 bits.
+    video_fps: AtomicU32,
+    /// Video cache version (increments on load).
+    video_cache_id: AtomicU32,
     /// Whether the track is currently recording.
     is_recording: AtomicBool,
     /// Pending play start after count-in.
@@ -487,6 +517,8 @@ struct Track {
     kick_decay: AtomicU32,
     /// SynDRM kick attack (normalized 0..1).
     kick_attack: AtomicU32,
+    /// SynDRM kick pitch envelope amount (normalized 0..1).
+    kick_pitch_env_amount: AtomicU32,
     /// SynDRM kick drive (normalized 0..1).
     kick_drive: AtomicU32,
     /// SynDRM kick output level (normalized 0..1).
@@ -497,6 +529,8 @@ struct Track {
     kick_filter_cutoff: AtomicU32,
     /// SynDRM kick filter resonance (normalized 0..1).
     kick_filter_resonance: AtomicU32,
+    /// SynDRM kick filter pre-drive toggle.
+    kick_filter_pre_drive: AtomicBool,
     /// SynDRM kick sequencer grid (128 steps).
     kick_sequencer_grid: Arc<[AtomicBool; SYNDRM_STEPS]>,
     /// SynDRM kick sequencer current step.
@@ -528,6 +562,8 @@ struct Track {
     snare_filter_cutoff: AtomicU32,
     /// SynDRM snare filter resonance (normalized 0..1).
     snare_filter_resonance: AtomicU32,
+    /// SynDRM snare filter pre-drive toggle.
+    snare_filter_pre_drive: AtomicBool,
     /// SynDRM snare sequencer grid (128 steps).
     snare_sequencer_grid: Arc<[AtomicBool; SYNDRM_STEPS]>,
     /// SynDRM snare sequencer current step.
@@ -655,6 +691,12 @@ impl Default for Track {
             samples: Arc::new(Mutex::new(vec![vec![]; 2])),
             sample_path: Arc::new(Mutex::new(None)),
             waveform_summary: Arc::new(Mutex::new(vec![0.0; WAVEFORM_SUMMARY_SIZE])),
+            video_cache: Arc::new(Mutex::new(None)),
+            video_enabled: AtomicBool::new(false),
+            video_width: AtomicU32::new(0),
+            video_height: AtomicU32::new(0),
+            video_fps: AtomicU32::new(0.0f32.to_bits()),
+            video_cache_id: AtomicU32::new(0),
             is_recording: AtomicBool::new(false),
             pending_play: AtomicBool::new(false),
             pending_record: AtomicBool::new(false),
@@ -843,11 +885,13 @@ impl Default for Track {
             kick_pitch: AtomicU32::new(0.5f32.to_bits()),
             kick_decay: AtomicU32::new(0.5f32.to_bits()),
             kick_attack: AtomicU32::new(0.0f32.to_bits()),
+            kick_pitch_env_amount: AtomicU32::new(0.0f32.to_bits()),
             kick_drive: AtomicU32::new(0.0f32.to_bits()),
             kick_level: AtomicU32::new(1.0f32.to_bits()),
             kick_filter_type: AtomicU32::new(0),
             kick_filter_cutoff: AtomicU32::new(0.6f32.to_bits()),
             kick_filter_resonance: AtomicU32::new(0.2f32.to_bits()),
+            kick_filter_pre_drive: AtomicBool::new(true),
             kick_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
             kick_sequencer_step: AtomicI32::new(-1),
             kick_sequencer_phase: AtomicU32::new(0),
@@ -864,6 +908,7 @@ impl Default for Track {
             snare_filter_type: AtomicU32::new(0),
             snare_filter_cutoff: AtomicU32::new(0.6f32.to_bits()),
             snare_filter_resonance: AtomicU32::new(0.2f32.to_bits()),
+            snare_filter_pre_drive: AtomicBool::new(true),
             snare_sequencer_grid: Arc::new(std::array::from_fn(|_| AtomicBool::new(false))),
             snare_sequencer_step: AtomicI32::new(-1),
             snare_sequencer_phase: AtomicU32::new(0),
@@ -1331,6 +1376,12 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.meter_left.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.meter_right.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.is_muted.store(false, Ordering::Relaxed);
+    track.video_enabled.store(false, Ordering::Relaxed);
+    track.video_width.store(0, Ordering::Relaxed);
+    track.video_height.store(0, Ordering::Relaxed);
+    track.video_fps.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.video_cache_id.fetch_add(1, Ordering::Relaxed);
+    *track.video_cache.lock() = None;
     track.tape_speed.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.tape_speed_smooth.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.tape_tempo.store(120.0f32.to_bits(), Ordering::Relaxed);
@@ -1555,11 +1606,15 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.kick_pitch.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.kick_decay.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.kick_attack.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .kick_pitch_env_amount
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.kick_drive.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.kick_level.store(1.0f32.to_bits(), Ordering::Relaxed);
     track.kick_filter_type.store(0, Ordering::Relaxed);
     track.kick_filter_cutoff.store(0.6f32.to_bits(), Ordering::Relaxed);
     track.kick_filter_resonance.store(0.2f32.to_bits(), Ordering::Relaxed);
+    track.kick_filter_pre_drive.store(true, Ordering::Relaxed);
     for i in 0..SYNDRM_STEPS {
         track.kick_sequencer_grid[i].store(false, Ordering::Relaxed);
     }
@@ -1578,6 +1633,7 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.snare_filter_type.store(0, Ordering::Relaxed);
     track.snare_filter_cutoff.store(0.6f32.to_bits(), Ordering::Relaxed);
     track.snare_filter_resonance.store(0.2f32.to_bits(), Ordering::Relaxed);
+    track.snare_filter_pre_drive.store(true, Ordering::Relaxed);
     for i in 0..SYNDRM_STEPS {
         track.snare_sequencer_grid[i].store(false, Ordering::Relaxed);
     }
@@ -1742,13 +1798,15 @@ impl TLBX1 {
             let beats = lfo_division_beats(lfo_x_division);
             (tempo / 60.0) / beats
         } else {
-            0.05 + lfo_x_rate * 10.0
+            ANIMATE_LFO_RATE_MIN_HZ
+                * (ANIMATE_LFO_RATE_MAX_HZ / ANIMATE_LFO_RATE_MIN_HZ).powf(lfo_x_rate)
         };
         let lfo_y_rate_hz = if lfo_y_sync {
             let beats = lfo_division_beats(lfo_y_division);
             (tempo / 60.0) / beats
         } else {
-            0.05 + lfo_y_rate * 10.0
+            ANIMATE_LFO_RATE_MIN_HZ
+                * (ANIMATE_LFO_RATE_MAX_HZ / ANIMATE_LFO_RATE_MIN_HZ).powf(lfo_y_rate)
         };
         let wt_lfo_amount = [
             f32::from_bits(
@@ -1813,25 +1871,29 @@ impl TLBX1 {
                 let beats = lfo_division_beats(wt_lfo_division[0]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[0] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    * (ANIMATE_LFO_RATE_MAX_HZ / ANIMATE_LFO_RATE_MIN_HZ).powf(wt_lfo_rate[0])
             },
             if wt_lfo_sync[1] {
                 let beats = lfo_division_beats(wt_lfo_division[1]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[1] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    * (ANIMATE_LFO_RATE_MAX_HZ / ANIMATE_LFO_RATE_MIN_HZ).powf(wt_lfo_rate[1])
             },
             if wt_lfo_sync[2] {
                 let beats = lfo_division_beats(wt_lfo_division[2]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[2] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    * (ANIMATE_LFO_RATE_MAX_HZ / ANIMATE_LFO_RATE_MIN_HZ).powf(wt_lfo_rate[2])
             },
             if wt_lfo_sync[3] {
                 let beats = lfo_division_beats(wt_lfo_division[3]);
                 (tempo / 60.0) / beats
             } else {
-                0.05 + wt_lfo_rate[3] * 10.0
+                ANIMATE_LFO_RATE_MIN_HZ
+                    * (ANIMATE_LFO_RATE_MAX_HZ / ANIMATE_LFO_RATE_MIN_HZ).powf(wt_lfo_rate[3])
             },
         ];
         let sample_start = [
@@ -2564,6 +2626,8 @@ impl TLBX1 {
             f32::from_bits(track.kick_decay.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut kick_attack_base =
             f32::from_bits(track.kick_attack.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let kick_pitch_env_amount =
+            f32::from_bits(track.kick_pitch_env_amount.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut kick_drive_base =
             f32::from_bits(track.kick_drive.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let track_muted = track.is_muted.load(Ordering::Relaxed);
@@ -2574,6 +2638,7 @@ impl TLBX1 {
             f32::from_bits(track.kick_filter_cutoff.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut kick_filter_resonance_base =
             f32::from_bits(track.kick_filter_resonance.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let kick_filter_pre_drive = track.kick_filter_pre_drive.load(Ordering::Relaxed);
         let mut snare_tone_base =
             f32::from_bits(track.snare_tone.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut snare_decay_base =
@@ -2591,6 +2656,7 @@ impl TLBX1 {
             f32::from_bits(track.snare_filter_cutoff.load(Ordering::Relaxed)).clamp(0.0, 1.0);
         let mut snare_filter_resonance_base =
             f32::from_bits(track.snare_filter_resonance.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let snare_filter_pre_drive = track.snare_filter_pre_drive.load(Ordering::Relaxed);
 
         let mut env = f32::from_bits(track.kick_env.load(Ordering::Relaxed));
         let mut pitch_env = f32::from_bits(track.kick_pitch_env.load(Ordering::Relaxed));
@@ -2625,7 +2691,8 @@ impl TLBX1 {
         let mut snare_filter_resonance = snare_filter_resonance_base;
 
         let mut decay_time = 0.05 + kick_decay * 1.5;
-        let mut pitch_decay_time = 0.01 + kick_decay * 0.25;
+        let mut pitch_decay_time = (0.01 + kick_decay * 0.25)
+            * (1.0 - 0.7 * kick_pitch_env_amount).max(0.1);
         let mut env_coeff = (-1.0 / (decay_time * sr)).exp();
         let mut attack_time = kick_attack * 0.01;
         let mut attack_samples = (attack_time * sr).round().max(0.0) as u32;
@@ -2636,7 +2703,7 @@ impl TLBX1 {
         };
         let mut pitch_coeff = (-1.0 / (pitch_decay_time * sr)).exp();
         let mut base_freq = 40.0 + kick_pitch * 120.0;
-        let mut sweep = base_freq * 2.5;
+        let mut sweep = base_freq * (kick_pitch_env_amount * 4.0);
         let mut drive = 1.0 + kick_drive * 8.0;
         let mut kick_cutoff_hz = cutoff_min * cutoff_span.powf(kick_filter_cutoff);
         let mut kick_q = 0.1 + kick_filter_resonance * 0.9;
@@ -2667,6 +2734,7 @@ impl TLBX1 {
             kick_pitch: &mut f32,
             kick_decay: &mut f32,
             kick_attack: &mut f32,
+            kick_pitch_env_amount: f32,
             kick_drive: &mut f32,
             kick_level: &mut f32,
             kick_filter_type: &mut u32,
@@ -2731,7 +2799,8 @@ impl TLBX1 {
                 *kick_filter_resonance = filter_resonance;
 
                 *decay_time = 0.05 + *kick_decay * 1.5;
-                *pitch_decay_time = 0.01 + *kick_decay * 0.25;
+                *pitch_decay_time = (0.01 + *kick_decay * 0.25)
+                    * (1.0 - 0.7 * kick_pitch_env_amount).max(0.1);
                 *env_coeff = (-1.0 / (*decay_time * sr)).exp();
                 *attack_time = *kick_attack * 0.01;
                 *attack_samples = (*attack_time * sr).round().max(0.0) as u32;
@@ -2742,7 +2811,7 @@ impl TLBX1 {
                 };
                 *pitch_coeff = (-1.0 / (*pitch_decay_time * sr)).exp();
                 *base_freq = 40.0 + *kick_pitch * 120.0;
-                *sweep = *base_freq * 2.5;
+                *sweep = *base_freq * (kick_pitch_env_amount * 4.0);
                 *drive = 1.0 + *kick_drive * 8.0;
                 *kick_cutoff_hz = cutoff_min * cutoff_span.powf(*kick_filter_cutoff);
                 *kick_q = 0.1 + *kick_filter_resonance * 0.9;
@@ -2778,7 +2847,8 @@ impl TLBX1 {
                 *kick_filter_resonance = *kick_filter_resonance_base;
 
                 *decay_time = 0.05 + *kick_decay * 1.5;
-                *pitch_decay_time = 0.01 + *kick_decay * 0.25;
+                *pitch_decay_time = (0.01 + *kick_decay * 0.25)
+                    * (1.0 - 0.7 * kick_pitch_env_amount).max(0.1);
                 *env_coeff = (-1.0 / (*decay_time * sr)).exp();
                 *attack_time = *kick_attack * 0.01;
                 *attack_samples = (*attack_time * sr).round().max(0.0) as u32;
@@ -2789,7 +2859,7 @@ impl TLBX1 {
                 };
                 *pitch_coeff = (-1.0 / (*pitch_decay_time * sr)).exp();
                 *base_freq = 40.0 + *kick_pitch * 120.0;
-                *sweep = *base_freq * 2.5;
+                *sweep = *base_freq * (kick_pitch_env_amount * 4.0);
                 *drive = 1.0 + *kick_drive * 8.0;
                 *kick_cutoff_hz = cutoff_min * cutoff_span.powf(*kick_filter_cutoff);
                 *kick_q = 0.1 + *kick_filter_resonance * 0.9;
@@ -2958,6 +3028,7 @@ impl TLBX1 {
                     &mut kick_pitch,
                     &mut kick_decay,
                     &mut kick_attack,
+                    kick_pitch_env_amount,
                     &mut kick_drive,
                     &mut kick_level,
                     &mut kick_filter_type,
@@ -3048,6 +3119,7 @@ impl TLBX1 {
                             &mut kick_pitch,
                             &mut kick_decay,
                             &mut kick_attack,
+                            kick_pitch_env_amount,
                             &mut kick_drive,
                             &mut kick_level,
                             &mut kick_filter_type,
@@ -3156,21 +3228,35 @@ impl TLBX1 {
             let mut osc_out = [0.0f32];
             dsp_state.kick_osc.tick(&[freq], &mut osc_out);
             let mut sample = osc_out[0] * env;
+            if kick_filter_pre_drive {
+                sample = Self::apply_syndrm_filter(
+                    kick_filter_type,
+                    sample,
+                    kick_cutoff_hz,
+                    kick_q,
+                    &mut *dsp_state.kick_filter_moog,
+                    &mut *dsp_state.kick_filter_lp,
+                    &mut *dsp_state.kick_filter_hp,
+                    &mut *dsp_state.kick_filter_bp,
+                );
+            }
             if kick_drive > 0.0 {
                 let mut drive_out = [0.0f32];
                 dsp_state.kick_drive.tick(&[sample * drive], &mut drive_out);
                 sample = drive_out[0];
             }
-            sample = Self::apply_syndrm_filter(
-                kick_filter_type,
-                sample,
-                kick_cutoff_hz,
-                kick_q,
-                &mut *dsp_state.kick_filter_moog,
-                &mut *dsp_state.kick_filter_lp,
-                &mut *dsp_state.kick_filter_hp,
-                &mut *dsp_state.kick_filter_bp,
-            );
+            if !kick_filter_pre_drive {
+                sample = Self::apply_syndrm_filter(
+                    kick_filter_type,
+                    sample,
+                    kick_cutoff_hz,
+                    kick_q,
+                    &mut *dsp_state.kick_filter_moog,
+                    &mut *dsp_state.kick_filter_lp,
+                    &mut *dsp_state.kick_filter_hp,
+                    &mut *dsp_state.kick_filter_bp,
+                );
+            }
             sample *= kick_level;
 
             if snare_env > 0.0 || snare_noise_env > 0.0 {
@@ -3182,21 +3268,35 @@ impl TLBX1 {
                 let noise_sample = noise_out[0] * snare_noise_env;
                 let mut snare_sample =
                     tone_sample * (1.0 - snare_snappy) + noise_sample * snare_snappy;
+                if snare_filter_pre_drive {
+                    snare_sample = Self::apply_syndrm_filter(
+                        snare_filter_type,
+                        snare_sample,
+                        snare_cutoff_hz,
+                        snare_q,
+                        &mut *dsp_state.snare_filter_moog,
+                        &mut *dsp_state.snare_filter_lp,
+                        &mut *dsp_state.snare_filter_hp,
+                        &mut *dsp_state.snare_filter_bp,
+                    );
+                }
                 let mut drive_out = [0.0f32];
                 dsp_state
                     .snare_drive
                     .tick(&[snare_sample * snare_drive_gain], &mut drive_out);
                 snare_sample = drive_out[0];
-                snare_sample = Self::apply_syndrm_filter(
-                    snare_filter_type,
-                    snare_sample,
-                    snare_cutoff_hz,
-                    snare_q,
-                    &mut *dsp_state.snare_filter_moog,
-                    &mut *dsp_state.snare_filter_lp,
-                    &mut *dsp_state.snare_filter_hp,
-                    &mut *dsp_state.snare_filter_bp,
-                );
+                if !snare_filter_pre_drive {
+                    snare_sample = Self::apply_syndrm_filter(
+                        snare_filter_type,
+                        snare_sample,
+                        snare_cutoff_hz,
+                        snare_q,
+                        &mut *dsp_state.snare_filter_moog,
+                        &mut *dsp_state.snare_filter_lp,
+                        &mut *dsp_state.snare_filter_hp,
+                        &mut *dsp_state.snare_filter_bp,
+                    );
+                }
                 sample += snare_sample * snare_level;
             }
 
@@ -3467,6 +3567,7 @@ impl TLBX1 {
         track: &Track,
         track_output: &mut [Vec<f32>],
         num_buffer_samples: usize,
+        global_tempo: f32,
     ) {
         if track.granular_type.load(Ordering::Relaxed) != 1 {
             return;
@@ -3619,7 +3720,30 @@ impl TLBX1 {
             .store(mosaic_rand_size.to_bits(), Ordering::Relaxed);
         let pitch_bipolar = mosaic_cc_bipolar(mosaic_pitch);
         let contour_bipolar = mosaic_cc_bipolar(mosaic_contour);
-        let base_rate = MOSAIC_RATE_MIN + (MOSAIC_RATE_MAX - MOSAIC_RATE_MIN) * mosaic_rate;
+        let tempo = if global_tempo.is_finite() {
+            global_tempo.clamp(20.0, 240.0)
+        } else {
+            120.0
+        };
+        let base_rate = if mosaic_rate <= 0.5 {
+            let divisions = [
+                4.0_f32,
+                2.0,
+                1.0,
+                0.5,
+                0.25,
+                0.125,
+                0.0625,
+                0.03125,
+            ];
+            let t = (mosaic_rate / 0.5).clamp(0.0, 1.0);
+            let idx = (t * (divisions.len().saturating_sub(1)) as f32).round() as usize;
+            let beats = divisions[idx.min(divisions.len() - 1)];
+            ((tempo / 60.0) / beats).clamp(MOSAIC_RATE_MIN, MOSAIC_RATE_MAX)
+        } else {
+            let free = ((mosaic_rate - 0.5) / 0.5).clamp(0.0, 1.0);
+            MOSAIC_RATE_MIN + (MOSAIC_RATE_MAX - MOSAIC_RATE_MIN) * free
+        };
         let base_size_ms =
             MOSAIC_SIZE_MIN_MS + (MOSAIC_SIZE_MAX_MS - MOSAIC_SIZE_MIN_MS) * mosaic_size;
         let semitones = pitch_bipolar * MOSAIC_PITCH_SEMITONES;
@@ -4151,27 +4275,72 @@ impl Plugin for TLBX1 {
                     return;
                 }
                 
-                match load_audio_file(&path) {
-                    Ok((new_samples, sample_rate)) => {
+                match load_media_file(&path) {
+                    Ok((new_samples, sample_rate, video)) => {
                         let mut samples = tracks[track_idx].samples.lock();
                         let mut summary = tracks[track_idx].waveform_summary.lock();
                         let mut sample_path = tracks[track_idx].sample_path.lock();
-                        
+                        let mut video_cache = tracks[track_idx].video_cache.lock();
+
                         *samples = new_samples;
                         *sample_path = Some(path.clone());
                         tracks[track_idx]
                             .sample_rate
                             .store(sample_rate, Ordering::Relaxed);
+
+                        if let Some(video) = video {
+                            tracks[track_idx]
+                                .video_enabled
+                                .store(true, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_width
+                                .store(video.width, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_height
+                                .store(video.height, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_fps
+                                .store(video.fps.to_bits(), Ordering::Relaxed);
+                            *video_cache = Some(video);
+                            tracks[track_idx]
+                                .video_cache_id
+                                .fetch_add(1, Ordering::Relaxed);
+                        } else {
+                            tracks[track_idx]
+                                .video_enabled
+                                .store(false, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_width
+                                .store(0, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_height
+                                .store(0, Ordering::Relaxed);
+                            tracks[track_idx]
+                                .video_fps
+                                .store(0.0f32.to_bits(), Ordering::Relaxed);
+                            *video_cache = None;
+                            tracks[track_idx]
+                                .video_cache_id
+                                .fetch_add(1, Ordering::Relaxed);
+                        }
+
                         if !samples.is_empty() {
                             calculate_waveform_summary(&samples[0], &mut summary);
                         } else {
                             summary.fill(0.0);
                         }
-                        
-                        nih_log!("Loaded sample: {:?}", path);
+
+                        nih_log!("Loaded media: {:?}", path);
                     }
                     Err(e) => {
-                        nih_log!("Failed to load sample: {:?}", e);
+                        tracks[track_idx]
+                            .video_enabled
+                            .store(false, Ordering::Relaxed);
+                        tracks[track_idx]
+                            .video_cache_id
+                            .fetch_add(1, Ordering::Relaxed);
+                        *tracks[track_idx].video_cache.lock() = None;
+                        nih_log!("Failed to load media: {:?}", e);
                     }
                 }
             }
@@ -5029,7 +5198,12 @@ impl Plugin for TLBX1 {
             }
 
             // Apply track effects
-            Self::process_track_mosaic(track, &mut self.track_buffer, buffer.samples());
+            Self::process_track_mosaic(
+                track,
+                &mut self.track_buffer,
+                buffer.samples(),
+                global_tempo,
+            );
             Self::process_track_ring(track, &mut self.track_buffer, buffer.samples(), global_tempo);
 
             let mix_gain = if track_muted && engine_type != 1 { 0.0 } else { 1.0 };
@@ -5827,6 +6001,244 @@ fn load_audio_file(
     Ok((samples, sample_rate))
 }
 
+fn image_from_rgba(width: u32, height: u32, data: &[u8]) -> Image {
+    let mut buffer = SharedPixelBuffer::<Rgba8Pixel>::new(width, height);
+    let pixels = buffer.make_mut_slice();
+    for (pixel, chunk) in pixels.iter_mut().zip(data.chunks_exact(4)) {
+        *pixel = Rgba8Pixel {
+            r: chunk[0],
+            g: chunk[1],
+            b: chunk[2],
+            a: chunk[3],
+        };
+    }
+    Image::from_rgba8(buffer)
+}
+
+#[derive(Debug)]
+enum MediaLoadError {
+    NoVideoStream,
+    Ffmpeg(String),
+}
+
+impl std::fmt::Display for MediaLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MediaLoadError::NoVideoStream => write!(f, "no video stream found"),
+            MediaLoadError::Ffmpeg(msg) => write!(f, "ffmpeg error: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for MediaLoadError {}
+
+fn load_media_file(
+    path: &std::path::Path,
+) -> Result<(Vec<Vec<f32>>, u32, Option<VideoCache>), Box<dyn std::error::Error>> {
+    match load_audio_video_ffmpeg(path) {
+        Ok((samples, sample_rate, video)) => Ok((samples, sample_rate, Some(video))),
+        Err(MediaLoadError::NoVideoStream) => {
+            load_audio_file(path).map(|(samples, sample_rate)| (samples, sample_rate, None))
+        }
+        Err(err) => Err(Box::new(err)),
+    }
+}
+
+fn load_audio_video_ffmpeg(
+    path: &std::path::Path,
+) -> Result<(Vec<Vec<f32>>, u32, VideoCache), MediaLoadError> {
+    use ffmpeg_next as ffmpeg;
+    use ffmpeg::format::Pixel;
+    use ffmpeg::media::Type;
+    use ffmpeg::software::scaling::Flags as ScalingFlags;
+    use ffmpeg::software::{resampling, scaling};
+    use ffmpeg::util::format::sample::{Sample, Type as SampleType};
+
+    static FFMPEG_INIT: Once = Once::new();
+    FFMPEG_INIT.call_once(|| {
+        let _ = ffmpeg::init();
+    });
+
+    let mut input = ffmpeg::format::input(&path).map_err(|e| {
+        MediaLoadError::Ffmpeg(format!("failed to open media: {e:?}"))
+    })?;
+
+    let video_stream = input.streams().best(Type::Video);
+    let audio_stream = input.streams().best(Type::Audio);
+
+    let video_stream = video_stream.ok_or(MediaLoadError::NoVideoStream)?;
+    let audio_stream = audio_stream.ok_or_else(|| {
+        MediaLoadError::Ffmpeg("no audio stream found".to_string())
+    })?;
+
+    let video_stream_index = video_stream.index();
+    let audio_stream_index = audio_stream.index();
+
+    let mut video_decoder = ffmpeg::codec::Context::from_parameters(video_stream.parameters())
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("video params: {e:?}")))?
+        .decoder()
+        .video()
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("video decoder: {e:?}")))?;
+    let mut audio_decoder = ffmpeg::codec::Context::from_parameters(audio_stream.parameters())
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("audio params: {e:?}")))?
+        .decoder()
+        .audio()
+        .map_err(|e| MediaLoadError::Ffmpeg(format!("audio decoder: {e:?}")))?;
+
+    let width = video_decoder.width();
+    let height = video_decoder.height();
+
+    let mut scaler = scaling::Context::get(
+        video_decoder.format(),
+        width,
+        height,
+        Pixel::RGBA,
+        width,
+        height,
+        ScalingFlags::BILINEAR,
+    )
+    .map_err(|e| MediaLoadError::Ffmpeg(format!("scaler: {e:?}")))?;
+
+    let out_sample_format = Sample::F32(SampleType::Planar);
+    let mut resampler = resampling::Context::get(
+        audio_decoder.format(),
+        audio_decoder.channel_layout(),
+        audio_decoder.rate(),
+        out_sample_format,
+        audio_decoder.channel_layout(),
+        audio_decoder.rate(),
+    )
+    .map_err(|e| MediaLoadError::Ffmpeg(format!("resampler: {e:?}")))?;
+
+    let channels = audio_decoder.channel_layout().channels() as usize;
+    let mut samples: Vec<Vec<f32>> = vec![Vec::new(); channels.max(1)];
+    let mut frames: Vec<VideoFrame> = Vec::new();
+
+    let time_base = video_stream.time_base();
+    let fps = {
+        let rate = video_stream.avg_frame_rate();
+        if rate.denominator() != 0 {
+            rate.numerator() as f32 / rate.denominator() as f32
+        } else {
+            30.0
+        }
+    };
+
+    let mut video_frame = ffmpeg::frame::Video::empty();
+    let mut rgba_frame = ffmpeg::frame::Video::empty();
+    let mut audio_frame = ffmpeg::frame::Audio::empty();
+
+    for (stream, packet) in input.packets() {
+        if stream.index() == video_stream_index {
+            if video_decoder.send_packet(&packet).is_ok() {
+                while video_decoder.receive_frame(&mut video_frame).is_ok() {
+                    scaler
+                        .run(&video_frame, &mut rgba_frame)
+                        .map_err(|e| MediaLoadError::Ffmpeg(format!("scale: {e:?}")))?;
+                    let stride = rgba_frame.stride(0);
+                    let data = rgba_frame.data(0);
+                    let mut buffer = vec![0u8; (width * height * 4) as usize];
+                    for y in 0..height as usize {
+                        let row_start = y * stride;
+                        let row_end = row_start + (width * 4) as usize;
+                        let dst_start = y * (width * 4) as usize;
+                        let dst_end = dst_start + (width * 4) as usize;
+                        buffer[dst_start..dst_end].copy_from_slice(&data[row_start..row_end]);
+                    }
+                    let pts = video_frame.pts().unwrap_or(0);
+                    let timestamp = pts as f32 * time_base.numerator() as f32
+                        / time_base.denominator() as f32;
+                    frames.push(VideoFrame {
+                        timestamp,
+                        data: Arc::new(buffer),
+                    });
+                }
+            }
+        } else if stream.index() == audio_stream_index {
+            if audio_decoder.send_packet(&packet).is_ok() {
+                while audio_decoder.receive_frame(&mut audio_frame).is_ok() {
+                    let mut out = ffmpeg::frame::Audio::empty();
+                    resampler
+                        .run(&audio_frame, &mut out)
+                        .map_err(|e| MediaLoadError::Ffmpeg(format!("resample: {e:?}")))?;
+                    let out_samples = out.samples() as usize;
+                    let out_channels = out.channels() as usize;
+                    if samples.len() < out_channels {
+                        samples.resize_with(out_channels, Vec::new);
+                    }
+                    for ch in 0..out_channels {
+                        let data = out.data(ch);
+                        let data = unsafe {
+                            std::slice::from_raw_parts(
+                                data.as_ptr() as *const f32,
+                                out_samples,
+                            )
+                        };
+                        samples[ch].extend_from_slice(data);
+                    }
+                }
+            }
+        }
+    }
+
+    let _ = video_decoder.send_eof();
+    while video_decoder.receive_frame(&mut video_frame).is_ok() {
+        scaler
+            .run(&video_frame, &mut rgba_frame)
+            .map_err(|e| MediaLoadError::Ffmpeg(format!("scale: {e:?}")))?;
+        let stride = rgba_frame.stride(0);
+        let data = rgba_frame.data(0);
+        let mut buffer = vec![0u8; (width * height * 4) as usize];
+        for y in 0..height as usize {
+            let row_start = y * stride;
+            let row_end = row_start + (width * 4) as usize;
+            let dst_start = y * (width * 4) as usize;
+            let dst_end = dst_start + (width * 4) as usize;
+            buffer[dst_start..dst_end].copy_from_slice(&data[row_start..row_end]);
+        }
+        let pts = video_frame.pts().unwrap_or(0);
+        let timestamp = pts as f32 * time_base.numerator() as f32
+            / time_base.denominator() as f32;
+        frames.push(VideoFrame {
+            timestamp,
+            data: Arc::new(buffer),
+        });
+    }
+
+    let _ = audio_decoder.send_eof();
+    while audio_decoder.receive_frame(&mut audio_frame).is_ok() {
+        let mut out = ffmpeg::frame::Audio::empty();
+        resampler
+            .run(&audio_frame, &mut out)
+            .map_err(|e| MediaLoadError::Ffmpeg(format!("resample: {e:?}")))?;
+        let out_samples = out.samples() as usize;
+        let out_channels = out.channels() as usize;
+        if samples.len() < out_channels {
+            samples.resize_with(out_channels, Vec::new);
+        }
+        for ch in 0..out_channels {
+            let data = out.data(ch);
+            let data = unsafe {
+                std::slice::from_raw_parts(
+                    data.as_ptr() as *const f32,
+                    out_samples,
+                )
+            };
+            samples[ch].extend_from_slice(data);
+        }
+    }
+
+    let sample_rate = audio_decoder.rate() as u32;
+    let video = VideoCache {
+        frames,
+        width,
+        height,
+        fps: if fps.is_finite() && fps > 0.0 { fps } else { 30.0 },
+    };
+
+    Ok((samples, sample_rate, video))
+}
+
 fn save_track_sample(track: &Track, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let samples = track.samples.lock();
     if samples.is_empty() || samples[0].is_empty() {
@@ -5946,11 +6358,16 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("kick_pitch".to_string(), f(&track.kick_pitch));
     params.insert("kick_decay".to_string(), f(&track.kick_decay));
     params.insert("kick_attack".to_string(), f(&track.kick_attack));
+    params.insert(
+        "kick_pitch_env_amount".to_string(),
+        f(&track.kick_pitch_env_amount),
+    );
     params.insert("kick_drive".to_string(), f(&track.kick_drive));
     params.insert("kick_level".to_string(), f(&track.kick_level));
     params.insert("kick_filter_type".to_string(), u(&track.kick_filter_type));
     params.insert("kick_filter_cutoff".to_string(), f(&track.kick_filter_cutoff));
     params.insert("kick_filter_resonance".to_string(), f(&track.kick_filter_resonance));
+    params.insert("kick_filter_pre_drive".to_string(), b(&track.kick_filter_pre_drive));
     params.insert("snare_tone".to_string(), f(&track.snare_tone));
     params.insert("snare_decay".to_string(), f(&track.snare_decay));
     params.insert("snare_snappy".to_string(), f(&track.snare_snappy));
@@ -5960,6 +6377,7 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("snare_filter_type".to_string(), u(&track.snare_filter_type));
     params.insert("snare_filter_cutoff".to_string(), f(&track.snare_filter_cutoff));
     params.insert("snare_filter_resonance".to_string(), f(&track.snare_filter_resonance));
+    params.insert("snare_filter_pre_drive".to_string(), b(&track.snare_filter_pre_drive));
     params.insert("snare_tone".to_string(), f(&track.snare_tone));
     params.insert("snare_decay".to_string(), f(&track.snare_decay));
     params.insert("snare_snappy".to_string(), f(&track.snare_snappy));
@@ -6138,11 +6556,13 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.kick_pitch, "kick_pitch");
     sf(&track.kick_decay, "kick_decay");
     sf(&track.kick_attack, "kick_attack");
+    sf(&track.kick_pitch_env_amount, "kick_pitch_env_amount");
     sf(&track.kick_drive, "kick_drive");
     sf(&track.kick_level, "kick_level");
     su(&track.kick_filter_type, "kick_filter_type");
     sf(&track.kick_filter_cutoff, "kick_filter_cutoff");
     sf(&track.kick_filter_resonance, "kick_filter_resonance");
+    sb(&track.kick_filter_pre_drive, "kick_filter_pre_drive");
     sf(&track.snare_tone, "snare_tone");
     sf(&track.snare_decay, "snare_decay");
     sf(&track.snare_snappy, "snare_snappy");
@@ -6152,6 +6572,7 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     su(&track.snare_filter_type, "snare_filter_type");
     sf(&track.snare_filter_cutoff, "snare_filter_cutoff");
     sf(&track.snare_filter_resonance, "snare_filter_resonance");
+    sb(&track.snare_filter_pre_drive, "snare_filter_pre_drive");
     su(&track.syndrm_page, "syndrm_page");
     su(&track.syndrm_edit_lane, "syndrm_edit_lane");
     su(&track.syndrm_edit_step, "syndrm_edit_step");
@@ -6637,6 +7058,7 @@ struct SlintWindow {
     spectrum_model: std::rc::Rc<VecModel<f32>>,
     vectorscope_x_model: std::rc::Rc<VecModel<f32>>,
     vectorscope_y_model: std::rc::Rc<VecModel<f32>>,
+    video_frame_cache: Vec<Option<(u32, usize, Image)>>,
     sample_dialog_rx: std::sync::mpsc::Receiver<SampleDialogAction>,
     project_dialog_rx: std::sync::mpsc::Receiver<ProjectDialogAction>,
     sb_surface: softbuffer::Surface<SoftbufferWindowHandleAdapter, SoftbufferWindowHandleAdapter>,
@@ -6683,6 +7105,7 @@ impl SlintWindow {
             std::rc::Rc::new(VecModel::from(vec![0.0; VECTORSCOPE_POINTS]));
         let vectorscope_y_model =
             std::rc::Rc::new(VecModel::from(vec![0.0; VECTORSCOPE_POINTS]));
+        let video_frame_cache = vec![None; NUM_TRACKS];
         ui.set_waveform(ModelRc::from(waveform_model.clone()));
         ui.set_oscilloscope(ModelRc::from(oscilloscope_model.clone()));
         ui.set_spectrum(ModelRc::from(spectrum_model.clone()));
@@ -6802,6 +7225,7 @@ impl SlintWindow {
             spectrum_model,
             vectorscope_x_model,
             vectorscope_y_model,
+            video_frame_cache,
             sample_dialog_rx,
             project_dialog_rx,
             sb_surface,
@@ -7211,6 +7635,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].kick_decay.load(Ordering::Relaxed));
         let kick_attack =
             f32::from_bits(self.tracks[track_idx].kick_attack.load(Ordering::Relaxed));
+        let kick_pitch_env_amount =
+            f32::from_bits(self.tracks[track_idx].kick_pitch_env_amount.load(Ordering::Relaxed));
         let kick_drive =
             f32::from_bits(self.tracks[track_idx].kick_drive.load(Ordering::Relaxed));
         let kick_level =
@@ -7221,6 +7647,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].kick_filter_cutoff.load(Ordering::Relaxed));
         let kick_filter_resonance =
             f32::from_bits(self.tracks[track_idx].kick_filter_resonance.load(Ordering::Relaxed));
+        let kick_filter_pre_drive =
+            self.tracks[track_idx].kick_filter_pre_drive.load(Ordering::Relaxed);
         let kick_sequencer_current_step =
             self.tracks[track_idx].kick_sequencer_step.load(Ordering::Relaxed);
         let mut kick_sequencer_grid = Vec::with_capacity(SYNDRM_STEPS);
@@ -7246,6 +7674,8 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].snare_filter_cutoff.load(Ordering::Relaxed));
         let snare_filter_resonance =
             f32::from_bits(self.tracks[track_idx].snare_filter_resonance.load(Ordering::Relaxed));
+        let snare_filter_pre_drive =
+            self.tracks[track_idx].snare_filter_pre_drive.load(Ordering::Relaxed);
         let snare_sequencer_current_step =
             self.tracks[track_idx].snare_sequencer_step.load(Ordering::Relaxed);
         let mut snare_sequencer_grid = Vec::with_capacity(SYNDRM_STEPS);
@@ -7327,6 +7757,60 @@ impl SlintWindow {
             vec![0.0; WAVEFORM_SUMMARY_SIZE]
         };
 
+        let mut tape_video_enabled = self.tracks[track_idx].video_enabled.load(Ordering::Relaxed);
+        let mut tape_video_frame = Image::default();
+        let mut tape_video_duration = duration_secs;
+        if tape_video_enabled {
+            if let Some(cache_guard) = self.tracks[track_idx].video_cache.try_lock() {
+                if let Some(cache) = cache_guard.as_ref() {
+                    if cache.frames.is_empty() || cache.width == 0 || cache.height == 0 {
+                        tape_video_enabled = false;
+                    } else {
+                        if let Some(last_frame) = cache.frames.last() {
+                            tape_video_duration = last_frame.timestamp.max(0.0);
+                        }
+                        let fps = f32::from_bits(
+                            self.tracks[track_idx].video_fps.load(Ordering::Relaxed),
+                        )
+                        .max(1.0);
+                        let time_secs = if sample_rate > 0 {
+                            (play_pos / sample_rate as f32).max(0.0)
+                        } else {
+                            0.0
+                        };
+                        let mut frame_idx = (time_secs * fps).floor() as usize;
+                        if frame_idx >= cache.frames.len() {
+                            frame_idx = cache.frames.len().saturating_sub(1);
+                        }
+
+                        let cache_id =
+                            self.tracks[track_idx].video_cache_id.load(Ordering::Relaxed);
+                        let mut used_cache = false;
+                        if let Some((cached_id, cached_idx, cached_image)) =
+                            &self.video_frame_cache[track_idx]
+                        {
+                            if *cached_id == cache_id && *cached_idx == frame_idx {
+                                tape_video_frame = cached_image.clone();
+                                used_cache = true;
+                            }
+                        }
+
+                        if !used_cache {
+                            let frame = &cache.frames[frame_idx];
+                            let image = image_from_rgba(cache.width, cache.height, &frame.data);
+                            tape_video_frame = image.clone();
+                            self.video_frame_cache[track_idx] =
+                                Some((cache_id, frame_idx, image));
+                        }
+                    }
+                } else {
+                    tape_video_enabled = false;
+                }
+            } else {
+                tape_video_enabled = false;
+            }
+        }
+
         let oscilloscope = if let Some(scope) = self.visualizer.oscilloscope.try_lock() {
             scope.clone()
         } else {
@@ -7360,6 +7844,9 @@ impl SlintWindow {
         self.ui.set_meter_right(meter_right);
         self.ui.set_track_meter_left(track_meter_left);
         self.ui.set_track_meter_right(track_meter_right);
+        self.ui.set_tape_video_enabled(tape_video_enabled);
+        self.ui.set_tape_video_duration(tape_video_duration);
+        self.ui.set_tape_video_frame(tape_video_frame);
         self.ui.set_tape_speed(tape_speed);
         self.ui.set_tape_tempo(tape_tempo);
         self.ui.set_tempo_label(SharedString::from(format!("{tape_tempo:.0} BPM")));
@@ -7544,11 +8031,13 @@ impl SlintWindow {
         self.ui.set_kick_pitch(kick_pitch);
         self.ui.set_kick_decay(kick_decay);
         self.ui.set_kick_attack(kick_attack);
+        self.ui.set_kick_pitch_env_amount(kick_pitch_env_amount);
         self.ui.set_kick_drive(kick_drive);
         self.ui.set_kick_level(kick_level);
         self.ui.set_kick_filter_type(kick_filter_type as i32);
         self.ui.set_kick_filter_cutoff(kick_filter_cutoff);
         self.ui.set_kick_filter_resonance(kick_filter_resonance);
+        self.ui.set_kick_filter_pre_drive(kick_filter_pre_drive);
         self.ui
             .set_kick_sequencer_current_step(kick_sequencer_current_step);
         self.ui
@@ -7564,6 +8053,7 @@ impl SlintWindow {
         self.ui.set_snare_filter_type(snare_filter_type as i32);
         self.ui.set_snare_filter_cutoff(snare_filter_cutoff);
         self.ui.set_snare_filter_resonance(snare_filter_resonance);
+        self.ui.set_snare_filter_pre_drive(snare_filter_pre_drive);
         self.ui
             .set_snare_sequencer_current_step(snare_sequencer_current_step);
         self.ui
@@ -8680,7 +9170,14 @@ fn initialize_ui(
         let sample_dialog_tx = sample_dialog_tx_load.clone();
         spawn_with_stack(move || {
             let path = rfd::FileDialog::new()
-                .add_filter("Audio", &["wav", "flac", "mp3", "ogg"])
+                .add_filter(
+                    "Media",
+                    &[
+                        "wav", "flac", "mp3", "ogg", "aif", "aiff", "m4a", "mp4", "mov", "mkv",
+                        "avi", "webm", "m4v",
+                    ],
+                )
+                .add_filter("All Files", &["*"])
                 .pick_file();
             let _ = sample_dialog_tx.send(SampleDialogAction::Load { track_idx, path });
         });
@@ -8722,6 +9219,16 @@ fn initialize_ui(
         if track_idx < NUM_TRACKS {
             let muted = tracks_mute[track_idx].is_muted.load(Ordering::Relaxed);
             tracks_mute[track_idx]
+                .is_muted
+                .store(!muted, Ordering::Relaxed);
+        }
+    });
+    let tracks_mute_for = Arc::clone(tracks);
+    ui.on_toggle_track_mute_for(move |track: i32| {
+        let track_idx = track.max(1) as usize - 1;
+        if track_idx < NUM_TRACKS {
+            let muted = tracks_mute_for[track_idx].is_muted.load(Ordering::Relaxed);
+            tracks_mute_for[track_idx]
                 .is_muted
                 .store(!muted, Ordering::Relaxed);
         }
@@ -9143,6 +9650,50 @@ fn initialize_ui(
         if track_idx < NUM_TRACKS {
             tracks_ring[track_idx]
                 .ring_detune
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_waves_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_waves
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_waves_rate_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_waves_rate
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_noise_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_noise
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_ring_noise_rate_changed(move |value| {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_ring[track_idx]
+                .ring_noise_rate
                 .store(value.to_bits(), Ordering::Relaxed);
         }
     });
@@ -10164,6 +10715,17 @@ fn initialize_ui(
 
     let tracks_kick = Arc::clone(tracks);
     let params_kick = Arc::clone(params);
+    ui.on_kick_pitch_env_amount_changed(move |value| {
+        let track_idx = params_kick.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_kick[track_idx]
+                .kick_pitch_env_amount
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_kick = Arc::clone(tracks);
+    let params_kick = Arc::clone(params);
     ui.on_kick_drive_changed(move |value| {
         let track_idx = params_kick.selected_track.value().saturating_sub(1) as usize;
         if track_idx < NUM_TRACKS {
@@ -10214,6 +10776,17 @@ fn initialize_ui(
             tracks_kick[track_idx]
                 .kick_filter_resonance
                 .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_kick = Arc::clone(tracks);
+    let params_kick = Arc::clone(params);
+    ui.on_kick_filter_pre_drive_changed(move |value| {
+        let track_idx = params_kick.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_kick[track_idx]
+                .kick_filter_pre_drive
+                .store(value, Ordering::Relaxed);
         }
     });
 
@@ -10326,6 +10899,17 @@ fn initialize_ui(
             tracks_snare[track_idx]
                 .snare_filter_resonance
                 .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_snare = Arc::clone(tracks);
+    let params_snare = Arc::clone(params);
+    ui.on_snare_filter_pre_drive_changed(move |value| {
+        let track_idx = params_snare.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_snare[track_idx]
+                .snare_filter_pre_drive
+                .store(value, Ordering::Relaxed);
         }
     });
 

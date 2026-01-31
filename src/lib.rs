@@ -7578,13 +7578,13 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     // Smoothing state should derive from targets on load, not persisted.
     track
         .void_filter_cutoff_smooth
-        .store(track.void_filter_cutoff.load(Ordering::Relaxed).to_bits(), Ordering::Relaxed);
+        .store(track.void_filter_cutoff.load(Ordering::Relaxed), Ordering::Relaxed);
     track
         .void_filter_resonance_smooth
-        .store(track.void_filter_resonance.load(Ordering::Relaxed).to_bits(), Ordering::Relaxed);
+        .store(track.void_filter_resonance.load(Ordering::Relaxed), Ordering::Relaxed);
     track
         .void_drive_smooth
-        .store(track.void_drive.load(Ordering::Relaxed).to_bits(), Ordering::Relaxed);
+        .store(track.void_drive.load(Ordering::Relaxed), Ordering::Relaxed);
 }
 
 struct VoidSeedDspState {

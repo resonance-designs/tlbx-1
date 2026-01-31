@@ -1120,6 +1120,7 @@ pub struct TLBX1 {
     syndrm_dsp: [SynDRMDspState; NUM_TRACKS],
     animate_dsp: [AnimateDspState; NUM_TRACKS],
     void_dsp: [VoidSeedDspState; NUM_TRACKS],
+    last_host_playing: bool,
 }
 
 struct SynDRMDspState {
@@ -1371,6 +1372,7 @@ impl Default for TLBX1 {
             syndrm_dsp: std::array::from_fn(|_| SynDRMDspState::new()),
             animate_dsp: std::array::from_fn(|_| AnimateDspState::new()),
             void_dsp: std::array::from_fn(|_| VoidSeedDspState::new()),
+            last_host_playing: false,
         }
     }
 }
@@ -5127,6 +5129,14 @@ impl Plugin for TLBX1 {
         _aux: &mut AuxiliaryBuffers,
         context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
+        let host_playing = context.transport().playing;
+        if self.last_host_playing && !host_playing {
+            for track in self.tracks.iter() {
+                track.void_enabled.store(false, Ordering::Relaxed);
+            }
+        }
+        self.last_host_playing = host_playing;
+
         let mut keep_alive = false;
         let mut global_tempo =
             f32::from_bits(self.global_tempo.load(Ordering::Relaxed)).clamp(20.0, 240.0);
@@ -9908,6 +9918,7 @@ fn initialize_ui(
                 track.is_playing.store(false, Ordering::Relaxed);
                 track.pending_play.store(false, Ordering::Relaxed);
                 track.count_in_remaining.store(0, Ordering::Relaxed);
+                track.void_enabled.store(false, Ordering::Relaxed);
             }
             return;
         }
@@ -12189,6 +12200,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_pitch[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12203,6 +12216,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_decay[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12217,6 +12232,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_attack[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12231,6 +12248,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_drive[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12245,6 +12264,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_level[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12259,6 +12280,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_filter_type[edit_step]
                     .store(index as u32, Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12273,6 +12296,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_filter_cutoff[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12287,6 +12312,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].kick_step_filter_resonance[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].kick_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12301,6 +12328,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_tone[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12315,6 +12344,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_decay[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12329,6 +12360,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_snappy[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12343,6 +12376,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_attack[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12357,6 +12392,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_drive[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12371,6 +12408,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_level[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12385,6 +12424,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_filter_type[edit_step]
                     .store(index as u32, Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12399,6 +12440,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_filter_cutoff[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });
@@ -12413,6 +12456,8 @@ fn initialize_ui(
             if edit_step < SYNDRM_STEPS {
                 tracks_syndrm[track_idx].snare_step_filter_resonance[edit_step]
                     .store(value.to_bits(), Ordering::Relaxed);
+                tracks_syndrm[track_idx].snare_step_override_enabled[edit_step]
+                    .store(true, Ordering::Relaxed);
             }
         }
     });

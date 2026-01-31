@@ -1,16 +1,19 @@
+import { Theme } from "../theme/index.slint";
 import {
     RDSHeaderLabel,
     RDSKnob,
     RDSSequencerCell,
     RDSComboBox,
     RDSCircleToggle,
-    RDSKeybed
+    RDSKeybed,
+    RDSXYPad
 } from "../components/index.slint";
 import { RDSKeybedBus } from "../globals.slint";
 import { GranulatorDevice } from "../devices/granulator_device.slint";
+import { SilkDevice } from "../devices/silk_device.slint";
 import { G8Device } from "../devices/g8_device.slint";
 
-export component AnimateEngine {
+export component AnimateEngine inherits Rectangle {
     in property <[string]> animate-slot-types;
     in-out property <int> animate-slot-a-type: 0;
     in-out property <int> animate-slot-b-type: 0;
@@ -71,6 +74,10 @@ export component AnimateEngine {
     in-out property <int> animate-slot-a-filter-type: 0;
     in-out property <float> animate-slot-a-filter-cutoff: 0.5;
     in-out property <float> animate-slot-a-filter-resonance: 0.0;
+    in-out property <float> animate-slot-a-attack: 0.01;
+    in-out property <float> animate-slot-a-decay: 0.1;
+    in-out property <float> animate-slot-a-sustain: 0.8;
+    in-out property <float> animate-slot-a-release: 0.3;
     in-out property <float> animate-slot-b-sample-start: 0.0;
     in-out property <float> animate-slot-b-loop-start: 0.0;
     in-out property <float> animate-slot-b-loop-end: 1.0;
@@ -160,6 +167,10 @@ export component AnimateEngine {
     callback animate-slot-a-filter-type-changed(index: int);
     callback animate-slot-a-filter-cutoff-changed(value: float);
     callback animate-slot-a-filter-resonance-changed(value: float);
+    callback animate-slot-a-attack-changed(value: float);
+    callback animate-slot-a-decay-changed(value: float);
+    callback animate-slot-a-sustain-changed(value: float);
+    callback animate-slot-a-release-changed(value: float);
     callback animate-slot-b-sample-start-changed(value: float);
     callback animate-slot-b-loop-start-changed(value: float);
     callback animate-slot-b-loop-end-changed(value: float);
@@ -184,6 +195,24 @@ export component AnimateEngine {
     in-out property <float> mosaic-rand-size: 0.0;
     in-out property <float> mosaic-sos: 0.0;
     in-out property <bool> mosaic-enabled: true;
+    in-out property <bool> mosaic-loop-lock: false;
+    in-out property <bool> ring-enabled: false;
+    in-out property <float> ring-cutoff: 0.5;
+    in-out property <float> ring-resonance: 0.0;
+    in-out property <float> ring-decay: 0.0;
+    in-out property <float> ring-pitch: 0.5;
+    in property <[string]> ring-decay-modes;
+    in-out property <int> ring-decay-mode: 0;
+    in-out property <float> ring-slope: 0.5;
+    in-out property <float> ring-tone: 0.5;
+    in-out property <float> ring-tilt: 0.5;
+    in-out property <float> ring-wet: 0.0;
+    in-out property <float> ring-detune: 0.0;
+    in-out property <float> ring-waves: 0.0;
+    in-out property <float> ring-waves-rate: 0.5;
+    in-out property <float> ring-noise: 0.0;
+    in-out property <float> ring-noise-rate: 0.5;
+    in-out property <bool> ring-pre-post: true;
     in-out property <bool> g8-enabled: true;
     in-out property <int> g8-rate-index: 0;
     in-out property <[float]> g8-steps: [
@@ -193,6 +222,7 @@ export component AnimateEngine {
         1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
     ];
     callback toggle-mosaic-enabled();
+    callback toggle-mosaic-loop-lock();
     callback mosaic-pitch-changed(value: float);
     callback mosaic-rate-changed(value: float);
     callback mosaic-size-changed(value: float);
@@ -206,6 +236,22 @@ export component AnimateEngine {
     callback mosaic-rand-rate-changed(value: float);
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
+    callback toggle-ring-enabled();
+    callback ring-cutoff-changed(value: float);
+    callback ring-resonance-changed(value: float);
+    callback ring-decay-changed(value: float);
+    callback ring-pitch-changed(value: float);
+    callback ring-decay-mode-selected(index: int);
+    callback ring-slope-changed(value: float);
+    callback ring-tone-changed(value: float);
+    callback ring-tilt-changed(value: float);
+    callback ring-wet-changed(value: float);
+    callback ring-detune-changed(value: float);
+    callback ring-waves-changed(value: float);
+    callback ring-waves-rate-changed(value: float);
+    callback ring-noise-changed(value: float);
+    callback ring-noise-rate-changed(value: float);
+    callback toggle-ring-pre-post();
     callback toggle-g8-enabled();
     callback g8-rate-selected(index: int);
     callback g8-step-changed(index: int, value: float);
@@ -228,983 +274,1656 @@ export component AnimateEngine {
 
     callback animate-sequencer-grid-toggled(row: int, step: int);
 
+    width: 1200px;
+    background: transparent;
+
+    // Engine Container
     VerticalLayout {
-        spacing: 12px;
-        width: parent.width;
+        spacing: 8px;
         padding: 12px;
+        width: parent.width;
 
-        HorizontalLayout {
-            spacing: 12px;
-            width: parent.width;
-
-            RDSHeaderLabel {
-                text: "Animate";
-                horizontal-alignment: left;
-                padding-horizontal: 12px;
-                padding-vertical: 6px;
-            }
-
+        // Engine Title
+        RDSHeaderLabel {
+            text: "Animate";
+            horizontal-alignment: left;
+            padding-horizontal: 12px;
+            padding-vertical: 6px;
+            right-padding: 12px;
             HorizontalLayout {
                 spacing: 6px;
-                Text { text: "Mute"; color: #b9b9bf; font-size: 11px; }
+                alignment: center;
                 RDSCircleToggle {
-                    active: root.track-muted;
+                    y: 2px;
+                    active: !root.track-muted;
+                    label: "Mute";
+                    label-active: "Live";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
                     clicked => root.toggle-track-mute();
                 }
             }
         }
 
-        HorizontalLayout {
-            spacing: 16px;
+        // Engine Controls
+        Rectangle {
+            background: #1e3a5f33;
+            border-width: 2px;
+            border-radius: 6px;
+            border-color: Theme.active.border-strong;
             width: parent.width;
-
-            // Slot controls
-            VerticalLayout {
+            height: engine-controls-content.preferred-height;
+            engine-controls-content := VerticalLayout {
+                padding: 12px;
                 spacing: 8px;
-                width: (parent.width - 200px);
 
-                // Slot A
                 HorizontalLayout {
-                    spacing: 8px;
+                    spacing: 16px;
                     width: parent.width;
-                    Text { text: "Slot A"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.animate-slot-types;
-                        current-index: root.animate-slot-a-type;
-                        selected => { root.animate-slot-a-type = self.current-index; root.animate-slot-a-type-changed(self.current-index); }
-                    }
-                    RDSComboBox {
-                        width: 150px;
-                        model: root.animate-slot-a-type == 0 ? root.animate-wavetables : root.animate-samples;
-                        current-index: root.animate-slot-a-type == 0 ? root.animate-slot-a-wavetable : root.animate-slot-a-sample;
-                        selected => {
-                            if (root.animate-slot-a-type == 0) {
-                                root.animate-slot-a-wavetable = self.current-index;
-                                root.animate-slot-a-wavetable-changed(self.current-index);
-                            } else {
-                                root.animate-slot-a-sample = self.current-index;
-                                root.animate-slot-a-sample-changed(self.current-index);
+
+                    // Slot controls
+                    VerticalLayout {
+                        spacing: 8px;
+                        width: (parent.width - 200px);
+
+                        // Slot A
+                        Rectangle {
+                            background: #121216;
+                            border-radius: 6px;
+                            border-color: #2a2a35;
+                            border-width: 2px;
+                            VerticalLayout {
+                                padding: 8px;
+                                spacing: 4px;
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Slot A";
+                                        color: #f6f1ff;
+                                        font-size: 13px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    RDSComboBox {
+                                        width: 100px;
+                                        model: root.animate-slot-types;
+                                        current-index: root.animate-slot-a-type;
+                                        selected => { root.animate-slot-a-type = self.current-index; root.animate-slot-a-type-changed(self.current-index); }
+                                    }
+                                    RDSComboBox {
+                                        width: 150px;
+                                        model: root.animate-slot-a-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                        current-index: root.animate-slot-a-type == 0 ? root.animate-slot-a-wavetable : root.animate-slot-a-sample;
+                                        selected => {
+                                            if (root.animate-slot-a-type == 0) {
+                                                root.animate-slot-a-wavetable = self.current-index;
+                                                root.animate-slot-a-wavetable-changed(self.current-index);
+                                            } else {
+                                                root.animate-slot-a-sample = self.current-index;
+                                                root.animate-slot-a-sample-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Level";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-level;
+                                            min-value: 0; max-value: 1;
+                                            size: 40px; indicator-position: 10px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => { root.animate-slot-a-level = v; root.animate-slot-a-level-changed(v); }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Pan";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-pan;
+                                            min-value: -1; max-value: 1;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-pan = v;
+                                                root.animate-slot-a-pan-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "CP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-coarse;
+                                            min-value: -24; max-value: 24;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.1; scroll-sensitivity: 0.1;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-coarse = v;
+                                                root.animate-slot-a-coarse-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "FP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-fine;
+                                            min-value: -100; max-value: 100;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.5; scroll-sensitivity: 0.5;
+                                            value-changed(v) => { root.animate-slot-a-fine = v; root.animate-slot-a-fine-changed(v); }
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-a-type == 0;
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "WT LFO";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-wt-lfo-amount;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-wt-lfo-amount = v;
+                                                root.animate-slot-a-wt-lfo-amount-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Start";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-sample-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-sample-start = v;
+                                                root.animate-slot-a-sample-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 0 : RDSComboBox {
+                                        visible: root.animate-slot-a-type == 0;
+                                        width: 120px;
+                                        model: root.animate-lfo-waveforms;
+                                        current-index: root.animate-slot-a-wt-lfo-shape;
+                                        selected => {
+                                            root.animate-slot-a-wt-lfo-shape = self.current-index;
+                                            root.animate-slot-a-wt-lfo-shape-changed(self.current-index);
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop S";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-loop-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-loop-start = v;
+                                                root.animate-slot-a-loop-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-a-type == 0;
+                                        spacing: 4px;
+                                        width: 28px;
+                                        Text {
+                                            text: "Sync";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSCircleToggle {
+                                            active: root.animate-slot-a-wt-lfo-sync;
+                                            clicked => {
+                                                root.animate-slot-a-wt-lfo-sync = !root.animate-slot-a-wt-lfo-sync;
+                                                root.animate-slot-a-wt-lfo-sync-changed(root.animate-slot-a-wt-lfo-sync);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 0 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Rate";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        if !root.animate-slot-a-wt-lfo-sync : RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-wt-lfo-rate;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                                            infinite-rotary: true;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-wt-lfo-rate = v;
+                                                root.animate-slot-a-wt-lfo-rate-changed(v);
+                                            }
+                                        }
+                                        if root.animate-slot-a-wt-lfo-sync : RDSComboBox {
+                                            width: 60px;
+                                            visible: root.animate-slot-a-wt-lfo-sync;
+                                            model: root.animate-lfo-divisions;
+                                            current-index: root.animate-slot-a-wt-lfo-division;
+                                            selected => {
+                                                root.animate-slot-a-wt-lfo-division = self.current-index;
+                                                root.animate-slot-a-wt-lfo-division-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-a-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop E";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-loop-end;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-loop-end = v;
+                                                root.animate-slot-a-loop-end-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Filter";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    RDSComboBox {
+                                        width: 90px;
+                                        model: root.animate-filter-types;
+                                        current-index: root.animate-slot-a-filter-type;
+                                        selected => {
+                                            root.animate-slot-a-filter-type = self.current-index;
+                                            root.animate-slot-a-filter-type-changed(self.current-index);
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Cut";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-filter-cutoff;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 28px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-filter-cutoff = v;
+                                                root.animate-slot-a-filter-cutoff-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Res";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-filter-resonance;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 28px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-filter-resonance = v;
+                                                root.animate-slot-a-filter-resonance-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "A";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-attack;
+                                            min-value: 0.0; max-value: 5.0;
+                                            size: 28px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-attack = v;
+                                                root.animate-slot-a-attack-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "D";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-decay;
+                                            min-value: 0.0; max-value: 10.0;
+                                            size: 28px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-decay = v;
+                                                root.animate-slot-a-decay-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "S";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-sustain;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 28px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-sustain = v;
+                                                root.animate-slot-a-sustain-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "R";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-a-release;
+                                            min-value: 0.0; max-value: 10.0;
+                                            size: 28px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-a-release = v;
+                                                root.animate-slot-a-release-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Slot B
+                        Rectangle {
+                            background: #121216;
+                            border-radius: 6px;
+                            border-color: #2a2a35;
+                            border-width: 2px;
+                            VerticalLayout {
+                                padding: 8px;
+                                spacing: 4px;
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Slot B";
+                                        color: #f6f1ff;
+                                        font-size: 13px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    RDSComboBox {
+                                        width: 100px;
+                                        model: root.animate-slot-types;
+                                        current-index: root.animate-slot-b-type;
+                                        selected => {
+                                            root.animate-slot-b-type = self.current-index;
+                                            root.animate-slot-b-type-changed(self.current-index);
+                                        }
+                                    }
+                                    RDSComboBox {
+                                        width: 150px;
+                                        model: root.animate-slot-b-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                        current-index: root.animate-slot-b-type == 0 ? root.animate-slot-b-wavetable : root.animate-slot-b-sample;
+                                        selected => {
+                                            if (root.animate-slot-b-type == 0) {
+                                                root.animate-slot-b-wavetable = self.current-index;
+                                                root.animate-slot-b-wavetable-changed(self.current-index);
+                                            } else {
+                                                root.animate-slot-b-sample = self.current-index;
+                                                root.animate-slot-b-sample-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Level";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-level;
+                                            min-value: 0; max-value: 1;
+                                            size: 40px; indicator-position: 10px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-level = v;
+                                                root.animate-slot-b-level-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Pan";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-pan;
+                                            min-value: -1; max-value: 1;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-pan = v;
+                                                root.animate-slot-b-pan-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "CP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-coarse;
+                                            min-value: -24; max-value: 24;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.1; scroll-sensitivity: 0.1;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-coarse = v;
+                                                root.animate-slot-b-coarse-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "FP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-fine;
+                                            min-value: -100; max-value: 100;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.5; scroll-sensitivity: 0.5;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-fine = v;
+                                                root.animate-slot-b-fine-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-b-type == 0;
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "WT LFO";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-wt-lfo-amount;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-wt-lfo-amount = v;
+                                                root.animate-slot-b-wt-lfo-amount-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 1 : VerticalLayout {
+                                        visible: root.animate-slot-b-type == 1;
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Start";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-sample-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-sample-start = v;
+                                                root.animate-slot-b-sample-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 0 : RDSComboBox {
+                                        visible: root.animate-slot-b-type == 0;
+                                        width: 120px;
+                                        model: root.animate-lfo-waveforms;
+                                        current-index: root.animate-slot-b-wt-lfo-shape;
+                                        selected => {
+                                            root.animate-slot-b-wt-lfo-shape = self.current-index;
+                                            root.animate-slot-b-wt-lfo-shape-changed(self.current-index);
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 1 : VerticalLayout {
+                                        visible: root.animate-slot-b-type == 1;
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop S";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-loop-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-loop-start = v;
+                                                root.animate-slot-b-loop-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-b-type == 0;
+                                        spacing: 4px;
+                                        width: 28px;
+                                        Text {
+                                            text: "Sync";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSCircleToggle {
+                                            active: root.animate-slot-b-wt-lfo-sync;
+                                            clicked => {
+                                                root.animate-slot-b-wt-lfo-sync = !root.animate-slot-b-wt-lfo-sync;
+                                                root.animate-slot-b-wt-lfo-sync-changed(root.animate-slot-b-wt-lfo-sync);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 0 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Rate";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        if !root.animate-slot-b-wt-lfo-sync : RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-wt-lfo-rate;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                                            infinite-rotary: true;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-wt-lfo-rate = v;
+                                                root.animate-slot-b-wt-lfo-rate-changed(v);
+                                            }
+                                        }
+                                        if root.animate-slot-b-wt-lfo-sync : RDSComboBox {
+                                            width: 60px;
+                                            visible: root.animate-slot-b-wt-lfo-sync;
+                                            model: root.animate-lfo-divisions;
+                                            current-index: root.animate-slot-b-wt-lfo-division;
+                                            selected => {
+                                                root.animate-slot-b-wt-lfo-division = self.current-index;
+                                                root.animate-slot-b-wt-lfo-division-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-b-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop E";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-b-loop-end;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-b-loop-end = v;
+                                                root.animate-slot-b-loop-end-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Filter";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Filter Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 70px;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Amp Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 60px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Slot C
+                        Rectangle {
+                            background: #121216;
+                            border-radius: 6px;
+                            border-color: #2a2a35;
+                            border-width: 2px;
+                            VerticalLayout {
+                                padding: 8px;
+                                spacing: 4px;
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text:
+                                        "Slot C";
+                                        color: #f6f1ff;
+                                        font-size: 13px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    RDSComboBox {
+                                        width: 100px;
+                                        model: root.animate-slot-types;
+                                        current-index: root.animate-slot-c-type;
+                                        selected => {
+                                            root.animate-slot-c-type = self.current-index;
+                                            root.animate-slot-c-type-changed(self.current-index);
+                                        }
+                                    }
+                                    RDSComboBox {
+                                        width: 150px;
+                                        model: root.animate-slot-c-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                        current-index: root.animate-slot-c-type == 0 ? root.animate-slot-c-wavetable : root.animate-slot-c-sample;
+                                        selected => {
+                                            if (root.animate-slot-c-type == 0) {
+                                                root.animate-slot-c-wavetable = self.current-index;
+                                                root.animate-slot-c-wavetable-changed(self.current-index);
+                                            } else {
+                                                root.animate-slot-c-sample = self.current-index;
+                                                root.animate-slot-c-sample-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Level";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-level;
+                                            min-value: 0; max-value: 1;
+                                            size: 40px; indicator-position: 10px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-level = v;
+                                                root.animate-slot-c-level-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Pan";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-pan;
+                                            min-value: -1; max-value: 1;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-pan = v;
+                                                root.animate-slot-c-pan-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "CP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-coarse;
+                                            min-value: -24; max-value: 24;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.1; scroll-sensitivity: 0.1;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-coarse = v;
+                                                root.animate-slot-c-coarse-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "FP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-fine;
+                                            min-value: -100; max-value: 100;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.5; scroll-sensitivity: 0.5;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-fine = v;
+                                                root.animate-slot-c-fine-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-c-type == 0;
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "WT LFO";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-wt-lfo-amount;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-wt-lfo-amount = v;
+                                                root.animate-slot-c-wt-lfo-amount-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Start";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-sample-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-sample-start = v;
+                                                root.animate-slot-c-sample-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 0 : RDSComboBox {
+                                        visible: root.animate-slot-c-type == 0;
+                                        width: 120px;
+                                        model: root.animate-lfo-waveforms;
+                                        current-index: root.animate-slot-c-wt-lfo-shape;
+                                        selected => {
+                                            root.animate-slot-c-wt-lfo-shape = self.current-index;
+                                            root.animate-slot-c-wt-lfo-shape-changed(self.current-index);
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop S";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-loop-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-loop-start = v;
+                                                root.animate-slot-c-loop-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-c-type == 0;
+                                        spacing: 4px;
+                                        width: 28px;
+                                        Text {
+                                            text: "Sync";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSCircleToggle {
+                                            active: root.animate-slot-c-wt-lfo-sync;
+                                            clicked => {
+                                                root.animate-slot-c-wt-lfo-sync = !root.animate-slot-c-wt-lfo-sync;
+                                                root.animate-slot-c-wt-lfo-sync-changed(root.animate-slot-c-wt-lfo-sync);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 0 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Rate";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        if !root.animate-slot-c-wt-lfo-sync : RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-wt-lfo-rate;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                                            infinite-rotary: true;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-wt-lfo-rate = v;
+                                                root.animate-slot-c-wt-lfo-rate-changed(v);
+                                            }
+                                        }
+                                        if root.animate-slot-c-wt-lfo-sync : RDSComboBox {
+                                            width: 60px;
+                                            visible: root.animate-slot-c-wt-lfo-sync;
+                                            model: root.animate-lfo-divisions;
+                                            current-index: root.animate-slot-c-wt-lfo-division;
+                                            selected => {
+                                                root.animate-slot-c-wt-lfo-division = self.current-index;
+                                                root.animate-slot-c-wt-lfo-division-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-c-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop E";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-c-loop-end;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-c-loop-end = v;
+                                                root.animate-slot-c-loop-end-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Filter";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Filter Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 70px;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Amp Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 60px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Slot D
+                        Rectangle {
+                            background: #121216;
+                            border-radius: 6px;
+                            border-color: #2a2a35;
+                            border-width: 2px;
+                            VerticalLayout {
+                                padding: 8px;
+                                spacing: 4px;
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Slot D";
+                                        color: #f6f1ff;
+                                        font-size: 13px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    RDSComboBox {
+                                        width: 100px;
+                                        model: root.animate-slot-types;
+                                        current-index: root.animate-slot-d-type;
+                                        selected => {
+                                            root.animate-slot-d-type = self.current-index;
+                                            root.animate-slot-d-type-changed(self.current-index);
+                                        }
+                                    }
+                                    RDSComboBox {
+                                        width: 150px;
+                                        model: root.animate-slot-d-type == 0 ? root.animate-wavetables : root.animate-samples;
+                                        current-index: root.animate-slot-d-type == 0 ? root.animate-slot-d-wavetable : root.animate-slot-d-sample;
+                                        selected => {
+                                            if (root.animate-slot-d-type == 0) {
+                                                root.animate-slot-d-wavetable = self.current-index;
+                                                root.animate-slot-d-wavetable-changed(self.current-index);
+                                            } else {
+                                                root.animate-slot-d-sample = self.current-index;
+                                                root.animate-slot-d-sample-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Level";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-level;
+                                            min-value: 0; max-value: 1;
+                                            size: 40px; indicator-position: 10px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-level = v;
+                                                root.animate-slot-d-level-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Pan";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-pan;
+                                            min-value: -1; max-value: 1;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-pan = v;
+                                                root.animate-slot-d-pan-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "CP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-coarse;
+                                            min-value: -24; max-value: 24;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.1; scroll-sensitivity: 0.1;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-coarse = v;
+                                                root.animate-slot-d-coarse-changed(v);
+                                            }
+                                        }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "FP";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-fine;
+                                            min-value: -100; max-value: 100;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.5; scroll-sensitivity: 0.5;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-fine = v;
+                                                root.animate-slot-d-fine-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-d-type == 0;
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "WT LFO";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-wt-lfo-amount;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-wt-lfo-amount = v;
+                                                root.animate-slot-d-wt-lfo-amount-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Start";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-sample-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-sample-start = v;
+                                                root.animate-slot-d-sample-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 0 : RDSComboBox {
+                                        visible: root.animate-slot-d-type == 0;
+                                        width: 120px;
+                                        model: root.animate-lfo-waveforms;
+                                        current-index: root.animate-slot-d-wt-lfo-shape;
+                                        selected => {
+                                            root.animate-slot-d-wt-lfo-shape = self.current-index;
+                                            root.animate-slot-d-wt-lfo-shape-changed(self.current-index);
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop S";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-loop-start;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-loop-start = v;
+                                                root.animate-slot-d-loop-start-changed(v);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 0 : VerticalLayout {
+                                        visible: root.animate-slot-d-type == 0;
+                                        spacing: 4px;
+                                        width: 28px;
+                                        Text {
+                                            text: "Sync";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSCircleToggle {
+                                            active: root.animate-slot-d-wt-lfo-sync;
+                                            clicked => {
+                                                root.animate-slot-d-wt-lfo-sync = !root.animate-slot-d-wt-lfo-sync;
+                                                root.animate-slot-d-wt-lfo-sync-changed(root.animate-slot-d-wt-lfo-sync);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 0 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Rate";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        if !root.animate-slot-d-wt-lfo-sync : RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-wt-lfo-rate;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.001; scroll-sensitivity: 0.001;
+                                            infinite-rotary: true;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-wt-lfo-rate = v;
+                                                root.animate-slot-d-wt-lfo-rate-changed(v);
+                                            }
+                                        }
+                                        if root.animate-slot-d-wt-lfo-sync : RDSComboBox {
+                                            width: 60px;
+                                            visible: root.animate-slot-d-wt-lfo-sync;
+                                            model: root.animate-lfo-divisions;
+                                            current-index: root.animate-slot-d-wt-lfo-division;
+                                            selected => {
+                                                root.animate-slot-d-wt-lfo-division = self.current-index;
+                                                root.animate-slot-d-wt-lfo-division-changed(self.current-index);
+                                            }
+                                        }
+                                    }
+                                    if root.animate-slot-d-type == 1 : VerticalLayout {
+                                        spacing: 4px;
+                                        width: 40px;
+                                        Text {
+                                            text: "Loop E";
+                                            color: #b9b9bf;
+                                            font-size: 11px;
+                                            horizontal-alignment: center;
+                                        }
+                                        RDSKnob {
+                                            renderer: "lo-fi";
+                                            value: root.animate-slot-d-loop-end;
+                                            min-value: 0.0; max-value: 1.0;
+                                            size: 40px; indicator-position: 8px;
+                                            sensitivity: 0.005; scroll-sensitivity: 0.005;
+                                            value-changed(v) => {
+                                                root.animate-slot-d-loop-end = v;
+                                                root.animate-slot-d-loop-end-changed(v);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "Filter";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 50px;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Filter Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 70px;
+                                        vertical-alignment: center;
+                                    }
+                                    Text {
+                                        text: "Amp Env";
+                                        color: #b9b9bf;
+                                        font-size: 11px;
+                                        width: 60px;
+                                        vertical-alignment: center;
+                                    }
+                                }
                             }
                         }
                     }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-level;
-                            min-value: 0; max-value: 1;
-                            size: 40px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-a-level = v; root.animate-slot-a-level-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Pan"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-pan;
-                            min-value: -1; max-value: 1;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-a-pan = v; root.animate-slot-a-pan-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "CP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-coarse;
-                            min-value: -24; max-value: 24;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.1; scroll-sensitivity: 0.1;
-                            value-changed(v) => { root.animate-slot-a-coarse = v; root.animate-slot-a-coarse-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "FP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-fine;
-                            min-value: -100; max-value: 100;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.5; scroll-sensitivity: 0.5;
-                            value-changed(v) => { root.animate-slot-a-fine = v; root.animate-slot-a-fine-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-a-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-a-type == 0;
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-wt-lfo-amount;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-a-wt-lfo-amount = v; root.animate-slot-a-wt-lfo-amount-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-a-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-sample-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-a-sample-start = v; root.animate-slot-a-sample-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-a-type == 0 : RDSComboBox {
-                        visible: root.animate-slot-a-type == 0;
-                        width: 120px;
-                        model: root.animate-lfo-waveforms;
-                        current-index: root.animate-slot-a-wt-lfo-shape;
-                        selected => { root.animate-slot-a-wt-lfo-shape = self.current-index; root.animate-slot-a-wt-lfo-shape-changed(self.current-index); }
-                    }
-                    if root.animate-slot-a-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-loop-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-a-loop-start = v; root.animate-slot-a-loop-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-a-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-a-type == 0;
-                        spacing: 4px;
-                        width: 28px;
-                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSCircleToggle {
-                            active: root.animate-slot-a-wt-lfo-sync;
-                            clicked => { root.animate-slot-a-wt-lfo-sync = !root.animate-slot-a-wt-lfo-sync; root.animate-slot-a-wt-lfo-sync-changed(root.animate-slot-a-wt-lfo-sync); }
-                        }
-                    }
-                    if root.animate-slot-a-type == 0 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        if !root.animate-slot-a-wt-lfo-sync : RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-wt-lfo-rate;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.001; scroll-sensitivity: 0.001;
-                            infinite-rotary: true;
-                            value-changed(v) => { root.animate-slot-a-wt-lfo-rate = v; root.animate-slot-a-wt-lfo-rate-changed(v); }
-                        }
-                        if root.animate-slot-a-wt-lfo-sync : RDSComboBox {
-                            width: 60px;
-                            visible: root.animate-slot-a-wt-lfo-sync;
-                            model: root.animate-lfo-divisions;
-                            current-index: root.animate-slot-a-wt-lfo-division;
-                            selected => { root.animate-slot-a-wt-lfo-division = self.current-index; root.animate-slot-a-wt-lfo-division-changed(self.current-index); }
-                        }
-                    }
-                    if root.animate-slot-a-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-loop-end;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-a-loop-end = v; root.animate-slot-a-loop-end-changed(v); }
-                        }
-                    }
                 }
 
-                HorizontalLayout {
-                    spacing: 8px;
-                    Text { text: "Filter"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
-                    RDSComboBox {
-                        width: 90px;
-                        model: root.animate-filter-types;
-                        current-index: root.animate-slot-a-filter-type;
-                        selected => {
-                            root.animate-slot-a-filter-type = self.current-index;
-                            root.animate-slot-a-filter-type-changed(self.current-index);
-                        }
+                // Vector XY pad
+                RDSXYPad {
+                    width: 160px;
+                    height: 160px;
+                    value-x: root.animate-vector-x;
+                    value-y: root.animate-vector-y;
+                    pad-background: #121216;
+                    pad-border-color: #2a2a35;
+                    grid-color: Theme.active.border_subtle;
+                    handle-color: #c53bff;
+                    glow-color: Theme.active.accent_secondary;
+                    handle-size: 12px;
+                    border-radius: 6px;
+                    grid-lines: 4;
+                    value-x-changed(value) => {
+                        root.animate-vector-x = value;
+                        root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
                     }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Cut"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-filter-cutoff;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => {
-                                root.animate-slot-a-filter-cutoff = v;
-                                root.animate-slot-a-filter-cutoff-changed(v);
-                            }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Res"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-a-filter-resonance;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => {
-                                root.animate-slot-a-filter-resonance = v;
-                                root.animate-slot-a-filter-resonance-changed(v);
-                            }
-                        }
+                    value-y-changed(value) => {
+                        root.animate-vector-y = value;
+                        root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
                     }
                 }
-
-                // Slot B
-                HorizontalLayout {
-                    spacing: 8px;
-                    width: parent.width;
-                    Text { text: "Slot B"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.animate-slot-types;
-                        current-index: root.animate-slot-b-type;
-                        selected => { root.animate-slot-b-type = self.current-index; root.animate-slot-b-type-changed(self.current-index); }
-                    }
-                    RDSComboBox {
-                        width: 150px;
-                        model: root.animate-slot-b-type == 0 ? root.animate-wavetables : root.animate-samples;
-                        current-index: root.animate-slot-b-type == 0 ? root.animate-slot-b-wavetable : root.animate-slot-b-sample;
-                        selected => {
-                            if (root.animate-slot-b-type == 0) {
-                                root.animate-slot-b-wavetable = self.current-index;
-                                root.animate-slot-b-wavetable-changed(self.current-index);
-                            } else {
-                                root.animate-slot-b-sample = self.current-index;
-                                root.animate-slot-b-sample-changed(self.current-index);
-                            }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-level;
-                            min-value: 0; max-value: 1;
-                            size: 40px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-b-level = v; root.animate-slot-b-level-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Pan"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-pan;
-                            min-value: -1; max-value: 1;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-b-pan = v; root.animate-slot-b-pan-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "CP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-coarse;
-                            min-value: -24; max-value: 24;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.1; scroll-sensitivity: 0.1;
-                            value-changed(v) => { root.animate-slot-b-coarse = v; root.animate-slot-b-coarse-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "FP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-fine;
-                            min-value: -100; max-value: 100;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.5; scroll-sensitivity: 0.5;
-                            value-changed(v) => { root.animate-slot-b-fine = v; root.animate-slot-b-fine-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-b-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-b-type == 0;
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-wt-lfo-amount;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-b-wt-lfo-amount = v; root.animate-slot-b-wt-lfo-amount-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-b-type == 1 : VerticalLayout {
-                        visible: root.animate-slot-b-type == 1;
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-sample-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-b-sample-start = v; root.animate-slot-b-sample-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-b-type == 0 : RDSComboBox {
-                        visible: root.animate-slot-b-type == 0;
-                        width: 120px;
-                        model: root.animate-lfo-waveforms;
-                        current-index: root.animate-slot-b-wt-lfo-shape;
-                        selected => { root.animate-slot-b-wt-lfo-shape = self.current-index; root.animate-slot-b-wt-lfo-shape-changed(self.current-index); }
-                    }
-                    if root.animate-slot-b-type == 1 : VerticalLayout {
-                        visible: root.animate-slot-b-type == 1;
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-loop-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-b-loop-start = v; root.animate-slot-b-loop-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-b-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-b-type == 0;
-                        spacing: 4px;
-                        width: 28px;
-                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSCircleToggle {
-                            active: root.animate-slot-b-wt-lfo-sync;
-                            clicked => { root.animate-slot-b-wt-lfo-sync = !root.animate-slot-b-wt-lfo-sync; root.animate-slot-b-wt-lfo-sync-changed(root.animate-slot-b-wt-lfo-sync); }
-                        }
-                    }
-                    if root.animate-slot-b-type == 0 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        if !root.animate-slot-b-wt-lfo-sync : RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-wt-lfo-rate;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.001; scroll-sensitivity: 0.001;
-                            infinite-rotary: true;
-                            value-changed(v) => { root.animate-slot-b-wt-lfo-rate = v; root.animate-slot-b-wt-lfo-rate-changed(v); }
-                        }
-                        if root.animate-slot-b-wt-lfo-sync : RDSComboBox {
-                            width: 60px;
-                            visible: root.animate-slot-b-wt-lfo-sync;
-                            model: root.animate-lfo-divisions;
-                            current-index: root.animate-slot-b-wt-lfo-division;
-                            selected => { root.animate-slot-b-wt-lfo-division = self.current-index; root.animate-slot-b-wt-lfo-division-changed(self.current-index); }
-                        }
-                    }
-                    if root.animate-slot-b-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-b-loop-end;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-b-loop-end = v; root.animate-slot-b-loop-end-changed(v); }
-                        }
-                    }
-                }
-
-                HorizontalLayout {
-                    spacing: 8px;
-                    Text { text: "Filter"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
-                    Text { text: "Filter Env"; color: #b9b9bf; font-size: 11px; width: 70px; vertical-alignment: center; }
-                    Text { text: "Amp Env"; color: #b9b9bf; font-size: 11px; width: 60px; vertical-alignment: center; }
-                }
-
-                // Slot C
-                HorizontalLayout {
-                    spacing: 8px;
-                    width: parent.width;
-                    Text { text: "Slot C"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.animate-slot-types;
-                        current-index: root.animate-slot-c-type;
-                        selected => { root.animate-slot-c-type = self.current-index; root.animate-slot-c-type-changed(self.current-index); }
-                    }
-                    RDSComboBox {
-                        width: 150px;
-                        model: root.animate-slot-c-type == 0 ? root.animate-wavetables : root.animate-samples;
-                        current-index: root.animate-slot-c-type == 0 ? root.animate-slot-c-wavetable : root.animate-slot-c-sample;
-                        selected => {
-                            if (root.animate-slot-c-type == 0) {
-                                root.animate-slot-c-wavetable = self.current-index;
-                                root.animate-slot-c-wavetable-changed(self.current-index);
-                            } else {
-                                root.animate-slot-c-sample = self.current-index;
-                                root.animate-slot-c-sample-changed(self.current-index);
-                            }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-level;
-                            min-value: 0; max-value: 1;
-                            size: 40px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-c-level = v; root.animate-slot-c-level-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Pan"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-pan;
-                            min-value: -1; max-value: 1;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-c-pan = v; root.animate-slot-c-pan-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "CP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-coarse;
-                            min-value: -24; max-value: 24;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.1; scroll-sensitivity: 0.1;
-                            value-changed(v) => { root.animate-slot-c-coarse = v; root.animate-slot-c-coarse-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "FP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-fine;
-                            min-value: -100; max-value: 100;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.5; scroll-sensitivity: 0.5;
-                            value-changed(v) => { root.animate-slot-c-fine = v; root.animate-slot-c-fine-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-c-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-c-type == 0;
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-wt-lfo-amount;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-c-wt-lfo-amount = v; root.animate-slot-c-wt-lfo-amount-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-c-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-sample-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-c-sample-start = v; root.animate-slot-c-sample-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-c-type == 0 : RDSComboBox {
-                        visible: root.animate-slot-c-type == 0;
-                        width: 120px;
-                        model: root.animate-lfo-waveforms;
-                        current-index: root.animate-slot-c-wt-lfo-shape;
-                        selected => { root.animate-slot-c-wt-lfo-shape = self.current-index; root.animate-slot-c-wt-lfo-shape-changed(self.current-index); }
-                    }
-                    if root.animate-slot-c-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-loop-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-c-loop-start = v; root.animate-slot-c-loop-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-c-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-c-type == 0;
-                        spacing: 4px;
-                        width: 28px;
-                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSCircleToggle {
-                            active: root.animate-slot-c-wt-lfo-sync;
-                            clicked => { root.animate-slot-c-wt-lfo-sync = !root.animate-slot-c-wt-lfo-sync; root.animate-slot-c-wt-lfo-sync-changed(root.animate-slot-c-wt-lfo-sync); }
-                        }
-                    }
-                    if root.animate-slot-c-type == 0 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        if !root.animate-slot-c-wt-lfo-sync : RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-wt-lfo-rate;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.001; scroll-sensitivity: 0.001;
-                            infinite-rotary: true;
-                            value-changed(v) => { root.animate-slot-c-wt-lfo-rate = v; root.animate-slot-c-wt-lfo-rate-changed(v); }
-                        }
-                        if root.animate-slot-c-wt-lfo-sync : RDSComboBox {
-                            width: 60px;
-                            visible: root.animate-slot-c-wt-lfo-sync;
-                            model: root.animate-lfo-divisions;
-                            current-index: root.animate-slot-c-wt-lfo-division;
-                            selected => { root.animate-slot-c-wt-lfo-division = self.current-index; root.animate-slot-c-wt-lfo-division-changed(self.current-index); }
-                        }
-                    }
-                    if root.animate-slot-c-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-c-loop-end;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-c-loop-end = v; root.animate-slot-c-loop-end-changed(v); }
-                        }
-                    }
-                }
-
-                HorizontalLayout {
-                    spacing: 8px;
-                    Text { text: "Filter"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
-                    Text { text: "Filter Env"; color: #b9b9bf; font-size: 11px; width: 70px; vertical-alignment: center; }
-                    Text { text: "Amp Env"; color: #b9b9bf; font-size: 11px; width: 60px; vertical-alignment: center; }
-                }
-
-                // Slot D
-                HorizontalLayout {
-                    spacing: 8px;
-                    width: parent.width;
-                    Text { text: "Slot D"; color: #f6f1ff; font-size: 13px; width: 50px; vertical-alignment: center; }
-                    RDSComboBox {
-                        width: 100px;
-                        model: root.animate-slot-types;
-                        current-index: root.animate-slot-d-type;
-                        selected => { root.animate-slot-d-type = self.current-index; root.animate-slot-d-type-changed(self.current-index); }
-                    }
-                    RDSComboBox {
-                        width: 150px;
-                        model: root.animate-slot-d-type == 0 ? root.animate-wavetables : root.animate-samples;
-                        current-index: root.animate-slot-d-type == 0 ? root.animate-slot-d-wavetable : root.animate-slot-d-sample;
-                        selected => {
-                            if (root.animate-slot-d-type == 0) {
-                                root.animate-slot-d-wavetable = self.current-index;
-                                root.animate-slot-d-wavetable-changed(self.current-index);
-                            } else {
-                                root.animate-slot-d-sample = self.current-index;
-                                root.animate-slot-d-sample-changed(self.current-index);
-                            }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Level"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-level;
-                            min-value: 0; max-value: 1;
-                            size: 40px; indicator-position: 10px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-d-level = v; root.animate-slot-d-level-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Pan"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-pan;
-                            min-value: -1; max-value: 1;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-d-pan = v; root.animate-slot-d-pan-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "CP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-coarse;
-                            min-value: -24; max-value: 24;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.1; scroll-sensitivity: 0.1;
-                            value-changed(v) => { root.animate-slot-d-coarse = v; root.animate-slot-d-coarse-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "FP"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-fine;
-                            min-value: -100; max-value: 100;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.5; scroll-sensitivity: 0.5;
-                            value-changed(v) => { root.animate-slot-d-fine = v; root.animate-slot-d-fine-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-d-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-d-type == 0;
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "WT LFO"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-wt-lfo-amount;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-slot-d-wt-lfo-amount = v; root.animate-slot-d-wt-lfo-amount-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-d-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Start"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-sample-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-d-sample-start = v; root.animate-slot-d-sample-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-d-type == 0 : RDSComboBox {
-                        visible: root.animate-slot-d-type == 0;
-                        width: 120px;
-                        model: root.animate-lfo-waveforms;
-                        current-index: root.animate-slot-d-wt-lfo-shape;
-                        selected => { root.animate-slot-d-wt-lfo-shape = self.current-index; root.animate-slot-d-wt-lfo-shape-changed(self.current-index); }
-                    }
-                    if root.animate-slot-d-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop S"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-loop-start;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-d-loop-start = v; root.animate-slot-d-loop-start-changed(v); }
-                        }
-                    }
-                    if root.animate-slot-d-type == 0 : VerticalLayout {
-                        visible: root.animate-slot-d-type == 0;
-                        spacing: 4px;
-                        width: 28px;
-                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSCircleToggle {
-                            active: root.animate-slot-d-wt-lfo-sync;
-                            clicked => { root.animate-slot-d-wt-lfo-sync = !root.animate-slot-d-wt-lfo-sync; root.animate-slot-d-wt-lfo-sync-changed(root.animate-slot-d-wt-lfo-sync); }
-                        }
-                    }
-                    if root.animate-slot-d-type == 0 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        if !root.animate-slot-d-wt-lfo-sync : RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-wt-lfo-rate;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.001; scroll-sensitivity: 0.001;
-                            infinite-rotary: true;
-                            value-changed(v) => { root.animate-slot-d-wt-lfo-rate = v; root.animate-slot-d-wt-lfo-rate-changed(v); }
-                        }
-                        if root.animate-slot-d-wt-lfo-sync : RDSComboBox {
-                            width: 60px;
-                            visible: root.animate-slot-d-wt-lfo-sync;
-                            model: root.animate-lfo-divisions;
-                            current-index: root.animate-slot-d-wt-lfo-division;
-                            selected => { root.animate-slot-d-wt-lfo-division = self.current-index; root.animate-slot-d-wt-lfo-division-changed(self.current-index); }
-                        }
-                    }
-                    if root.animate-slot-d-type == 1 : VerticalLayout {
-                        spacing: 4px;
-                        width: 40px;
-                        Text { text: "Loop E"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-slot-d-loop-end;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 40px; indicator-position: 8px;
-                            sensitivity: 0.005; scroll-sensitivity: 0.005;
-                            value-changed(v) => { root.animate-slot-d-loop-end = v; root.animate-slot-d-loop-end-changed(v); }
-                        }
-                    }
-                }
-
-                HorizontalLayout {
-                    spacing: 8px;
-                    Text { text: "Filter"; color: #b9b9bf; font-size: 11px; width: 50px; vertical-alignment: center; }
-                    Text { text: "Filter Env"; color: #b9b9bf; font-size: 11px; width: 70px; vertical-alignment: center; }
-                    Text { text: "Amp Env"; color: #b9b9bf; font-size: 11px; width: 60px; vertical-alignment: center; }
-                }
-            }
-
-            // Vector XY pad
-            Rectangle {
-                width: 160px;
-                height: 160px;
-                background: #1a1a22;
-                border-radius: 4px;
-                border-color: #3a3a45;
-                border-width: 1px;
 
                 Rectangle {
-                    width: 12px; height: 12px;
-                    background: #c53bff;
+                    width: parent.width;
+                    background: #121216;
                     border-radius: 6px;
-                    x: root.animate-vector-x * (parent.width - 12px);
-                    y: (1.0 - root.animate-vector-y) * (parent.height - 12px);
-                }
+                    border-color: #2a2a35;
+                    border-width: 2px;
+                    HorizontalLayout {
+                        padding: 12px;
+                        spacing: 16px;
 
-                TouchArea {
-                    moved => {
-                        root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
-                        root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
-                        root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
+                        VerticalLayout {
+                            spacing: 6px;
+                            width: (parent.width - 16px) / 2;
+                            Text {
+                                text: "Vector LFO X";
+                                color: #e4e4ea;
+                                font-size: 13px;
+                            }
+                        RDSComboBox {
+                            width: parent.width;
+                            model: root.animate-lfo-waveforms;
+                            current-index: root.animate-lfo-x-waveform;
+                            selected => {
+                                root.animate-lfo-x-waveform = self.current-index;
+                                root.animate-lfo-x-waveform-changed(self.current-index);
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text {
+                                    text: "Sync";
+                                    color: #b9b9bf;
+                                    font-size: 11px;
+                                }
+                                RDSCircleToggle {
+                                    active: root.animate-lfo-x-sync;
+                                    clicked => {
+                                        root.animate-lfo-x-sync = !root.animate-lfo-x-sync;
+                                        root.animate-lfo-x-sync-changed(root.animate-lfo-x-sync);
+                                    }
+                                }
+                            }
+                            RDSComboBox {
+                                width: parent.width - 60px;
+                                visible: root.animate-lfo-x-sync;
+                                model: root.animate-lfo-divisions;
+                                current-index: root.animate-lfo-x-division;
+                                selected => {
+                                    root.animate-lfo-x-division = self.current-index;
+                                    root.animate-lfo-x-division-changed(self.current-index);
+                                }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                visible: !root.animate-lfo-x-sync;
+                                Text {
+                                    text: "Rate";
+                                    color: #b9b9bf;
+                                    font-size: 11px;
+                                    horizontal-alignment: center;
+                                }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.animate-lfo-x-rate;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 28px; indicator-position: 8px;
+                                    sensitivity: 0.001; scroll-sensitivity: 0.001;
+                                    infinite-rotary: true;
+                                    value-changed(v) => {
+                                        root.animate-lfo-x-rate = v;
+                                        root.animate-lfo-x-rate-changed(v);
+                                    }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text {
+                                    text: "Amt";
+                                    color: #b9b9bf;
+                                    font-size: 11px;
+                                    horizontal-alignment: center;
+                                }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.animate-lfo-x-amount;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 28px; indicator-position: 8px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => {
+                                        root.animate-lfo-x-amount = v;
+                                        root.animate-lfo-x-amount-changed(v);
+                                    }
+                                }
+                            }
+                        }
                     }
-                    clicked => {
-                        root.animate-vector-x = Math.max(0.0, Math.min(1.0, self.mouse-x / parent.width));
-                        root.animate-vector-y = 1.0 - Math.max(0.0, Math.min(1.0, self.mouse-y / parent.height));
-                        root.animate-vector-changed(root.animate-vector-x, root.animate-vector-y);
+
+                        VerticalLayout {
+                            spacing: 6px;
+                            width: (parent.width - 16px) / 2;
+                            Text {
+                                text: "Vector LFO Y";
+                                color: #e4e4ea;
+                                font-size: 13px;
+                            }
+                        RDSComboBox {
+                            width: parent.width;
+                            model: root.animate-lfo-waveforms;
+                            current-index: root.animate-lfo-y-waveform;
+                            selected => {
+                                root.animate-lfo-y-waveform = self.current-index;
+                                root.animate-lfo-y-waveform-changed(self.current-index);
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 6px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                Text {
+                                    text: "Sync";
+                                    color: #b9b9bf;
+                                    font-size: 11px;
+                                }
+                                RDSCircleToggle {
+                                    active: root.animate-lfo-y-sync;
+                                    clicked => {
+                                        root.animate-lfo-y-sync = !root.animate-lfo-y-sync;
+                                        root.animate-lfo-y-sync-changed(root.animate-lfo-y-sync);
+                                    }
+                                }
+                            }
+                            RDSComboBox {
+                                width: parent.width - 60px;
+                                visible: root.animate-lfo-y-sync;
+                                model: root.animate-lfo-divisions;
+                                current-index: root.animate-lfo-y-division;
+                                selected => {
+                                    root.animate-lfo-y-division = self.current-index;
+                                    root.animate-lfo-y-division-changed(self.current-index);
+                                }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                visible: !root.animate-lfo-y-sync;
+                                Text {
+                                    text: "Rate";
+                                    color: #b9b9bf;
+                                    font-size: 11px;
+                                    horizontal-alignment: center;
+                                }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.animate-lfo-y-rate;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 28px; indicator-position: 8px;
+                                    sensitivity: 0.001; scroll-sensitivity: 0.001;
+                                    infinite-rotary: true;
+                                    value-changed(v) => {
+                                        root.animate-lfo-y-rate = v;
+                                        root.animate-lfo-y-rate-changed(v);
+                                    }
+                                }
+                            }
+                            VerticalLayout {
+                                spacing: 4px;
+                                width: 50px;
+                                Text {
+                                    text: "Amt";
+                                    color: #b9b9bf;
+                                    font-size: 11px;
+                                    horizontal-alignment: center;
+                                }
+                                RDSKnob {
+                                    renderer: "lo-fi";
+                                    value: root.animate-lfo-y-amount;
+                                    min-value: 0.0; max-value: 1.0;
+                                    size: 28px; indicator-position: 8px;
+                                    sensitivity: 0.01; scroll-sensitivity: 0.01;
+                                    value-changed(v) => {
+                                        root.animate-lfo-y-amount = v;
+                                        root.animate-lfo-y-amount-changed(v);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        HorizontalLayout {
-            spacing: 16px;
-            width: parent.width;
-
-            VerticalLayout {
-                spacing: 6px;
-                width: (parent.width - 16px) / 2;
-                Text { text: "Vector LFO X"; color: #e4e4ea; font-size: 13px; }
-                RDSComboBox {
+                Rectangle {
                     width: parent.width;
-                    model: root.animate-lfo-waveforms;
-                    current-index: root.animate-lfo-x-waveform;
-                    selected => { root.animate-lfo-x-waveform = self.current-index; root.animate-lfo-x-waveform-changed(self.current-index); }
-                }
-                HorizontalLayout {
-                    spacing: 6px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; }
-                        RDSCircleToggle {
-                            active: root.animate-lfo-x-sync;
-                            clicked => { root.animate-lfo-x-sync = !root.animate-lfo-x-sync; root.animate-lfo-x-sync-changed(root.animate-lfo-x-sync); }
-                        }
-                    }
-                    RDSComboBox {
-                        width: parent.width - 60px;
-                        visible: root.animate-lfo-x-sync;
-                        model: root.animate-lfo-divisions;
-                        current-index: root.animate-lfo-x-division;
-                        selected => { root.animate-lfo-x-division = self.current-index; root.animate-lfo-x-division-changed(self.current-index); }
-                    }
-                }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        visible: !root.animate-lfo-x-sync;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-lfo-x-rate;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.001; scroll-sensitivity: 0.001;
-                            infinite-rotary: true;
-                            value-changed(v) => { root.animate-lfo-x-rate = v; root.animate-lfo-x-rate-changed(v); }
-                        }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Amt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-lfo-x-amount;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-lfo-x-amount = v; root.animate-lfo-x-amount-changed(v); }
-                        }
-                    }
-                }
-            }
+                    background: #121216;
+                    border-radius: 6px;
+                    border-color: #2a2a35;
+                    border-width: 2px;
+                    HorizontalLayout {
+                        padding: 12px;
+                        spacing: 16px;
 
-            VerticalLayout {
-                spacing: 6px;
-                width: (parent.width - 16px) / 2;
-                Text { text: "Vector LFO Y"; color: #e4e4ea; font-size: 13px; }
-                RDSComboBox {
-                    width: parent.width;
-                    model: root.animate-lfo-waveforms;
-                    current-index: root.animate-lfo-y-waveform;
-                    selected => { root.animate-lfo-y-waveform = self.current-index; root.animate-lfo-y-waveform-changed(self.current-index); }
-                }
-                HorizontalLayout {
-                    spacing: 6px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        Text { text: "Sync"; color: #b9b9bf; font-size: 11px; }
-                        RDSCircleToggle {
-                            active: root.animate-lfo-y-sync;
-                            clicked => { root.animate-lfo-y-sync = !root.animate-lfo-y-sync; root.animate-lfo-y-sync-changed(root.animate-lfo-y-sync); }
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Sequencer"; color: #e4e4ea; font-size: 14px; }
+                            for r in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : HorizontalLayout {
+                                spacing: 2px;
+                                for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
+                                    active: root.animate-sequencer-grid[r * 16 + s];
+                                    current: s == root.animate-sequencer-current-step;
+                                    clicked => { root.animate-sequencer-grid-toggled(r, s); }
+                                }
+                            }
                         }
-                    }
-                    RDSComboBox {
-                        width: parent.width - 60px;
-                        visible: root.animate-lfo-y-sync;
-                        model: root.animate-lfo-divisions;
-                        current-index: root.animate-lfo-y-division;
-                        selected => { root.animate-lfo-y-division = self.current-index; root.animate-lfo-y-division-changed(self.current-index); }
-                    }
-                }
-                HorizontalLayout {
-                    spacing: 12px;
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        visible: !root.animate-lfo-y-sync;
-                        Text { text: "Rate"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-lfo-y-rate;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.001; scroll-sensitivity: 0.001;
-                            infinite-rotary: true;
-                            value-changed(v) => { root.animate-lfo-y-rate = v; root.animate-lfo-y-rate-changed(v); }
+
+                    // Keybed (UI only for isolation)
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: "Keybed";
+                                color: #e4e4ea;
+                                font-size: 14px;
+                            }
+                            Text {
+                                text: "Last note: " + keybed-last-note;
+                                color: #a9a9b6;
+                                font-size: 11px;
+                            }
+                            RDSKeybed {
+                                octaves: 2;
+                                scale: "chromatic";
+                                size: 16px;
+                                note-triggered(note) => {
+                                    keybed-last-note = note;
+                                    RDSKeybedBus.last-note = note;
+                                    RDSKeybedBus.note-triggered(note);
+                                }
+                            }
                         }
-                    }
-                    VerticalLayout {
-                        spacing: 4px;
-                        width: 50px;
-                        Text { text: "Amt"; color: #b9b9bf; font-size: 11px; horizontal-alignment: center; }
-                        RDSKnob {
-                            renderer: "lo-fi";
-                            value: root.animate-lfo-y-amount;
-                            min-value: 0.0; max-value: 1.0;
-                            size: 28px; indicator-position: 8px;
-                            sensitivity: 0.01; scroll-sensitivity: 0.01;
-                            value-changed(v) => { root.animate-lfo-y-amount = v; root.animate-lfo-y-amount-changed(v); }
-                        }
-                    }
-                }
-            }
-        }
-
-        HorizontalLayout {
-            spacing: 16px;
-
-            VerticalLayout {
-                spacing: 4px;
-                Text { text: "Sequencer"; color: #e4e4ea; font-size: 14px; }
-                for r in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : HorizontalLayout {
-                    spacing: 2px;
-                    for s in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] : RDSSequencerCell {
-                        active: root.animate-sequencer-grid[r * 16 + s];
-                        current: s == root.animate-sequencer-current-step;
-                        clicked => { root.animate-sequencer-grid-toggled(r, s); }
-                    }
-                }
-            }
-
-            // Keybed (UI only for isolation)
-            VerticalLayout {
-                spacing: 4px;
-                Text { text: "Keybed"; color: #e4e4ea; font-size: 14px; }
-                Text {
-                    text: "Last note: " + keybed-last-note;
-                    color: #a9a9b6;
-                    font-size: 11px;
-                }
-                RDSKeybed {
-                    octaves: 2;
-                    scale: "chromatic";
-                    size: 16px;
-                    note-triggered(note) => {
-                        keybed-last-note = note;
-                        RDSKeybedBus.last-note = note;
-                        RDSKeybedBus.note-triggered(note);
                     }
                 }
             }
@@ -1216,10 +1935,11 @@ export component AnimateEngine {
             HorizontalLayout {
                 spacing: 22px;
                 Rectangle {
-                    width: parent.width;
+                    width: (parent.width - 16px) / 2 - 15px;
                     height: 250px;
                     GranulatorDevice {
                         mosaic-enabled <=> root.mosaic-enabled;
+                        mosaic-loop-lock <=> root.mosaic-loop-lock;
                         mosaic-pitch <=> root.mosaic-pitch;
                         mosaic-rate <=> root.mosaic-rate;
                         mosaic-size <=> root.mosaic-size;
@@ -1247,6 +1967,47 @@ export component AnimateEngine {
                         mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
                         mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
                         mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
+                        toggle-mosaic-loop-lock => root.toggle-mosaic-loop-lock();
+                    }
+                }
+
+                Rectangle {
+                    width: (parent.width - 16px) / 2 - 15px;
+                    height: 250px;
+                    SilkDevice {
+                        ring-enabled <=> root.ring-enabled;
+                        ring-cutoff <=> root.ring-cutoff;
+                        ring-resonance <=> root.ring-resonance;
+                        ring-decay <=> root.ring-decay;
+                        ring-pitch <=> root.ring-pitch;
+                        ring-decay-modes: root.ring-decay-modes;
+                        ring-decay-mode <=> root.ring-decay-mode;
+                        ring-slope <=> root.ring-slope;
+                        ring-tone <=> root.ring-tone;
+                        ring-tilt <=> root.ring-tilt;
+                        ring-wet <=> root.ring-wet;
+                        ring-detune <=> root.ring-detune;
+                        ring-waves <=> root.ring-waves;
+                        ring-waves-rate <=> root.ring-waves-rate;
+                        ring-noise <=> root.ring-noise;
+                        ring-noise-rate <=> root.ring-noise-rate;
+                        ring-pre-post <=> root.ring-pre-post;
+                        toggle-ring-enabled => root.toggle-ring-enabled();
+                        toggle-ring-pre-post => root.toggle-ring-pre-post();
+                        ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
+                        ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
+                        ring-decay-changed(value) => { root.ring-decay-changed(value); }
+                        ring-pitch-changed(value) => { root.ring-pitch-changed(value); }
+                        ring-decay-mode-selected(index) => { root.ring-decay-mode-selected(index); }
+                        ring-slope-changed(value) => { root.ring-slope-changed(value); }
+                        ring-tone-changed(value) => { root.ring-tone-changed(value); }
+                        ring-tilt-changed(value) => { root.ring-tilt-changed(value); }
+                        ring-wet-changed(value) => { root.ring-wet-changed(value); }
+                        ring-detune-changed(value) => { root.ring-detune-changed(value); }
+                        ring-waves-changed(value) => { root.ring-waves-changed(value); }
+                        ring-waves-rate-changed(value) => { root.ring-waves-rate-changed(value); }
+                        ring-noise-changed(value) => { root.ring-noise-changed(value); }
+                        ring-noise-rate-changed(value) => { root.ring-noise-rate-changed(value); }
                     }
                 }
             }

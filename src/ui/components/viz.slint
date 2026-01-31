@@ -2,18 +2,34 @@ import { Theme } from "../theme/index.slint";
 
 /*
 Component: RDSWaveformViz
-Description: Visualizes a static waveform with an optional playhead.
+Description: Visualizes a static waveform with playhead, loop, trigger, and grain markers.
 Public members:
 - waveform: [float] - Amplitude values (0.0 to 1.0)
 - waveform_time_labels: [string] - Time markers for the X-axis
 - playhead-index: int - Current position in the waveform array
+- loop-start: float - Normalized loop start (0.0..1.0)
+- loop-length: float - Normalized loop length (0.0..1.0)
+- loop-enabled: bool - Whether to show loop region
+- trigger-start: float - Normalized trigger start (0.0..1.0)
+- grain-markers: [float] - Normalized grain marker positions (0.0..1.0)
 */
 export component RDSWaveformViz inherits Rectangle {
     in property <[float]> waveform;
     in property <[string]> waveform_time_labels;
     in property <int> playhead-index: 0;
+    in property <float> loop-start: 0.0;
+    in property <float> loop-length: 1.0;
+    in property <bool> loop-enabled: false;
+    in property <float> trigger-start: 0.0;
+    in property <[float]> grain-markers;
     private property <int> waveform_length: Math.max(1, root.waveform.length);
     private property <int> waveform_label_length: Math.max(1, root.waveform_time_labels.length);
+    private property <float> loop_end:
+        Math.min(1.0, Math.max(0.0, root.loop-start) + Math.max(0.0, root.loop-length));
+    private property <float> playhead_pos:
+        root.waveform_length > 1
+            ? (root.playhead-index / (root.waveform_length - 1))
+            : 0.0;
 
     background: Theme.active.background_main;
     border-radius: Theme.active.radius_large;
@@ -47,6 +63,40 @@ export component RDSWaveformViz inherits Rectangle {
                 Rectangle {
                     width: parent.width;
                     height: parent.height;
+                    Rectangle {
+                        visible: root.loop-enabled;
+                        x: root.loop-start * parent.width;
+                        width: Math.max(2px, (root.loop_end - root.loop-start) * parent.width);
+                        height: parent.height;
+                        background: #38bdf833;
+                    }
+                    Rectangle {
+                        width: 2px;
+                        height: parent.height;
+                        x: root.trigger-start * parent.width;
+                        background: #f97316;
+                    }
+                    Rectangle {
+                        width: 2px;
+                        height: parent.height;
+                        x: root.loop-start * parent.width;
+                        background: #60a5fa;
+                        visible: root.loop-enabled;
+                    }
+                    Rectangle {
+                        width: 2px;
+                        height: parent.height;
+                        x: root.loop_end * parent.width;
+                        background: #60a5fa;
+                        visible: root.loop-enabled;
+                    }
+                    for marker[i] in root.grain-markers : Rectangle {
+                        width: 2px;
+                        height: parent.height;
+                        x: Math.max(0.0, Math.min(1.0, marker)) * parent.width;
+                        background: #a855f7;
+                        visible: marker >= 0.0;
+                    }
                     for amp[index] in root.waveform : Rectangle {
                         width: parent.width / root.waveform_length;
                         height: parent.height;
@@ -59,6 +109,12 @@ export component RDSWaveformViz inherits Rectangle {
                             background: index < root.playhead-index ? Theme.active.accent_primary : Theme.active.accent_secondary;
                             border-radius: Theme.active.radius_small;
                         }
+                    }
+                    Rectangle {
+                        width: 2px;
+                        height: parent.height;
+                        x: root.playhead_pos * parent.width;
+                        background: #22c55e;
                     }
                 }
             }

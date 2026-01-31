@@ -16,6 +16,7 @@ export component GranulatorDevice {
     in-out property <float> mosaic-rand-rate: 0.0;
     in-out property <float> mosaic-rand-size: 0.0;
     in-out property <float> mosaic-sos: 0.0;
+    in-out property <bool> mosaic-loop-lock: false;
 
     callback toggle-mosaic-enabled();
     callback mosaic-pitch-changed(value: float);
@@ -31,6 +32,7 @@ export component GranulatorDevice {
     callback mosaic-rand-rate-changed(value: float);
     callback mosaic-rand-size-changed(value: float);
     callback mosaic-sos-changed(value: float);
+    callback toggle-mosaic-loop-lock();
 
     private property <[string]> rate-division-labels: [
         "1.", "1", "1/2.", "1T", "1/2", "1/4.", "1/2T", "1/4",
@@ -74,6 +76,17 @@ export component GranulatorDevice {
                     label-font-size: 11px;
                     label-font-weight: 500;
                     clicked => root.toggle-mosaic-enabled();
+                }
+                RDSCircleToggle {
+                    active: root.mosaic-loop-lock;
+                    label: "Loop";
+                    label-active: "In";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
+                    clicked => root.toggle-mosaic-loop-lock();
                 }
             }
         }

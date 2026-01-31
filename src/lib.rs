@@ -91,14 +91,16 @@ const MOSAIC_SIZE_MAX_MS: f32 = 250.0;
 const MOSAIC_PITCH_SEMITONES: f32 = 36.0;
 const MOSAIC_DETUNE_CENTS: f32 = 25.0;
 const MOSAIC_PARAM_SMOOTH_MS: f32 = 20.0;
+const MOSAIC_MAX_GRAINS: usize = 128;
+const MOSAIC_GRAIN_MARKER_COUNT: usize = 32;
 const G8_GAIN_SMOOTH_MS: f32 = 5.0;
 const RING_PITCH_SEMITONES: f32 = 24.0;
 const RING_CUTOFF_MIN_HZ: f32 = 20.0;
 const RING_CUTOFF_MAX_HZ: f32 = 20_000.0;
 const RING_DETUNE_CENTS: f32 = 20.0;
 const RING_DETUNE_RATE_HZ: f32 = 0.25;
-const RING_LFO_RATE_MIN_HZ: f32 = 0.1;
-const RING_LFO_RATE_MAX_HZ: f32 = 12.0;
+const RING_LFO_RATE_MIN_HZ: f32 = 0.20;
+const RING_LFO_RATE_MAX_HZ: f32 = 50.0;
 const ANIMATE_LFO_RATE_MIN_HZ: f32 = 0.01;
 const ANIMATE_LFO_RATE_MAX_HZ: f32 = 20.0;
 const METRONOME_CLICK_MS: f32 = 12.0;
@@ -200,8 +202,12 @@ struct Track {
     tape_sync_requested: AtomicBool,
     /// Tape rotate amount (normalized 0..1).
     tape_rotate: AtomicU32,
+    /// Smoothed tape rotate.
+    tape_rotate_smooth: AtomicU32,
     /// Tape glide amount (normalized 0..1).
     tape_glide: AtomicU32,
+    /// Smoothed tape glide.
+    tape_glide_smooth: AtomicU32,
     /// Tape sound-on-sound amount (normalized 0..1).
     tape_sos: AtomicU32,
     /// Tape reverse toggle.
@@ -222,12 +228,18 @@ struct Track {
     tape_overdub: AtomicBool,
     /// Loop start position as normalized 0..1.
     loop_start: AtomicU32,
+    /// Smoothed loop start position.
+    loop_start_smooth: AtomicU32,
     /// Trigger start position as normalized 0..1.
     trigger_start: AtomicU32,
     /// Loop length as normalized 0..1.
     loop_length: AtomicU32,
+    /// Smoothed loop length.
+    loop_length_smooth: AtomicU32,
     /// Loop crossfade amount as normalized 0..0.5.
     loop_xfade: AtomicU32,
+    /// Smoothed loop crossfade.
+    loop_xfade_smooth: AtomicU32,
     /// Loop enabled.
     loop_enabled: AtomicBool,
     /// Loop mode for playback.
@@ -292,24 +304,36 @@ struct Track {
     mosaic_sos_smooth: AtomicU32,
     /// Mosaic output enabled.
     mosaic_enabled: AtomicBool,
+    /// Mosaic grains locked to tape loop area.
+    mosaic_loop_lock: AtomicBool,
     /// Mosaic ring buffer fed by tape output.
     mosaic_buffer: Arc<Mutex<Vec<Vec<f32>>>>,
     /// Mosaic ring buffer write position.
     mosaic_write_pos: AtomicU32,
-    /// Mosaic grain start position in ring buffer.
-    mosaic_grain_start: AtomicU32,
-    /// Mosaic grain position within current grain.
-    mosaic_grain_pos: AtomicU32,
-    /// Mosaic grain length in output samples.
-    mosaic_grain_len: AtomicU32,
-    /// Mosaic samples to wait before starting the next grain.
-    mosaic_grain_wait: AtomicU32,
-    /// Mosaic pitch ratio for the active grain.
-    mosaic_grain_pitch: AtomicU32,
-    /// Mosaic pan position for the active grain.
-    mosaic_grain_pan: AtomicU32,
+    /// Mosaic grain active flags.
+    mosaic_grain_active: [AtomicBool; MOSAIC_MAX_GRAINS],
+    /// Mosaic grain start positions in ring buffer.
+    mosaic_grain_start: [AtomicU32; MOSAIC_MAX_GRAINS],
+    /// Mosaic grain positions within grains.
+    mosaic_grain_pos: [AtomicU32; MOSAIC_MAX_GRAINS],
+    /// Mosaic grain lengths in output samples.
+    mosaic_grain_len: [AtomicU32; MOSAIC_MAX_GRAINS],
+    /// Mosaic pitch ratios per grain.
+    mosaic_grain_pitch: [AtomicU32; MOSAIC_MAX_GRAINS],
+    /// Mosaic pan positions per grain.
+    mosaic_grain_pan: [AtomicU32; MOSAIC_MAX_GRAINS],
+    /// Mosaic samples until the next grain spawn in free rate.
+    mosaic_spawn_phase: AtomicU32,
+    /// Last grain start position for UI marker.
+    mosaic_last_grain_start: AtomicU32,
+    /// Last grain length for UI marker.
+    mosaic_last_grain_len: AtomicU32,
     /// Mosaic RNG state for grain start selection.
     mosaic_rng_state: AtomicU32,
+    /// Recent mosaic grain start markers (normalized 0..1).
+    mosaic_grain_markers: [AtomicU32; MOSAIC_GRAIN_MARKER_COUNT],
+    /// Write index for mosaic grain markers ring.
+    mosaic_grain_marker_write: AtomicU32,
     /// Ring filter cutoff (normalized 0..1).
     ring_cutoff: AtomicU32,
     /// Smoothed ring cutoff.
@@ -382,6 +406,8 @@ struct Track {
     ring_detune_phase: AtomicU32,
     /// Ring filter enabled.
     ring_enabled: AtomicBool,
+    /// Ring filter pre/post toggle (true = pre, false = post).
+    ring_pre_post: AtomicBool,
     /// Ring filter low-pass state per channel.
     ring_low: [AtomicU32; 2],
     /// Ring filter band-pass state per channel.
@@ -498,6 +524,18 @@ struct Track {
     animate_amp_stage: [AtomicU32; 10],
     /// Animate amp envelope level (0..1) for each voice.
     animate_amp_level: [AtomicU32; 10],
+    /// Animate slot A attack time in seconds.
+    animate_slot_a_attack: AtomicU32,
+    /// Animate slot A decay time in seconds.
+    animate_slot_a_decay: AtomicU32,
+    /// Animate slot A sustain level (0..1).
+    animate_slot_a_sustain: AtomicU32,
+    /// Animate slot A release time in seconds.
+    animate_slot_a_release: AtomicU32,
+    /// Animate slot A amp envelope stage per voice.
+    animate_slot_a_amp_stage: [AtomicU32; 10],
+    /// Animate slot A amp envelope level per voice.
+    animate_slot_a_amp_level: [AtomicU32; 10],
     /// Animate keybed trigger note (MIDI note).
     animate_keybed_note: AtomicI32,
     /// Animate keybed trigger flag.
@@ -508,6 +546,10 @@ struct Track {
     animate_keybed_amp_stage: AtomicU32,
     /// Animate keybed amp envelope level.
     animate_keybed_amp_level: AtomicU32,
+    /// Animate keybed slot A amp envelope stage.
+    animate_keybed_slot_a_amp_stage: AtomicU32,
+    /// Animate keybed slot A amp envelope level.
+    animate_keybed_slot_a_amp_level: AtomicU32,
     /// Animate keybed slot oscillator phases.
     animate_keybed_slot_phases: [AtomicU32; 4],
     /// Animate keybed slot sample playback positions.
@@ -678,10 +720,16 @@ struct Track {
     void_width_smooth: AtomicU32,
     /// Void Seed moog filter cutoff (0..1).
     void_filter_cutoff: AtomicU32,
+    /// Smoothed void filter cutoff.
+    void_filter_cutoff_smooth: AtomicU32,
     /// Void Seed moog filter resonance (0..1).
     void_filter_resonance: AtomicU32,
+    /// Smoothed void filter resonance.
+    void_filter_resonance_smooth: AtomicU32,
     /// Void Seed overdrive amount (0..1).
     void_drive: AtomicU32,
+    /// Smoothed void drive.
+    void_drive_smooth: AtomicU32,
     /// Void Seed filter pre-drive toggle.
     void_filter_pre_drive: AtomicBool,
     /// Void Seed close decay time in seconds.
@@ -742,7 +790,9 @@ impl Default for Track {
             tape_rate_mode: AtomicU32::new(0),
             tape_sync_requested: AtomicBool::new(false),
             tape_rotate: AtomicU32::new(0.0f32.to_bits()),
+            tape_rotate_smooth: AtomicU32::new(0.0f32.to_bits()),
             tape_glide: AtomicU32::new(0.0f32.to_bits()),
+            tape_glide_smooth: AtomicU32::new(0.0f32.to_bits()),
             tape_sos: AtomicU32::new(0.0f32.to_bits()),
             tape_reverse: AtomicBool::new(false),
             tape_freeze: AtomicBool::new(false),
@@ -753,9 +803,12 @@ impl Default for Track {
             tape_monitor: AtomicBool::new(false),
             tape_overdub: AtomicBool::new(false),
             loop_start: AtomicU32::new(0.0f32.to_bits()),
+            loop_start_smooth: AtomicU32::new(0.0f32.to_bits()),
             trigger_start: AtomicU32::new(0.0f32.to_bits()),
             loop_length: AtomicU32::new(1.0f32.to_bits()),
+            loop_length_smooth: AtomicU32::new(1.0f32.to_bits()),
             loop_xfade: AtomicU32::new(0.0f32.to_bits()),
+            loop_xfade_smooth: AtomicU32::new(0.0f32.to_bits()),
             loop_enabled: AtomicBool::new(true),
             loop_mode: AtomicU32::new(0),
             loop_dir: AtomicI32::new(1),
@@ -788,18 +841,24 @@ impl Default for Track {
             mosaic_sos: AtomicU32::new(0.0f32.to_bits()),
             mosaic_sos_smooth: AtomicU32::new(0.0f32.to_bits()),
             mosaic_enabled: AtomicBool::new(true),
+            mosaic_loop_lock: AtomicBool::new(false),
             mosaic_buffer: Arc::new(Mutex::new(vec![
                 vec![0.0; MOSAIC_BUFFER_SAMPLES];
                 MOSAIC_BUFFER_CHANNELS
             ])),
             mosaic_write_pos: AtomicU32::new(0),
-            mosaic_grain_start: AtomicU32::new(0),
-            mosaic_grain_pos: AtomicU32::new(0.0f32.to_bits()),
-            mosaic_grain_len: AtomicU32::new(0),
-            mosaic_grain_wait: AtomicU32::new(0),
-            mosaic_grain_pitch: AtomicU32::new(1.0f32.to_bits()),
-            mosaic_grain_pan: AtomicU32::new(0.0f32.to_bits()),
+            mosaic_grain_active: std::array::from_fn(|_| AtomicBool::new(false)),
+            mosaic_grain_start: std::array::from_fn(|_| AtomicU32::new(0)),
+            mosaic_grain_pos: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            mosaic_grain_len: std::array::from_fn(|_| AtomicU32::new(0)),
+            mosaic_grain_pitch: std::array::from_fn(|_| AtomicU32::new(1.0f32.to_bits())),
+            mosaic_grain_pan: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            mosaic_spawn_phase: AtomicU32::new(0.0f32.to_bits()),
+            mosaic_last_grain_start: AtomicU32::new(0),
+            mosaic_last_grain_len: AtomicU32::new(0),
             mosaic_rng_state: AtomicU32::new(0x1234_abcd),
+            mosaic_grain_markers: std::array::from_fn(|_| AtomicU32::new((-1.0f32).to_bits())),
+            mosaic_grain_marker_write: AtomicU32::new(0),
             ring_cutoff: AtomicU32::new(0.5f32.to_bits()),
             ring_cutoff_smooth: AtomicU32::new(0.5f32.to_bits()),
             ring_resonance: AtomicU32::new(0.0f32.to_bits()),
@@ -836,6 +895,7 @@ impl Default for Track {
             ring_scale: AtomicU32::new(0),
             ring_detune_phase: AtomicU32::new(0.0f32.to_bits()),
             ring_enabled: AtomicBool::new(false),
+            ring_pre_post: AtomicBool::new(true),
             ring_low: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             ring_band: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             g8_enabled: AtomicBool::new(false),
@@ -902,11 +962,19 @@ impl Default for Track {
             animate_slot_sample_pos: std::array::from_fn(|_| std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits()))),
             animate_amp_stage: std::array::from_fn(|_| AtomicU32::new(0)),
             animate_amp_level: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
+            animate_slot_a_attack: AtomicU32::new(0.01f32.to_bits()),
+            animate_slot_a_decay: AtomicU32::new(0.1f32.to_bits()),
+            animate_slot_a_sustain: AtomicU32::new(0.8f32.to_bits()),
+            animate_slot_a_release: AtomicU32::new(0.3f32.to_bits()),
+            animate_slot_a_amp_stage: std::array::from_fn(|_| AtomicU32::new(0)),
+            animate_slot_a_amp_level: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             animate_keybed_note: AtomicI32::new(60),
             animate_keybed_trigger: AtomicBool::new(false),
             animate_keybed_hold: AtomicBool::new(false),
             animate_keybed_amp_stage: AtomicU32::new(0),
             animate_keybed_amp_level: AtomicU32::new(0.0f32.to_bits()),
+            animate_keybed_slot_a_amp_stage: AtomicU32::new(0),
+            animate_keybed_slot_a_amp_level: AtomicU32::new(0.0f32.to_bits()),
             animate_keybed_slot_phases: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             animate_keybed_slot_sample_pos: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
             animate_keybed_filter_v1: std::array::from_fn(|_| AtomicU32::new(0.0f32.to_bits())),
@@ -993,8 +1061,11 @@ impl Default for Track {
             void_width_smooth: AtomicU32::new(1.0f32.to_bits()),
             void_close_decay: AtomicU32::new(4.0f32.to_bits()),
             void_filter_cutoff: AtomicU32::new(0.5f32.to_bits()),
+            void_filter_cutoff_smooth: AtomicU32::new(0.5f32.to_bits()),
             void_filter_resonance: AtomicU32::new(0.2f32.to_bits()),
+            void_filter_resonance_smooth: AtomicU32::new(0.2f32.to_bits()),
             void_drive: AtomicU32::new(0.0f32.to_bits()),
+            void_drive_smooth: AtomicU32::new(0.0f32.to_bits()),
             void_filter_pre_drive: AtomicBool::new(true),
             void_osc_phases: Default::default(),
             void_lfo_phases: Default::default(),
@@ -1047,6 +1118,7 @@ pub struct TLBX1 {
     pending_project_params: Arc<Mutex<Option<PendingProjectParams>>>,
     track_buffer: Vec<Vec<f32>>,
     syndrm_dsp: [SynDRMDspState; NUM_TRACKS],
+    animate_dsp: [AnimateDspState; NUM_TRACKS],
     void_dsp: [VoidSeedDspState; NUM_TRACKS],
 }
 
@@ -1106,6 +1178,40 @@ impl SynDRMDspState {
         self.snare_filter_lp.set_sample_rate(sr);
         self.snare_filter_hp.set_sample_rate(sr);
         self.snare_filter_bp.set_sample_rate(sr);
+    }
+}
+
+struct AnimateDspState {
+    sample_rate: f32,
+    moog: [[Box<dyn AudioUnit>; 4]; 10],
+    moog_keybed: [Box<dyn AudioUnit>; 4],
+}
+
+impl AnimateDspState {
+    fn new() -> Self {
+        Self {
+            sample_rate: 0.0,
+            moog: std::array::from_fn(|_| {
+                std::array::from_fn(|_| Box::new(moog()) as Box<dyn AudioUnit>)
+            }),
+            moog_keybed: std::array::from_fn(|_| Box::new(moog()) as Box<dyn AudioUnit>),
+        }
+    }
+
+    fn set_sample_rate(&mut self, sr: f32) {
+        if (self.sample_rate - sr).abs() < f32::EPSILON {
+            return;
+        }
+        self.sample_rate = sr;
+        let sr = sr as f64;
+        for row in self.moog.iter_mut() {
+            for unit in row.iter_mut() {
+                unit.set_sample_rate(sr);
+            }
+        }
+        for unit in self.moog_keybed.iter_mut() {
+            unit.set_sample_rate(sr);
+        }
     }
 }
 
@@ -1263,6 +1369,7 @@ impl Default for TLBX1 {
             pending_project_params: Arc::new(Mutex::new(None)),
             track_buffer: vec![vec![0.0; 1024]; 2],
             syndrm_dsp: std::array::from_fn(|_| SynDRMDspState::new()),
+            animate_dsp: std::array::from_fn(|_| AnimateDspState::new()),
             void_dsp: std::array::from_fn(|_| VoidSeedDspState::new()),
         }
     }
@@ -1430,7 +1537,13 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.tape_rate_mode.store(0, Ordering::Relaxed);
     track.tape_sync_requested.store(false, Ordering::Relaxed);
     track.tape_rotate.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .tape_rotate_smooth
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.tape_glide.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .tape_glide_smooth
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.tape_sos.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.tape_reverse.store(false, Ordering::Relaxed);
     track.tape_freeze.store(false, Ordering::Relaxed);
@@ -1441,9 +1554,18 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.tape_monitor.store(false, Ordering::Relaxed);
     track.tape_overdub.store(false, Ordering::Relaxed);
     track.loop_start.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .loop_start_smooth
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.trigger_start.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.loop_length.store(1.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .loop_length_smooth
+        .store(1.0f32.to_bits(), Ordering::Relaxed);
     track.loop_xfade.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .loop_xfade_smooth
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.loop_enabled.store(true, Ordering::Relaxed);
     track.loop_mode.store(0, Ordering::Relaxed);
     track.loop_dir.store(1, Ordering::Relaxed);
@@ -1477,14 +1599,32 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.mosaic_sos.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_sos_smooth.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.mosaic_enabled.store(true, Ordering::Relaxed);
+    track.mosaic_loop_lock.store(false, Ordering::Relaxed);
     track.mosaic_write_pos.store(0, Ordering::Relaxed);
-    track.mosaic_grain_start.store(0, Ordering::Relaxed);
-    track.mosaic_grain_pos.store(0.0f32.to_bits(), Ordering::Relaxed);
-    track.mosaic_grain_len.store(0, Ordering::Relaxed);
-    track.mosaic_grain_wait.store(0, Ordering::Relaxed);
-    track.mosaic_grain_pitch.store(1.0f32.to_bits(), Ordering::Relaxed);
-    track.mosaic_grain_pan.store(0.0f32.to_bits(), Ordering::Relaxed);
+    for idx in 0..MOSAIC_MAX_GRAINS {
+        track.mosaic_grain_active[idx].store(false, Ordering::Relaxed);
+        track.mosaic_grain_start[idx].store(0, Ordering::Relaxed);
+        track
+            .mosaic_grain_pos[idx]
+            .store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.mosaic_grain_len[idx].store(0, Ordering::Relaxed);
+        track
+            .mosaic_grain_pitch[idx]
+            .store(1.0f32.to_bits(), Ordering::Relaxed);
+        track
+            .mosaic_grain_pan[idx]
+            .store(0.0f32.to_bits(), Ordering::Relaxed);
+    }
+    track
+        .mosaic_spawn_phase
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
+    track.mosaic_last_grain_start.store(0, Ordering::Relaxed);
+    track.mosaic_last_grain_len.store(0, Ordering::Relaxed);
     track.mosaic_rng_state.store(0x1234_abcd, Ordering::Relaxed);
+    for marker in &track.mosaic_grain_markers {
+        marker.store((-1.0f32).to_bits(), Ordering::Relaxed);
+    }
+    track.mosaic_grain_marker_write.store(0, Ordering::Relaxed);
     track.ring_cutoff.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.ring_cutoff_smooth.store(0.5f32.to_bits(), Ordering::Relaxed);
     track.ring_resonance.store(0.0f32.to_bits(), Ordering::Relaxed);
@@ -1521,6 +1661,7 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
     track.ring_scale.store(0, Ordering::Relaxed);
     track.ring_detune_phase.store(0.0f32.to_bits(), Ordering::Relaxed);
     track.ring_enabled.store(false, Ordering::Relaxed);
+    track.ring_pre_post.store(true, Ordering::Relaxed);
     for channel in 0..2 {
         track.ring_low[channel].store(0.0f32.to_bits(), Ordering::Relaxed);
         track.ring_band[channel].store(0.0f32.to_bits(), Ordering::Relaxed);
@@ -1627,12 +1768,34 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
         }
         track.animate_amp_stage[voice].store(0, Ordering::Relaxed);
         track.animate_amp_level[voice].store(0.0f32.to_bits(), Ordering::Relaxed);
+        track.animate_slot_a_amp_stage[voice].store(0, Ordering::Relaxed);
+        track
+            .animate_slot_a_amp_level[voice]
+            .store(0.0f32.to_bits(), Ordering::Relaxed);
     }
+    track
+        .animate_slot_a_attack
+        .store(0.01f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_slot_a_decay
+        .store(0.1f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_slot_a_sustain
+        .store(0.8f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_slot_a_release
+        .store(0.3f32.to_bits(), Ordering::Relaxed);
     track.animate_keybed_note.store(60, Ordering::Relaxed);
     track.animate_keybed_trigger.store(false, Ordering::Relaxed);
     track.animate_keybed_hold.store(false, Ordering::Relaxed);
     track.animate_keybed_amp_stage.store(0, Ordering::Relaxed);
     track.animate_keybed_amp_level.store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_keybed_slot_a_amp_stage
+        .store(0, Ordering::Relaxed);
+    track
+        .animate_keybed_slot_a_amp_level
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
     for slot in 0..4 {
         track
             .animate_keybed_slot_phases[slot]
@@ -1735,10 +1898,19 @@ fn reset_track_for_engine(track: &Track, engine_type: u32) {
         .void_filter_cutoff
         .store(0.5f32.to_bits(), Ordering::Relaxed);
     track
+        .void_filter_cutoff_smooth
+        .store(0.5f32.to_bits(), Ordering::Relaxed);
+    track
         .void_filter_resonance
         .store(0.2f32.to_bits(), Ordering::Relaxed);
     track
+        .void_filter_resonance_smooth
+        .store(0.2f32.to_bits(), Ordering::Relaxed);
+    track
         .void_drive
+        .store(0.0f32.to_bits(), Ordering::Relaxed);
+    track
+        .void_drive_smooth
         .store(0.0f32.to_bits(), Ordering::Relaxed);
     track.void_filter_pre_drive.store(true, Ordering::Relaxed);
     track
@@ -1802,6 +1974,7 @@ impl TLBX1 {
     fn process_animate(
         track: &Track,
         track_output: &mut [Vec<f32>],
+        dsp_state: &mut AnimateDspState,
         num_buffer_samples: usize,
         global_tempo: &AtomicU32,
         animate_library: &AnimateLibrary,
@@ -1811,6 +1984,7 @@ impl TLBX1 {
         transport_running: bool,
     ) {
         let sr = track.sample_rate.load(Ordering::Relaxed).max(1) as f32;
+        dsp_state.set_sample_rate(sr);
         let tempo_bits = global_tempo.load(Ordering::Relaxed);
         let tempo_raw = f32::from_bits(tempo_bits);
         let tempo = if tempo_raw.is_finite() {
@@ -2000,6 +2174,14 @@ impl TLBX1 {
         let decay = 0.1f32;
         let sustain = 0.8f32;
         let release = 0.3f32;
+        let slot_a_attack = f32::from_bits(track.animate_slot_a_attack.load(Ordering::Relaxed))
+            .clamp(0.0, 5.0);
+        let slot_a_decay = f32::from_bits(track.animate_slot_a_decay.load(Ordering::Relaxed))
+            .clamp(0.0, 10.0);
+        let slot_a_sustain = f32::from_bits(track.animate_slot_a_sustain.load(Ordering::Relaxed))
+            .clamp(0.0, 1.0);
+        let slot_a_release = f32::from_bits(track.animate_slot_a_release.load(Ordering::Relaxed))
+            .clamp(0.0, 10.0);
 
         let mut amp_levels = [0.0f32; 10];
         let mut amp_stages = [0u32; 10];
@@ -2007,10 +2189,22 @@ impl TLBX1 {
             amp_levels[i] = f32::from_bits(track.animate_amp_level[i].load(Ordering::Relaxed));
             amp_stages[i] = track.animate_amp_stage[i].load(Ordering::Relaxed);
         }
+        let mut slot_a_amp_levels = [0.0f32; 10];
+        let mut slot_a_amp_stages = [0u32; 10];
+        for i in 0..10 {
+            slot_a_amp_levels[i] =
+                f32::from_bits(track.animate_slot_a_amp_level[i].load(Ordering::Relaxed));
+            slot_a_amp_stages[i] =
+                track.animate_slot_a_amp_stage[i].load(Ordering::Relaxed);
+        }
 
         let mut keybed_amp_level =
             f32::from_bits(track.animate_keybed_amp_level.load(Ordering::Relaxed));
         let mut keybed_amp_stage = track.animate_keybed_amp_stage.load(Ordering::Relaxed);
+        let mut keybed_slot_a_amp_level =
+            f32::from_bits(track.animate_keybed_slot_a_amp_level.load(Ordering::Relaxed));
+        let mut keybed_slot_a_amp_stage =
+            track.animate_keybed_slot_a_amp_stage.load(Ordering::Relaxed);
         let mut keybed_phases = [
             f32::from_bits(track.animate_keybed_slot_phases[0].load(Ordering::Relaxed)),
             f32::from_bits(track.animate_keybed_slot_phases[1].load(Ordering::Relaxed)),
@@ -2063,6 +2257,8 @@ impl TLBX1 {
                 .max(1.0);
             keybed_amp_stage = 1;
             keybed_amp_level = 0.0;
+            keybed_slot_a_amp_stage = 1;
+            keybed_slot_a_amp_level = 0.0;
             for slot in 0..4 {
                 if track.animate_slot_types[slot].load(Ordering::Relaxed) == 1 {
                     let smp_idx =
@@ -2091,8 +2287,12 @@ impl TLBX1 {
         let coef_attack = calc_coef(attack);
         let coef_decay = calc_coef(decay);
         let coef_release = calc_coef(release);
+        let coef_slot_a_attack = calc_coef(slot_a_attack);
+        let coef_slot_a_decay = calc_coef(slot_a_decay);
+        let coef_slot_a_release = calc_coef(slot_a_release);
         let keybed_hold = track.animate_keybed_hold.load(Ordering::Relaxed);
         let keybed_sustain = if keybed_hold { 1.0f32 } else { 0.0f32 };
+        let keybed_slot_a_sustain = if keybed_hold { slot_a_sustain } else { 0.0f32 };
 
         let frequencies = [
             65.41, 73.42, 82.41, 98.00, 110.00, // C2, D2, E2, G2, A2
@@ -2139,8 +2339,15 @@ impl TLBX1 {
                                     }
                                 }
                             }
+                            if slot_a_amp_stages[row] == 0 || slot_a_amp_stages[row] == 4 {
+                                slot_a_amp_stages[row] = 1;
+                                slot_a_amp_levels[row] = 0.0;
+                            }
                         } else if amp_stages[row] != 0 && amp_stages[row] != 4 {
                             amp_stages[row] = 4; // Release
+                            if slot_a_amp_stages[row] != 0 && slot_a_amp_stages[row] != 4 {
+                                slot_a_amp_stages[row] = 4;
+                            }
                         }
                     }
                 }
@@ -2192,6 +2399,41 @@ impl TLBX1 {
                     }
                 }
             }
+            for i in 0..10 {
+                match slot_a_amp_stages[i] {
+                    1 => {
+                        slot_a_amp_levels[i] =
+                            slot_a_amp_levels[i] * coef_slot_a_attack
+                                + 1.1 * (1.0 - coef_slot_a_attack);
+                        if slot_a_amp_levels[i] >= 1.0 {
+                            slot_a_amp_levels[i] = 1.0;
+                            slot_a_amp_stages[i] = 2;
+                        }
+                    }
+                    2 => {
+                        slot_a_amp_levels[i] =
+                            slot_a_amp_levels[i] * coef_slot_a_decay
+                                + slot_a_sustain * (1.0 - coef_slot_a_decay);
+                        if (slot_a_amp_levels[i] - slot_a_sustain).abs() < 0.001 {
+                            slot_a_amp_levels[i] = slot_a_sustain;
+                            slot_a_amp_stages[i] = 3;
+                        }
+                    }
+                    3 => {
+                        slot_a_amp_levels[i] = slot_a_sustain;
+                    }
+                    4 => {
+                        slot_a_amp_levels[i] = slot_a_amp_levels[i] * coef_slot_a_release;
+                        if slot_a_amp_levels[i] < 0.0001 {
+                            slot_a_amp_levels[i] = 0.0;
+                            slot_a_amp_stages[i] = 0;
+                        }
+                    }
+                    _ => {
+                        slot_a_amp_levels[i] = 0.0;
+                    }
+                }
+            }
 
             match keybed_amp_stage {
                 1 => {
@@ -2226,6 +2468,41 @@ impl TLBX1 {
                 }
                 _ => {
                     keybed_amp_level = 0.0;
+                }
+            }
+            match keybed_slot_a_amp_stage {
+                1 => {
+                    keybed_slot_a_amp_level = keybed_slot_a_amp_level * coef_slot_a_attack
+                        + 1.1 * (1.0 - coef_slot_a_attack);
+                    if keybed_slot_a_amp_level >= 1.0 {
+                        keybed_slot_a_amp_level = 1.0;
+                        keybed_slot_a_amp_stage = 2;
+                    }
+                }
+                2 => {
+                    keybed_slot_a_amp_level = keybed_slot_a_amp_level * coef_slot_a_decay
+                        + keybed_slot_a_sustain * (1.0 - coef_slot_a_decay);
+                    if (keybed_slot_a_amp_level - keybed_slot_a_sustain).abs() < 0.001 {
+                        keybed_slot_a_amp_level = keybed_slot_a_sustain;
+                        keybed_slot_a_amp_stage = if keybed_hold { 3 } else { 4 };
+                    }
+                }
+                3 => {
+                    if keybed_hold {
+                        keybed_slot_a_amp_level = keybed_slot_a_sustain;
+                    } else {
+                        keybed_slot_a_amp_stage = 4;
+                    }
+                }
+                4 => {
+                    keybed_slot_a_amp_level = keybed_slot_a_amp_level * coef_slot_a_release;
+                    if keybed_slot_a_amp_level < 0.0001 {
+                        keybed_slot_a_amp_level = 0.0;
+                        keybed_slot_a_amp_stage = 0;
+                    }
+                }
+                _ => {
+                    keybed_slot_a_amp_level = 0.0;
                 }
             }
 
@@ -2264,7 +2541,7 @@ impl TLBX1 {
 
             // Sum active voices
             for row in 0..10 {
-                if amp_levels[row] <= 0.0 {
+                if amp_levels[row] <= 0.0 && slot_a_amp_levels[row] <= 0.0 {
                     continue;
                 }
                 
@@ -2392,6 +2669,12 @@ impl TLBX1 {
                         1 => filter_low,
                         2 => filter_high,
                         3 => filter_band,
+                        4 => {
+                            let mut out = [0.0f32];
+                            dsp_state.moog[row][slot]
+                                .tick(&[slot_sample, cutoff_hz, filter_resonance], &mut out);
+                            out[0]
+                        }
                         _ => filter_low,
                     };
                     if !filtered_sample.is_finite() {
@@ -2416,7 +2699,14 @@ impl TLBX1 {
                     }
                     slot_sample = filtered_sample;
 
-                    let level = f32::from_bits(track.animate_slot_level[slot].load(Ordering::Relaxed)) * weights[slot] * amp_levels[row];
+                    let amp_level = if slot == 0 {
+                        slot_a_amp_levels[row]
+                    } else {
+                        amp_levels[row]
+                    };
+                    let level = f32::from_bits(track.animate_slot_level[slot].load(Ordering::Relaxed))
+                        * weights[slot]
+                        * amp_level;
                     let pan = f32::from_bits(track.animate_slot_pan[slot].load(Ordering::Relaxed)).clamp(-1.0, 1.0);
                     
                     let left_gain = (1.0 - pan).min(1.0);
@@ -2427,7 +2717,7 @@ impl TLBX1 {
                 }
             }
 
-            if keybed_amp_level > 0.0 {
+            if keybed_amp_level > 0.0 || keybed_slot_a_amp_level > 0.0 {
                 for slot in 0..4 {
                     let slot_type = track.animate_slot_types[slot].load(Ordering::Relaxed);
                     let coarse =
@@ -2543,6 +2833,12 @@ impl TLBX1 {
                         1 => filter_low,
                         2 => filter_high,
                         3 => filter_band,
+                        4 => {
+                            let mut out = [0.0f32];
+                            dsp_state.moog_keybed[slot]
+                                .tick(&[slot_sample, cutoff_hz, filter_resonance], &mut out);
+                            out[0]
+                        }
                         _ => filter_low,
                     };
                     if !filtered_sample.is_finite() {
@@ -2563,9 +2859,14 @@ impl TLBX1 {
                     }
                     slot_sample = filtered_sample;
 
+                    let amp_level = if slot == 0 {
+                        keybed_slot_a_amp_level
+                    } else {
+                        keybed_amp_level
+                    };
                     let level = f32::from_bits(track.animate_slot_level[slot].load(Ordering::Relaxed))
                         * weights[slot]
-                        * keybed_amp_level;
+                        * amp_level;
                     let pan = f32::from_bits(track.animate_slot_pan[slot].load(Ordering::Relaxed))
                         .clamp(-1.0, 1.0);
                     let left_gain = (1.0 - pan).min(1.0);
@@ -2612,6 +2913,12 @@ impl TLBX1 {
         for i in 0..10 {
             track.animate_amp_stage[i].store(amp_stages[i], Ordering::Relaxed);
             track.animate_amp_level[i].store(amp_levels[i].to_bits(), Ordering::Relaxed);
+            track
+                .animate_slot_a_amp_stage[i]
+                .store(slot_a_amp_stages[i], Ordering::Relaxed);
+            track
+                .animate_slot_a_amp_level[i]
+                .store(slot_a_amp_levels[i].to_bits(), Ordering::Relaxed);
         }
         track
             .animate_keybed_amp_stage
@@ -2619,6 +2926,12 @@ impl TLBX1 {
         track
             .animate_keybed_amp_level
             .store(keybed_amp_level.to_bits(), Ordering::Relaxed);
+        track
+            .animate_keybed_slot_a_amp_stage
+            .store(keybed_slot_a_amp_stage, Ordering::Relaxed);
+        track
+            .animate_keybed_slot_a_amp_level
+            .store(keybed_slot_a_amp_level.to_bits(), Ordering::Relaxed);
         for slot in 0..4 {
             track
                 .animate_keybed_slot_phases[slot]
@@ -3517,9 +3830,31 @@ impl TLBX1 {
             sr,
         )
         .clamp(0.0, 1.0);
-        let void_filter_cutoff = target_void_filter_cutoff.clamp(0.0, 1.0);
-        let void_filter_resonance = target_void_filter_resonance.clamp(0.0, 1.0);
-        let void_drive = target_void_drive.clamp(0.0, 1.0);
+        let void_filter_cutoff = smooth_param(
+            f32::from_bits(track.void_filter_cutoff_smooth.load(Ordering::Relaxed)),
+            target_void_filter_cutoff,
+            num_buffer_samples,
+            sr,
+        )
+        .clamp(0.0, 1.0);
+        let void_filter_resonance = smooth_param(
+            f32::from_bits(
+                track
+                    .void_filter_resonance_smooth
+                    .load(Ordering::Relaxed),
+            ),
+            target_void_filter_resonance,
+            num_buffer_samples,
+            sr,
+        )
+        .clamp(0.0, 1.0);
+        let void_drive = smooth_param(
+            f32::from_bits(track.void_drive_smooth.load(Ordering::Relaxed)),
+            target_void_drive,
+            num_buffer_samples,
+            sr,
+        )
+        .clamp(0.0, 1.0);
         let drive_gain = 1.0 + void_drive * 8.0;
 
         let mut osc_phases = [0.0f32; 12];
@@ -3718,6 +4053,15 @@ impl TLBX1 {
         track
             .void_width_smooth
             .store(void_width.to_bits(), Ordering::Relaxed);
+        track
+            .void_filter_cutoff_smooth
+            .store(void_filter_cutoff.to_bits(), Ordering::Relaxed);
+        track
+            .void_filter_resonance_smooth
+            .store(void_filter_resonance.to_bits(), Ordering::Relaxed);
+        track
+            .void_drive_smooth
+            .store(void_drive.to_bits(), Ordering::Relaxed);
 
         track.void_filter_v1[0].store(filter_v1[0].to_bits(), Ordering::Relaxed);
         track.void_filter_v1[1].store(filter_v1[1].to_bits(), Ordering::Relaxed);
@@ -3929,17 +4273,57 @@ impl TLBX1 {
         let base_pitch_ratio = 2.0f32.powf(semitones / 12.0);
         let recent_write_pos =
             (track.mosaic_write_pos.load(Ordering::Relaxed) as usize) % mosaic_len;
+        let loop_enabled = track.loop_enabled.load(Ordering::Relaxed);
+        let loop_lock = track.mosaic_loop_lock.load(Ordering::Relaxed);
+        let loop_start_norm =
+            f32::from_bits(track.loop_start_smooth.load(Ordering::Relaxed)).clamp(0.0, 0.999999);
+        let loop_length_norm =
+            f32::from_bits(track.loop_length_smooth.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let (loop_start_idx, loop_len_idx, loop_lock_start_norm, loop_lock_len_norm) =
+            if loop_lock && loop_enabled {
+                let mut start = (loop_start_norm * mosaic_len as f32) as usize;
+                if start >= mosaic_len {
+                    start = mosaic_len.saturating_sub(1);
+                }
+                let mut len = (loop_length_norm * mosaic_len as f32) as usize;
+                if len == 0 {
+                    len = mosaic_len.saturating_sub(start).max(1);
+                }
+                let mut end = (start + len).min(mosaic_len);
+                if end <= start {
+                    end = (start + 1).min(mosaic_len);
+                }
+                let len = end.saturating_sub(start).max(1);
+                let start_norm = start as f32 / mosaic_len as f32;
+                let len_norm = len as f32 / mosaic_len as f32;
+                (start, len, start_norm, len_norm)
+            } else {
+                (0, mosaic_len.max(1), 0.0, 1.0)
+            };
 
-        let mut grain_pos =
-            f32::from_bits(track.mosaic_grain_pos.load(Ordering::Relaxed));
-        let mut grain_len = track.mosaic_grain_len.load(Ordering::Relaxed) as usize;
-        let mut grain_wait = track.mosaic_grain_wait.load(Ordering::Relaxed) as usize;
-        let mut grain_start =
-            (track.mosaic_grain_start.load(Ordering::Relaxed) as usize) % mosaic_len;
-        let mut grain_pitch =
-            f32::from_bits(track.mosaic_grain_pitch.load(Ordering::Relaxed));
-        let mut grain_pan =
-            f32::from_bits(track.mosaic_grain_pan.load(Ordering::Relaxed));
+        let mut grain_active: [bool; MOSAIC_MAX_GRAINS] =
+            std::array::from_fn(|idx| track.mosaic_grain_active[idx].load(Ordering::Relaxed));
+        let mut grain_pos: [f32; MOSAIC_MAX_GRAINS] = std::array::from_fn(|idx| {
+            f32::from_bits(track.mosaic_grain_pos[idx].load(Ordering::Relaxed))
+        });
+        let mut grain_len: [usize; MOSAIC_MAX_GRAINS] = std::array::from_fn(|idx| {
+            track.mosaic_grain_len[idx].load(Ordering::Relaxed) as usize
+        });
+        let mut grain_start: [usize; MOSAIC_MAX_GRAINS] = std::array::from_fn(|idx| {
+            (track.mosaic_grain_start[idx].load(Ordering::Relaxed) as usize) % mosaic_len
+        });
+        let mut grain_pitch: [f32; MOSAIC_MAX_GRAINS] = std::array::from_fn(|idx| {
+            f32::from_bits(track.mosaic_grain_pitch[idx].load(Ordering::Relaxed))
+        });
+        let mut grain_pan: [f32; MOSAIC_MAX_GRAINS] = std::array::from_fn(|idx| {
+            f32::from_bits(track.mosaic_grain_pan[idx].load(Ordering::Relaxed))
+        });
+        let mut spawn_phase =
+            f32::from_bits(track.mosaic_spawn_phase.load(Ordering::Relaxed)).max(0.0);
+        let mut last_grain_start =
+            track.mosaic_last_grain_start.load(Ordering::Relaxed) as usize;
+        let mut last_grain_len =
+            track.mosaic_last_grain_len.load(Ordering::Relaxed) as usize;
         let mut rng_state = track.mosaic_rng_state.load(Ordering::Relaxed);
 
         let num_channels = track_output.len();
@@ -3951,7 +4335,7 @@ impl TLBX1 {
             }
         }
 
-        let _interval_samples = if let (true, Some(beats), true) = (
+        let interval_samples = if let (true, Some(beats), true) = (
             sync_rate,
             sync_beats,
             samples_per_step.is_finite() && samples_per_step > 0.0,
@@ -3959,11 +4343,6 @@ impl TLBX1 {
             (samples_per_step * beats * 4.0).max(1.0)
         } else {
             (sr as f32 / base_rate).max(1.0)
-        };
-        let _base_global_phase = if samples_per_step.is_finite() && samples_per_step > 0.0 {
-            (master_step_count as f32 * samples_per_step) + master_phase
-        } else {
-            0.0
         };
         let base_global_step = if samples_per_step.is_finite() && samples_per_step > 0.0 {
             master_step_count as f64 + (master_phase as f64 / samples_per_step as f64)
@@ -3986,18 +4365,38 @@ impl TLBX1 {
                     let prev_bucket = (prev_step_pos / steps_per_trigger).floor();
                     if bucket != prev_bucket {
                         start_grain = true;
-                        grain_wait = 0;
                     }
                 }
-            } else if grain_pos >= grain_len as f32 {
-                if grain_wait > 0 {
-                    grain_wait = grain_wait.saturating_sub(1);
-                    continue;
+            } else {
+                spawn_phase -= 1.0;
+                if spawn_phase <= 0.0 {
+                    start_grain = true;
+                    spawn_phase += interval_samples;
                 }
-                start_grain = true;
             }
 
             if start_grain {
+                let mut slot = None;
+                for idx in 0..MOSAIC_MAX_GRAINS {
+                    if !grain_active[idx] {
+                        slot = Some(idx);
+                        break;
+                    }
+                }
+                if slot.is_none() {
+                    let mut max_progress = -1.0f32;
+                    let mut max_idx = 0usize;
+                    for idx in 0..MOSAIC_MAX_GRAINS {
+                        let len = grain_len[idx].max(1) as f32;
+                        let progress = grain_pos[idx] / len;
+                        if progress > max_progress {
+                            max_progress = progress;
+                            max_idx = idx;
+                        }
+                    }
+                    slot = Some(max_idx);
+                }
+                let slot = slot.unwrap();
                 let rand_rate = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
                 let rand_size = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
                 let mut rate = if sync_rate {
@@ -4008,94 +4407,137 @@ impl TLBX1 {
                 rate = rate.clamp(MOSAIC_RATE_MIN, MOSAIC_RATE_MAX);
                 let mut size_ms = base_size_ms * (1.0 + mosaic_rand_size * rand_size * 0.5);
                 size_ms = size_ms.clamp(MOSAIC_SIZE_MIN_MS, MOSAIC_SIZE_MAX_MS);
-                grain_len = ((size_ms / 1000.0) * sr as f32).round() as usize;
-                grain_len = grain_len.clamp(1, mosaic_len);
-                let interval = (sr as f32 / rate).max(1.0);
-                if !sync_rate {
-                    let wait = (interval - grain_len as f32).max(0.0);
-                    grain_wait = wait as usize;
-                }
+                grain_len[slot] = ((size_ms / 1000.0) * sr as f32).round() as usize;
+                grain_len[slot] = grain_len[slot].clamp(1, mosaic_len);
 
                 let rand_pos = next_mosaic_rand_unit(&mut rng_state);
-                let recent_pos = recent_write_pos as f32 / mosaic_len as f32;
+                let recent_pos = if loop_lock && loop_enabled && loop_len_idx > 0 {
+                    ((recent_write_pos as isize - loop_start_idx as isize) as f32
+                        / loop_len_idx as f32)
+                        .clamp(0.0, 0.999999)
+                } else {
+                    recent_write_pos as f32 / mosaic_len as f32
+                };
                 let mut pos = recent_pos * (1.0 - mosaic_pattern) + rand_pos * mosaic_pattern;
                 if mosaic_warp > 0.0 {
                     pos = pos.powf(1.0 + mosaic_warp * 2.0);
                 }
                 let spray = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
                 pos = (pos + spray * mosaic_spray * 0.25).clamp(0.0, 0.999999);
-                grain_start = (pos * mosaic_len as f32) as usize;
+                if loop_lock && loop_enabled {
+                    pos = (loop_lock_start_norm + pos * loop_lock_len_norm)
+                        .clamp(loop_lock_start_norm, (loop_lock_start_norm + loop_lock_len_norm).min(0.999999));
+                }
+                grain_start[slot] = (pos * mosaic_len as f32) as usize;
+                if mosaic_len > 0 {
+                    let marker_index =
+                        (track.mosaic_grain_marker_write.load(Ordering::Relaxed) as usize)
+                            % MOSAIC_GRAIN_MARKER_COUNT;
+                    track.mosaic_grain_markers[marker_index].store(
+                        (grain_start[slot] as f32 / mosaic_len as f32).to_bits(),
+                        Ordering::Relaxed,
+                    );
+                    track.mosaic_grain_marker_write.store(
+                        ((marker_index + 1) % MOSAIC_GRAIN_MARKER_COUNT) as u32,
+                        Ordering::Relaxed,
+                    );
+                }
 
                 let detune = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
                 let detune_cents = detune * mosaic_detune * MOSAIC_DETUNE_CENTS;
-                grain_pitch =
+                grain_pitch[slot] =
                     base_pitch_ratio * 2.0f32.powf(detune_cents / 1200.0);
                 let pan_rand = next_mosaic_rand_unit(&mut rng_state) * 2.0 - 1.0;
-                grain_pan = (pan_rand * mosaic_spatial).clamp(-1.0, 1.0);
+                grain_pan[slot] = (pan_rand * mosaic_spatial).clamp(-1.0, 1.0);
 
-                grain_pos = 0.0;
+                grain_pos[slot] = 0.0;
+                grain_active[slot] = true;
+                last_grain_start = grain_start[slot];
+                last_grain_len = grain_len[slot];
             }
-            let read_pos = grain_start as f32 + grain_pos * grain_pitch;
-            let t = (grain_pos / grain_len as f32).clamp(0.0, 1.0);
-            let base_env = if t < 0.5 { t * 2.0 } else { (1.0 - t) * 2.0 };
-            let curve = if contour_bipolar >= 0.0 {
-                1.0 + contour_bipolar * 4.0
-            } else {
-                1.0 / (1.0 + (-contour_bipolar) * 4.0)
-            };
-            let env = base_env.powf(curve);
-            let (left_gain, right_gain, other_gain) = if num_channels >= 2 {
-                let pan = grain_pan.clamp(-1.0, 1.0);
-                let angle = (pan + 1.0) * 0.25 * PI;
-                let left = angle.cos();
-                let right = angle.sin();
-                (left, right, 0.5 * (left + right))
-            } else {
-                (1.0, 1.0, 1.0)
-            };
-            for channel_idx in 0..num_channels {
-                let src_channel = if channel_idx < mosaic_buffer.len() {
-                    channel_idx
+            for grain_idx in 0..MOSAIC_MAX_GRAINS {
+                if !grain_active[grain_idx] {
+                    continue;
+                }
+                let len = grain_len[grain_idx].max(1);
+                if grain_pos[grain_idx] >= len as f32 {
+                    grain_active[grain_idx] = false;
+                    continue;
+                }
+                let read_pos =
+                    grain_start[grain_idx] as f32 + grain_pos[grain_idx] * grain_pitch[grain_idx];
+                let t = (grain_pos[grain_idx] / len as f32).clamp(0.0, 1.0);
+                let base_env = if t < 0.5 { t * 2.0 } else { (1.0 - t) * 2.0 };
+                let curve = if contour_bipolar >= 0.0 {
+                    1.0 + contour_bipolar * 4.0
                 } else {
-                    0
+                    1.0 / (1.0 + (-contour_bipolar) * 4.0)
                 };
-                let sample_value = sample_at_linear_ring(
-                    &mosaic_buffer,
-                    src_channel,
-                    read_pos,
-                );
-                let wet = mosaic_wet;
-                let pan_gain = if channel_idx == 0 {
-                    left_gain
-                } else if channel_idx == 1 {
-                    right_gain
+                let env = base_env.powf(curve);
+                let (left_gain, right_gain, other_gain) = if num_channels >= 2 {
+                    let pan = grain_pan[grain_idx].clamp(-1.0, 1.0);
+                    let angle = (pan + 1.0) * 0.25 * PI;
+                    let left = angle.cos();
+                    let right = angle.sin();
+                    (left, right, 0.5 * (left + right))
                 } else {
-                    other_gain
+                    (1.0, 1.0, 1.0)
                 };
-                output[channel_idx][sample_idx] +=
-                    sample_value * env * MOSAIC_OUTPUT_GAIN * wet * pan_gain;
+                for channel_idx in 0..num_channels {
+                    let src_channel = if channel_idx < mosaic_buffer.len() {
+                        channel_idx
+                    } else {
+                        0
+                    };
+                    let sample_value = sample_at_linear_ring(
+                        &mosaic_buffer,
+                        src_channel,
+                        read_pos,
+                    );
+                    let wet = mosaic_wet;
+                    let pan_gain = if channel_idx == 0 {
+                        left_gain
+                    } else if channel_idx == 1 {
+                        right_gain
+                    } else {
+                        other_gain
+                    };
+                    output[channel_idx][sample_idx] +=
+                        sample_value * env * MOSAIC_OUTPUT_GAIN * wet * pan_gain;
+                }
+                grain_pos[grain_idx] += 1.0;
             }
-            grain_pos += 1.0;
         }
 
+        for idx in 0..MOSAIC_MAX_GRAINS {
+            track
+                .mosaic_grain_active[idx]
+                .store(grain_active[idx], Ordering::Relaxed);
+            track
+                .mosaic_grain_pos[idx]
+                .store(grain_pos[idx].to_bits(), Ordering::Relaxed);
+            track
+                .mosaic_grain_len[idx]
+                .store(grain_len[idx] as u32, Ordering::Relaxed);
+            track
+                .mosaic_grain_start[idx]
+                .store(grain_start[idx] as u32, Ordering::Relaxed);
+            track
+                .mosaic_grain_pitch[idx]
+                .store(grain_pitch[idx].to_bits(), Ordering::Relaxed);
+            track
+                .mosaic_grain_pan[idx]
+                .store(grain_pan[idx].to_bits(), Ordering::Relaxed);
+        }
         track
-            .mosaic_grain_pos
-            .store(grain_pos.to_bits(), Ordering::Relaxed);
+            .mosaic_spawn_phase
+            .store(spawn_phase.to_bits(), Ordering::Relaxed);
         track
-            .mosaic_grain_len
-            .store(grain_len as u32, Ordering::Relaxed);
+            .mosaic_last_grain_start
+            .store(last_grain_start as u32, Ordering::Relaxed);
         track
-            .mosaic_grain_wait
-            .store(grain_wait as u32, Ordering::Relaxed);
-        track
-            .mosaic_grain_start
-            .store(grain_start as u32, Ordering::Relaxed);
-        track
-            .mosaic_grain_pitch
-            .store(grain_pitch.to_bits(), Ordering::Relaxed);
-        track
-            .mosaic_grain_pan
-            .store(grain_pan.to_bits(), Ordering::Relaxed);
+            .mosaic_last_grain_len
+            .store(last_grain_len as u32, Ordering::Relaxed);
         track
             .mosaic_rng_state
             .store(rng_state, Ordering::Relaxed);
@@ -4281,6 +4723,7 @@ impl TLBX1 {
 
         if ring_wet > 0.0 {
             let decay_mode = track.ring_decay_mode.load(Ordering::Relaxed);
+            let ring_pre_post = track.ring_pre_post.load(Ordering::Relaxed);
             let decay_sec = 0.05 + ring_decay.clamp(0.0, 1.0) * 3.95;
             let decay_factor = (-1.0 / (decay_sec * sr)).exp();
             let pitch_bipolar = ring_pitch * 2.0 - 1.0;
@@ -4343,13 +4786,23 @@ impl TLBX1 {
                     } else if g_detune > 10.0 {
                         g_detune = 10.0;
                     }
-                    let v1 = (input - low - r * band) * g_detune;
+                    let waves_lfo = (waves_phase * 2.0 * PI).sin();
+                    let waves_mod =
+                        (1.0 - ring_waves) + ring_waves * (0.5 + 0.5 * waves_lfo);
+                    let noise_mod =
+                        (1.0 - ring_noise) + ring_noise * (0.5 + 0.5 * noise_value);
+                    let pre_modulated = if ring_pre_post {
+                        input
+                    } else {
+                        input * waves_mod * noise_mod
+                    };
+                    let v1 = (pre_modulated - low - r * band) * g_detune;
                     let v2 = band + v1;
                     low += v2;
                     band = v2;
                     low = low.clamp(-8.0, 8.0);
                     band = band.clamp(-8.0, 8.0);
-                    let high = input - low - r * band;
+                    let high = pre_modulated - low - r * band;
                     let filtered = if slope < 0.5 {
                         let t = slope / 0.5;
                         low + (band - low) * t
@@ -4365,14 +4818,13 @@ impl TLBX1 {
                         band *= band_decay;
                     }
                     let tone_mix = filtered + tone_bipolar * (high - low) * 0.5;
-                    let waves_lfo = (waves_phase * 2.0 * PI).sin();
-                    let waves_mod =
-                        (1.0 - ring_waves) + ring_waves * (0.5 + 0.5 * waves_lfo);
-                    let noise_mod =
-                        (1.0 - ring_noise) + ring_noise * (0.5 + 0.5 * noise_value);
+                    let post_modulated = if ring_pre_post {
+                        tone_mix * waves_mod * noise_mod
+                    } else {
+                        tone_mix
+                    };
                     output[channel_idx][sample_idx] =
-                        input * (1.0 - ring_wet)
-                            + tone_mix * ring_wet * waves_mod * noise_mod;
+                        input * (1.0 - ring_wet) + post_modulated * ring_wet;
                     if !low.is_finite() || !band.is_finite() || !output[channel_idx][sample_idx].is_finite() {
                         low = 0.0;
                         band = 0.0;
@@ -4780,10 +5232,31 @@ impl Plugin for TLBX1 {
                     }
 
                     let input = buffer.as_slice_immutable();
-                    let loop_start_norm =
-                        f32::from_bits(track.loop_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
-                    let loop_length_norm =
-                        f32::from_bits(track.loop_length.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let record_sample_rate = track.sample_rate.load(Ordering::Relaxed).max(1) as f32;
+        let target_loop_start =
+            f32::from_bits(track.loop_start.load(Ordering::Relaxed)).clamp(0.0, 0.999);
+        let target_loop_length =
+            f32::from_bits(track.loop_length.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+        let smooth_loop_start = smooth_param(
+            f32::from_bits(track.loop_start_smooth.load(Ordering::Relaxed)),
+            target_loop_start,
+            buffer.samples(),
+            record_sample_rate,
+        );
+        let smooth_loop_length = smooth_param(
+            f32::from_bits(track.loop_length_smooth.load(Ordering::Relaxed)),
+            target_loop_length,
+            buffer.samples(),
+            record_sample_rate,
+        );
+        track
+            .loop_start_smooth
+            .store(smooth_loop_start.to_bits(), Ordering::Relaxed);
+        track
+            .loop_length_smooth
+            .store(smooth_loop_length.to_bits(), Ordering::Relaxed);
+        let loop_start_norm = smooth_loop_start;
+        let loop_length_norm = smooth_loop_length;
                     let record_start = (loop_start_norm * RECORD_MAX_SAMPLES as f32) as usize;
                     let mut record_len =
                         (loop_length_norm * RECORD_MAX_SAMPLES as f32) as usize;
@@ -4869,12 +5342,10 @@ impl Plugin for TLBX1 {
 
         // Handle playback for all tracks
         let transport_running = any_playing;
-        for (track_idx, (track, syndrm_dsp)) in self
-            .tracks
-            .iter()
-            .zip(self.syndrm_dsp.iter_mut())
-            .enumerate()
-        {
+        for track_idx in 0..self.tracks.len() {
+            let track = &self.tracks[track_idx];
+            let syndrm_dsp = &mut self.syndrm_dsp[track_idx];
+            let animate_dsp = &mut self.animate_dsp[track_idx];
             if track.is_recording.load(Ordering::Relaxed) {
                 continue;
             }
@@ -4928,6 +5399,7 @@ impl Plugin for TLBX1 {
                 Self::process_animate(
                     track,
                     &mut self.track_buffer,
+                    animate_dsp,
                     buffer.samples(),
                     &self.global_tempo,
                     &self.animate_library,
@@ -5071,15 +5543,47 @@ impl Plugin for TLBX1 {
                     let loop_mode = track.loop_mode.load(Ordering::Relaxed);
                     let keylock_enabled = tape_keylock && loop_mode != 1 && loop_mode != 4;
                     let loop_active = loop_enabled && loop_mode != 2;
-                    let loop_start_norm =
+                    let track_sample_rate =
+                        track.sample_rate.load(Ordering::Relaxed).max(1) as f32;
+                    let target_loop_start =
                         f32::from_bits(track.loop_start.load(Ordering::Relaxed))
                             .clamp(0.0, 0.999);
-                    let loop_length_norm =
+                    let target_loop_length =
                         f32::from_bits(track.loop_length.load(Ordering::Relaxed))
                             .clamp(0.0, 1.0);
-                    let loop_xfade_norm =
+                    let target_loop_xfade =
                         f32::from_bits(track.loop_xfade.load(Ordering::Relaxed))
                             .clamp(0.0, 0.5);
+                    let smooth_loop_start = smooth_param(
+                        f32::from_bits(track.loop_start_smooth.load(Ordering::Relaxed)),
+                        target_loop_start,
+                        num_buffer_samples,
+                        track_sample_rate,
+                    );
+                    let smooth_loop_length = smooth_param(
+                        f32::from_bits(track.loop_length_smooth.load(Ordering::Relaxed)),
+                        target_loop_length,
+                        num_buffer_samples,
+                        track_sample_rate,
+                    );
+                    let smooth_loop_xfade = smooth_param(
+                        f32::from_bits(track.loop_xfade_smooth.load(Ordering::Relaxed)),
+                        target_loop_xfade,
+                        num_buffer_samples,
+                        track_sample_rate,
+                    );
+                    track
+                        .loop_start_smooth
+                        .store(smooth_loop_start.to_bits(), Ordering::Relaxed);
+                    track
+                        .loop_length_smooth
+                        .store(smooth_loop_length.to_bits(), Ordering::Relaxed);
+                    track
+                        .loop_xfade_smooth
+                        .store(smooth_loop_xfade.to_bits(), Ordering::Relaxed);
+                    let loop_start_norm = smooth_loop_start;
+                    let loop_length_norm = smooth_loop_length;
+                    let loop_xfade_norm = smooth_loop_xfade;
                     let output = buffer.as_slice();
                     let mut play_pos = f32::from_bits(track.play_pos.load(Ordering::Relaxed));
                     let mut keylock_phase =
@@ -5089,8 +5593,18 @@ impl Plugin for TLBX1 {
                     let mut keylock_grain_b =
                         f32::from_bits(track.keylock_grain_b.load(Ordering::Relaxed));
 
-                    let rotate_norm =
+                    let target_rotate =
                         f32::from_bits(track.tape_rotate.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+                    let smooth_rotate = smooth_param(
+                        f32::from_bits(track.tape_rotate_smooth.load(Ordering::Relaxed)),
+                        target_rotate,
+                        num_buffer_samples,
+                        track_sample_rate,
+                    );
+                    track
+                        .tape_rotate_smooth
+                        .store(smooth_rotate.to_bits(), Ordering::Relaxed);
+                    let rotate_norm = smooth_rotate;
                     let reverse_active = tape_reverse || loop_mode == 3;
                     let rotate_offset = (rotate_norm * num_samples as f32) as usize;
                     let loop_start = if reverse_active {
@@ -5183,8 +5697,18 @@ impl Plugin for TLBX1 {
                         play_pos = locked_pos;
                     }
                     let target_speed = if tape_freeze { 0.0 } else { tempo_speed };
-                    let glide =
+                    let target_glide =
                         f32::from_bits(track.tape_glide.load(Ordering::Relaxed)).clamp(0.0, 1.0);
+                    let smooth_glide = smooth_param(
+                        f32::from_bits(track.tape_glide_smooth.load(Ordering::Relaxed)),
+                        target_glide,
+                        num_buffer_samples,
+                        track_sample_rate,
+                    );
+                    track
+                        .tape_glide_smooth
+                        .store(smooth_glide.to_bits(), Ordering::Relaxed);
+                    let glide = smooth_glide;
                     let glide_factor = 1.0 + glide * 20.0;
                     let speed_step = if num_buffer_samples > 0 {
                         (target_speed - smooth_speed)
@@ -6182,15 +6706,20 @@ fn ring_rate_hz(rate_norm: f32, mode: u32, tempo: f32) -> f32 {
             + rate_norm * (RING_LFO_RATE_MAX_HZ - RING_LFO_RATE_MIN_HZ);
     }
 
-    let base = tempo.clamp(20.0, 300.0) / 60.0;
-    let factor = match mode {
-        1 => 1.0,
-        2 => 1.5,
-        3 => 2.0 / 3.0,
-        _ => 1.0,
-    };
-    let multiplier = 0.25 + rate_norm * 3.75;
-    (base * factor * multiplier).max(0.01)
+    let base_divisions = [
+        32.0, 16.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625,
+    ];
+    let idx = ((base_divisions.len() - 1) as f32 * rate_norm)
+        .round()
+        .clamp(0.0, (base_divisions.len() - 1) as f32) as usize;
+    let mut division = base_divisions[idx];
+    match mode {
+        2 => division *= 1.5,       // dotted
+        3 => division *= 2.0 / 3.0, // triplet
+        _ => {}
+    }
+    let bps = tempo.clamp(20.0, 300.0) / 60.0;
+    (bps / division).max(0.01)
 }
 
 fn ring_quantize_freq(freq: f32, scale_mode: u32) -> f32 {
@@ -6645,6 +7174,7 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("mosaic_rand_size".to_string(), f(&track.mosaic_rand_size));
     params.insert("mosaic_sos".to_string(), f(&track.mosaic_sos));
     params.insert("mosaic_enabled".to_string(), b(&track.mosaic_enabled));
+    params.insert("mosaic_loop_lock".to_string(), b(&track.mosaic_loop_lock));
     params.insert("ring_cutoff".to_string(), f(&track.ring_cutoff));
     params.insert("ring_resonance".to_string(), f(&track.ring_resonance));
     params.insert("ring_decay".to_string(), f(&track.ring_decay));
@@ -6662,6 +7192,7 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("ring_noise_rate".to_string(), f(&track.ring_noise_rate));
     params.insert("ring_noise_rate_mode".to_string(), u(&track.ring_noise_rate_mode));
     params.insert("ring_scale".to_string(), u(&track.ring_scale));
+    params.insert("ring_pre_post".to_string(), b(&track.ring_pre_post));
     params.insert("ring_enabled".to_string(), b(&track.ring_enabled));
     params.insert("g8_enabled".to_string(), b(&track.g8_enabled));
     params.insert("g8_rate_index".to_string(), u(&track.g8_rate_index));
@@ -6689,6 +7220,10 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
         params.insert(format!("animate_slot_filter_cutoff_{}", i), f(&track.animate_slot_filter_cutoff[i]));
         params.insert(format!("animate_slot_filter_resonance_{}", i), f(&track.animate_slot_filter_resonance[i]));
     }
+    params.insert("animate_slot_a_attack".to_string(), f(&track.animate_slot_a_attack));
+    params.insert("animate_slot_a_decay".to_string(), f(&track.animate_slot_a_decay));
+    params.insert("animate_slot_a_sustain".to_string(), f(&track.animate_slot_a_sustain));
+    params.insert("animate_slot_a_release".to_string(), f(&track.animate_slot_a_release));
 
     params.insert("animate_vector_x".to_string(), f(&track.animate_vector_x));
     params.insert("animate_vector_y".to_string(), f(&track.animate_vector_y));
@@ -6798,8 +7333,17 @@ fn capture_track_params(track: &Track, params: &mut HashMap<String, f32>) {
     params.insert("void_width".to_string(), f(&track.void_width));
     params.insert("void_close_decay".to_string(), f(&track.void_close_decay));
     params.insert("void_filter_cutoff".to_string(), f(&track.void_filter_cutoff));
+    params.insert(
+        "void_filter_cutoff_smooth".to_string(),
+        f(&track.void_filter_cutoff_smooth),
+    );
     params.insert("void_filter_resonance".to_string(), f(&track.void_filter_resonance));
+    params.insert(
+        "void_filter_resonance_smooth".to_string(),
+        f(&track.void_filter_resonance_smooth),
+    );
     params.insert("void_drive".to_string(), f(&track.void_drive));
+    params.insert("void_drive_smooth".to_string(), f(&track.void_drive_smooth));
     params.insert("void_filter_pre_drive".to_string(), b(&track.void_filter_pre_drive));
     params.insert("void_enabled".to_string(), b(&track.void_enabled));
 }
@@ -6827,7 +7371,9 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.tape_speed_smooth, "tape_speed");
     su(&track.tape_rate_mode, "tape_rate_mode");
     sf(&track.tape_rotate, "tape_rotate");
+    sf(&track.tape_rotate_smooth, "tape_rotate");
     sf(&track.tape_glide, "tape_glide");
+    sf(&track.tape_glide_smooth, "tape_glide");
     sf(&track.tape_sos, "tape_sos");
     sb(&track.tape_reverse, "tape_reverse");
     sb(&track.tape_freeze, "tape_freeze");
@@ -6835,9 +7381,12 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sb(&track.tape_monitor, "tape_monitor");
     sb(&track.tape_overdub, "tape_overdub");
     sf(&track.loop_start, "loop_start");
+    sf(&track.loop_start_smooth, "loop_start");
     sf(&track.trigger_start, "trigger_start");
     sf(&track.loop_length, "loop_length");
+    sf(&track.loop_length_smooth, "loop_length");
     sf(&track.loop_xfade, "loop_xfade");
+    sf(&track.loop_xfade_smooth, "loop_xfade");
     sb(&track.loop_enabled, "loop_enabled");
     su(&track.loop_mode, "loop_mode");
     su(&track.granular_type, "granular_type");
@@ -6855,6 +7404,7 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.mosaic_rand_size, "mosaic_rand_size");
     sf(&track.mosaic_sos, "mosaic_sos");
     sb(&track.mosaic_enabled, "mosaic_enabled");
+    sb(&track.mosaic_loop_lock, "mosaic_loop_lock");
     sf(&track.ring_cutoff, "ring_cutoff");
     sf(&track.ring_resonance, "ring_resonance");
     sf(&track.ring_decay, "ring_decay");
@@ -6872,6 +7422,7 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.ring_noise_rate, "ring_noise_rate");
     su(&track.ring_noise_rate_mode, "ring_noise_rate_mode");
     su(&track.ring_scale, "ring_scale");
+    sb(&track.ring_pre_post, "ring_pre_post");
     sb(&track.ring_enabled, "ring_enabled");
     track.g8_enabled.store(false, Ordering::Relaxed);
     track.g8_rate_index.store(0, Ordering::Relaxed);
@@ -6886,6 +7437,22 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     for i in 0..32 {
         sf(&track.g8_steps[i], &format!("g8_step_{}", i));
     }
+    track
+        .animate_slot_a_attack
+        .store(0.01f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_slot_a_decay
+        .store(0.1f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_slot_a_sustain
+        .store(0.8f32.to_bits(), Ordering::Relaxed);
+    track
+        .animate_slot_a_release
+        .store(0.3f32.to_bits(), Ordering::Relaxed);
+    sf(&track.animate_slot_a_attack, "animate_slot_a_attack");
+    sf(&track.animate_slot_a_decay, "animate_slot_a_decay");
+    sf(&track.animate_slot_a_sustain, "animate_slot_a_sustain");
+    sf(&track.animate_slot_a_release, "animate_slot_a_release");
 
     for i in 0..4 {
         su(&track.animate_slot_types[i], &format!("animate_slot_type_{}", i));
@@ -6996,13 +7563,20 @@ fn apply_track_params(track: &Track, params: &HashMap<String, f32>) {
     sf(&track.void_width, "void_width");
     sf(&track.void_close_decay, "void_close_decay");
     sf(&track.void_filter_cutoff, "void_filter_cutoff");
+    sf(&track.void_filter_cutoff_smooth, "void_filter_cutoff_smooth");
     sf(&track.void_filter_resonance, "void_filter_resonance");
+    sf(
+        &track.void_filter_resonance_smooth,
+        "void_filter_resonance_smooth",
+    );
     sf(&track.void_drive, "void_drive");
+    sf(&track.void_drive_smooth, "void_drive_smooth");
     sb(&track.void_filter_pre_drive, "void_filter_pre_drive");
     sb(&track.void_enabled, "void_enabled");
 }
 
 struct VoidSeedDspState {
+    sample_rate: f32,
     filter_moog: [Box<dyn AudioUnit>; 2],
     drive: Box<dyn AudioUnit>,
 }
@@ -7010,12 +7584,17 @@ struct VoidSeedDspState {
 impl VoidSeedDspState {
     fn new() -> Self {
         Self {
+            sample_rate: 0.0,
             filter_moog: [Box::new(moog()), Box::new(moog())],
             drive: Box::new(shape(Tanh(1.0))),
         }
     }
 
     fn set_sample_rate(&mut self, sr: f32) {
+        if (self.sample_rate - sr).abs() < f32::EPSILON {
+            return;
+        }
+        self.sample_rate = sr;
         let sr = sr as f64;
         self.filter_moog[0].set_sample_rate(sr);
         self.filter_moog[1].set_sample_rate(sr);
@@ -7737,6 +8316,36 @@ impl SlintWindow {
             f32::from_bits(self.tracks[track_idx].mosaic_rand_size.load(Ordering::Relaxed));
         let mosaic_sos =
             f32::from_bits(self.tracks[track_idx].mosaic_sos.load(Ordering::Relaxed));
+        let mosaic_enabled = self.tracks[track_idx].mosaic_enabled.load(Ordering::Relaxed);
+        let mosaic_loop_lock = self.tracks[track_idx].mosaic_loop_lock.load(Ordering::Relaxed);
+        let mosaic_grain_markers = if mosaic_enabled {
+            let mut markers = Vec::new();
+            for marker in &self.tracks[track_idx].mosaic_grain_markers {
+                let value = f32::from_bits(marker.load(Ordering::Relaxed));
+                if value >= 0.0 {
+                    markers.push(value.clamp(0.0, 1.0));
+                }
+            }
+            let track_sample_rate =
+                self.tracks[track_idx].sample_rate.load(Ordering::Relaxed) as usize;
+            let mosaic_len =
+                (track_sample_rate * MOSAIC_BUFFER_SECONDS).min(MOSAIC_BUFFER_SAMPLES);
+            if mosaic_len > 0 {
+                let grain_start =
+                    self.tracks[track_idx].mosaic_last_grain_start.load(Ordering::Relaxed)
+                        as usize;
+                let grain_len =
+                    self.tracks[track_idx].mosaic_last_grain_len.load(Ordering::Relaxed) as usize;
+                let start_pos = (grain_start % mosaic_len) as f32 / mosaic_len as f32;
+                let end_pos =
+                    ((grain_start + grain_len.min(mosaic_len)) % mosaic_len) as f32 / mosaic_len as f32;
+                markers.push(start_pos.clamp(0.0, 1.0));
+                markers.push(end_pos.clamp(0.0, 1.0));
+            }
+            markers
+        } else {
+            Vec::new()
+        };
         let ring_cutoff =
             f32::from_bits(self.tracks[track_idx].ring_cutoff.load(Ordering::Relaxed));
         let ring_resonance =
@@ -7769,6 +8378,7 @@ impl SlintWindow {
             self.tracks[track_idx].ring_noise_rate_mode.load(Ordering::Relaxed);
         let ring_scale =
             self.tracks[track_idx].ring_scale.load(Ordering::Relaxed);
+        let ring_pre_post = self.tracks[track_idx].ring_pre_post.load(Ordering::Relaxed);
         let loop_start =
             f32::from_bits(self.tracks[track_idx].loop_start.load(Ordering::Relaxed));
         let trigger_start =
@@ -7780,7 +8390,6 @@ impl SlintWindow {
         let loop_enabled =
             self.tracks[track_idx].loop_enabled.load(Ordering::Relaxed);
         let loop_mode = self.tracks[track_idx].loop_mode.load(Ordering::Relaxed);
-        let mosaic_enabled = self.tracks[track_idx].mosaic_enabled.load(Ordering::Relaxed);
         let ring_enabled = self.tracks[track_idx].ring_enabled.load(Ordering::Relaxed);
         let ring_decay_mode = self.tracks[track_idx].ring_decay_mode.load(Ordering::Relaxed);
         let g8_enabled = self.tracks[track_idx].g8_enabled.load(Ordering::Relaxed);
@@ -7997,6 +8606,14 @@ impl SlintWindow {
                 .animate_slot_filter_resonance[0]
                 .load(Ordering::Relaxed),
         );
+        let animate_slot_a_attack =
+            f32::from_bits(self.tracks[track_idx].animate_slot_a_attack.load(Ordering::Relaxed));
+        let animate_slot_a_decay =
+            f32::from_bits(self.tracks[track_idx].animate_slot_a_decay.load(Ordering::Relaxed));
+        let animate_slot_a_sustain =
+            f32::from_bits(self.tracks[track_idx].animate_slot_a_sustain.load(Ordering::Relaxed));
+        let animate_slot_a_release =
+            f32::from_bits(self.tracks[track_idx].animate_slot_a_release.load(Ordering::Relaxed));
         let animate_vector_x =
             f32::from_bits(self.tracks[track_idx].animate_vector_x.load(Ordering::Relaxed));
         let animate_vector_y =
@@ -8224,22 +8841,51 @@ impl SlintWindow {
         }
 
         let oscilloscope = if let Some(scope) = self.visualizer.oscilloscope.try_lock() {
-            scope.clone()
+            scope
+                .iter()
+                .map(|value| {
+                    if value.is_finite() {
+                        value.clamp(-1.0, 1.0)
+                    } else {
+                        0.0
+                    }
+                })
+                .collect()
         } else {
             vec![0.0; OSCILLOSCOPE_SAMPLES]
         };
         let spectrum = if let Some(spec) = self.visualizer.spectrum.try_lock() {
-            spec.clone()
+            spec.iter()
+                .map(|value| if value.is_finite() { value.max(0.0) } else { 0.0 })
+                .collect()
         } else {
             vec![0.0; SPECTRUM_BINS]
         };
         let vectorscope_x = if let Some(points) = self.visualizer.vectorscope_x.try_lock() {
-            points.clone()
+            points
+                .iter()
+                .map(|value| {
+                    if value.is_finite() {
+                        value.clamp(-1.0, 1.0)
+                    } else {
+                        0.0
+                    }
+                })
+                .collect()
         } else {
             vec![0.0; VECTORSCOPE_POINTS]
         };
         let vectorscope_y = if let Some(points) = self.visualizer.vectorscope_y.try_lock() {
-            points.clone()
+            points
+                .iter()
+                .map(|value| {
+                    if value.is_finite() {
+                        value.clamp(-1.0, 1.0)
+                    } else {
+                        0.0
+                    }
+                })
+                .collect()
         } else {
             vec![0.0; VECTORSCOPE_POINTS]
         };
@@ -8284,6 +8930,9 @@ impl SlintWindow {
         self.ui.set_mosaic_rand_rate(mosaic_rand_rate);
         self.ui.set_mosaic_rand_size(mosaic_rand_size);
         self.ui.set_mosaic_sos(mosaic_sos);
+        self.ui.set_mosaic_grain_markers(ModelRc::from(std::rc::Rc::new(
+            VecModel::from(mosaic_grain_markers),
+        )));
         self.ui.set_ring_cutoff(ring_cutoff);
         self.ui.set_ring_resonance(ring_resonance);
         self.ui.set_ring_decay(ring_decay);
@@ -8300,6 +8949,7 @@ impl SlintWindow {
         self.ui.set_ring_noise_rate(ring_noise_rate);
         self.ui.set_ring_noise_rate_mode(ring_noise_rate_mode as i32);
         self.ui.set_ring_scale(ring_scale as i32);
+        self.ui.set_ring_pre_post(ring_pre_post);
         self.ui.set_loop_start(loop_start);
         self.ui.set_trigger_start(trigger_start);
         self.ui.set_loop_length(loop_length);
@@ -8307,6 +8957,7 @@ impl SlintWindow {
         self.ui.set_loop_enabled(loop_enabled);
         self.ui.set_loop_mode(loop_mode as i32);
         self.ui.set_mosaic_enabled(mosaic_enabled);
+        self.ui.set_mosaic_loop_lock(mosaic_loop_lock);
         self.ui.set_ring_enabled(ring_enabled);
         self.ui.set_ring_decay_mode(ring_decay_mode as i32);
         self.ui.set_g8_enabled(g8_enabled);
@@ -8420,6 +9071,10 @@ impl SlintWindow {
             .set_animate_slot_a_filter_cutoff(animate_slot_a_filter_cutoff);
         self.ui
             .set_animate_slot_a_filter_resonance(animate_slot_a_filter_resonance);
+        self.ui.set_animate_slot_a_attack(animate_slot_a_attack);
+        self.ui.set_animate_slot_a_decay(animate_slot_a_decay);
+        self.ui.set_animate_slot_a_sustain(animate_slot_a_sustain);
+        self.ui.set_animate_slot_a_release(animate_slot_a_release);
 
         self.ui.set_animate_vector_x(animate_vector_x);
         self.ui.set_animate_vector_y(animate_vector_y);
@@ -8960,6 +9615,7 @@ fn initialize_ui(
         SharedString::from("Lowpass 12dB"),
         SharedString::from("Highpass"),
         SharedString::from("Bandpass"),
+        SharedString::from("Moog"),
     ])));
     ui.set_animate_lfo_waveforms(ModelRc::new(VecModel::from(vec![
         SharedString::from("Sine"),
@@ -9966,6 +10622,20 @@ fn initialize_ui(
         }
     });
 
+    let tracks_mosaic = Arc::clone(tracks);
+    let params_mosaic = Arc::clone(params);
+    ui.on_toggle_mosaic_loop_lock(move || {
+        let track_idx = params_mosaic.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let enabled = tracks_mosaic[track_idx]
+                .mosaic_loop_lock
+                .load(Ordering::Relaxed);
+            tracks_mosaic[track_idx]
+                .mosaic_loop_lock
+                .store(!enabled, Ordering::Relaxed);
+        }
+    });
+
     let tracks_ring = Arc::clone(tracks);
     let params_ring = Arc::clone(params);
     ui.on_ring_cutoff_changed(move |value| {
@@ -10130,6 +10800,18 @@ fn initialize_ui(
             tracks_ring[track_idx]
                 .ring_enabled
                 .store(!enabled, Ordering::Relaxed);
+        }
+    });
+
+    let tracks_ring = Arc::clone(tracks);
+    let params_ring = Arc::clone(params);
+    ui.on_toggle_ring_pre_post(move || {
+        let track_idx = params_ring.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            let pre_post = tracks_ring[track_idx].ring_pre_post.load(Ordering::Relaxed);
+            tracks_ring[track_idx]
+                .ring_pre_post
+                .store(!pre_post, Ordering::Relaxed);
         }
     });
 
@@ -10988,6 +11670,50 @@ fn initialize_ui(
         if track_idx < NUM_TRACKS {
             tracks_animate[track_idx]
                 .animate_slot_filter_resonance[0]
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_slot_a_attack_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_slot_a_attack
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_slot_a_decay_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_slot_a_decay
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_slot_a_sustain_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_slot_a_sustain
+                .store(value.to_bits(), Ordering::Relaxed);
+        }
+    });
+
+    let tracks_animate = Arc::clone(tracks);
+    let params_animate = Arc::clone(params);
+    ui.on_animate_slot_a_release_changed(move |value| {
+        let track_idx = params_animate.selected_track.value().saturating_sub(1) as usize;
+        if track_idx < NUM_TRACKS {
+            tracks_animate[track_idx]
+                .animate_slot_a_release
                 .store(value.to_bits(), Ordering::Relaxed);
         }
     });

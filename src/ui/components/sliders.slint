@@ -254,3 +254,83 @@ export component RDSSlider inherits Rectangle {
         }
     }
 }
+
+/*
+Component: RDSSimpSlider
+Description: A simple bar slider for step-style controls.
+Public members:
+- value: float - Current value
+- min-value: float - Minimum bounds
+- max-value: float - Maximum bounds
+- orientation: string - "vertical" or "horizontal"
+- slider-width: length - Width of the slider
+- slider-height: length - Height of the slider
+- background-color: color - Track/background color
+- fill-color: color - Fill color
+- border-clr: color - Border color
+- border-size: length - Border width
+- radius: length - Border radius
+- value-changed(float): callback - Triggered when value changes
+*/
+export component RDSSimpSlider inherits Rectangle {
+    in-out property <float> value: 0.0;
+    in-out property <float> min-value: 0.0;
+    in-out property <float> max-value: 1.0;
+    in-out property <string> orientation: "vertical";
+    in-out property <length> slider-width: 12px;
+    in-out property <length> slider-height: 120px;
+    in-out property <color> background-color: Theme.active.background_raised;
+    in-out property <color> fill-color: Theme.active.accent_secondary;
+    in-out property <color> border-clr: Theme.active.border_subtle;
+    in-out property <length> border-size: 1px;
+    in-out property <length> radius: 4px;
+
+    callback value-changed(float);
+
+    private property <bool> is-horizontal: root.orientation == "horizontal";
+    private property <float> normalized:
+        (root.value - root.min-value) / Math.max(0.0001, root.max-value - root.min-value);
+
+    width: root.slider-width;
+    height: root.slider-height;
+    clip: true;
+
+    background: root.background-color;
+    border-width: root.border-size;
+    border-color: root.border-clr;
+    border-radius: root.radius;
+
+    Rectangle {
+        x: root.is-horizontal ? 0px : 0px;
+        y: root.is-horizontal ? 0px : (parent.height - self.height);
+        width: root.is-horizontal ? (parent.width * root.normalized) : parent.width;
+        height: root.is-horizontal ? parent.height : (parent.height * root.normalized);
+        background: root.fill-color;
+        border-radius: Math.max(0px, root.radius - 1px);
+    }
+
+    TouchArea {
+        width: parent.width;
+        height: parent.height;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                let next = root.is-horizontal
+                    ? (self.mouse-x / Math.max(1px, self.width))
+                    : (1.0 - (self.mouse-y / Math.max(1px, self.height)));
+                let clamped = Math.max(0.0, Math.min(1.0, next));
+                root.value = root.min-value + clamped * (root.max-value - root.min-value);
+                root.value-changed(root.value);
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                let next = root.is-horizontal
+                    ? (self.mouse-x / Math.max(1px, self.width))
+                    : (1.0 - (self.mouse-y / Math.max(1px, self.height)));
+                let clamped = Math.max(0.0, Math.min(1.0, next));
+                root.value = root.min-value + clamped * (root.max-value - root.min-value);
+                root.value-changed(root.value);
+            }
+        }
+    }
+}

@@ -53,8 +53,8 @@ component KeybedKey inherits Rectangle {
             ? true
             : root.scale == "major"
                 ? (root.semitone == 0 || root.semitone == 2 || root.semitone == 4 ||
-                   root.semitone == 5 || root.semitone == 7 || root.semitone == 9 ||
-                   root.semitone == 11)
+                    root.semitone == 5 || root.semitone == 7 || root.semitone == 9 ||
+                    root.semitone == 11)
             : root.scale == "minor"
                 ? (root.semitone == 0 || root.semitone == 2 || root.semitone == 3 ||
                     root.semitone == 5 || root.semitone == 7 || root.semitone == 8 ||
@@ -186,8 +186,8 @@ export component RDSNumericKeypad {
     private property <string> input-display:
         root.input-has-value
             ? (root.input-negative ? "-" : "") +
-              root.input-int +
-              (root.input-decimal-active ? "." + root.input-decimal : "")
+                root.input-int +
+                (root.input-decimal-active ? "." + root.input-decimal : "")
             : "-";
     private property <float> parsed-input:
         root.input-has-value
@@ -543,12 +543,12 @@ export component RDSKeybed {
                         i == 5 ? 9 : 11;
                     note:
                         root.base-note + o * 12 +
-                        (i == 0 ? 0 :
-                         i == 1 ? 2 :
-                         i == 2 ? 4 :
-                         i == 3 ? 5 :
-                         i == 4 ? 7 :
-                         i == 5 ? 9 : 11);
+                            (i == 0 ? 0 :
+                            i == 1 ? 2 :
+                            i == 2 ? 4 :
+                            i == 3 ? 5 :
+                            i == 4 ? 7 :
+                            i == 5 ? 9 : 11);
                     triggered(note) => { root.note-triggered(note); }
                 }
             }

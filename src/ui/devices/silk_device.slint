@@ -18,8 +18,10 @@ export component SilkDevice {
     in-out property <float> ring-waves-rate: 0.5;
     in-out property <float> ring-noise: 0.0;
     in-out property <float> ring-noise-rate: 0.5;
+    in-out property <bool> ring-pre-post: true;
 
     callback toggle-ring-enabled();
+    callback toggle-ring-pre-post();
     callback ring-cutoff-changed(value: float);
     callback ring-resonance-changed(value: float);
     callback ring-decay-changed(value: float);
@@ -59,6 +61,17 @@ export component SilkDevice {
                     label-font-size: 11px;
                     label-font-weight: 500;
                     clicked => root.toggle-ring-enabled();
+                }
+                RDSCircleToggle {
+                    active: root.ring-pre-post;
+                    label: "Post";
+                    label-active: "Pre";
+                    label-pos: "left";
+                    label-color: #b9b9bf;
+                    label-active-color: Theme.active.text_primary;
+                    label-font-size: 11px;
+                    label-font-weight: 500;
+                    clicked => root.toggle-ring-pre-post();
                 }
             }
         }

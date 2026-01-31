@@ -27,6 +27,7 @@ export component TapeEngine inherits Rectangle {
     in property <int> playhead-index: 0;
     in property <bool> video-enabled: false;
     in property <image> video-frame;
+    in property <[float]> mosaic-grain-markers;
 
     in-out property <float> tape-speed: 1.0;
     in property <float> tape-tempo: 120.0;
@@ -138,6 +139,7 @@ export component TapeEngine inherits Rectangle {
         Math.round((root.loop-xfade / 0.5) * 100) + "%";
 
     in-out property <bool> mosaic-enabled: true;
+    in-out property <bool> mosaic-loop-lock: false;
     in-out property <float> mosaic-pitch: 0.0;
     in-out property <float> mosaic-rate: 0.5;
     in-out property <float> mosaic-size: 0.5;
@@ -168,6 +170,7 @@ export component TapeEngine inherits Rectangle {
     in-out property <float> ring-waves-rate: 0.5;
     in-out property <float> ring-noise: 0.0;
     in-out property <float> ring-noise-rate: 0.5;
+    in-out property <bool> ring-pre-post: true;
 
     in-out property <bool> g8-enabled: true;
     in-out property <int> g8-rate-index: 0;
@@ -205,6 +208,7 @@ export component TapeEngine inherits Rectangle {
     callback toggle-tape-overdub();
 
     callback toggle-mosaic-enabled();
+    callback toggle-mosaic-loop-lock();
     callback mosaic-pitch-changed(value: float);
     callback mosaic-rate-changed(value: float);
     callback mosaic-size-changed(value: float);
@@ -234,6 +238,7 @@ export component TapeEngine inherits Rectangle {
     callback ring-waves-rate-changed(value: float);
     callback ring-noise-changed(value: float);
     callback ring-noise-rate-changed(value: float);
+    callback toggle-ring-pre-post();
     callback toggle-g8-enabled();
     callback g8-rate-selected(index: int);
     callback g8-step-changed(index: int, value: float);
@@ -351,6 +356,11 @@ export component TapeEngine inherits Rectangle {
                             waveform: root.waveform;
                             waveform_time_labels: root.waveform_time_labels;
                             playhead-index: root.playhead-index;
+                            loop-start: root.loop-start;
+                            loop-length: root.loop-length;
+                            loop-enabled: root.loop-enabled;
+                            trigger-start: root.trigger-start;
+                            grain-markers: root.mosaic-grain-markers;
                         }
                         Image {
                             width: parent.width;
@@ -609,6 +619,7 @@ export component TapeEngine inherits Rectangle {
                     height: 250px;
                     GranulatorDevice {
                         mosaic-enabled <=> root.mosaic-enabled;
+                        mosaic-loop-lock <=> root.mosaic-loop-lock;
                         mosaic-pitch <=> root.mosaic-pitch;
                         mosaic-rate <=> root.mosaic-rate;
                         mosaic-size <=> root.mosaic-size;
@@ -636,6 +647,7 @@ export component TapeEngine inherits Rectangle {
                         mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
                         mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
                         mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
+                        toggle-mosaic-loop-lock => root.toggle-mosaic-loop-lock();
                     }
                 }
 
@@ -659,7 +671,9 @@ export component TapeEngine inherits Rectangle {
                         ring-waves-rate <=> root.ring-waves-rate;
                         ring-noise <=> root.ring-noise;
                         ring-noise-rate <=> root.ring-noise-rate;
+                        ring-pre-post <=> root.ring-pre-post;
                         toggle-ring-enabled => root.toggle-ring-enabled();
+                        toggle-ring-pre-post => root.toggle-ring-pre-post();
                         ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
                         ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
                         ring-decay-changed(value) => { root.ring-decay-changed(value); }

@@ -33,6 +33,7 @@ export component VoidSeedEngine {
     in property <[string]> ring-decay-modes;
 
     in-out property <bool> mosaic-enabled: true;
+    in-out property <bool> mosaic-loop-lock: false;
     in-out property <float> mosaic-pitch: 0.0;
     in-out property <float> mosaic-rate: 0.5;
     in-out property <float> mosaic-size: 0.5;
@@ -62,6 +63,7 @@ export component VoidSeedEngine {
     in-out property <float> ring-waves-rate: 0.5;
     in-out property <float> ring-noise: 0.0;
     in-out property <float> ring-noise-rate: 0.5;
+    in-out property <bool> ring-pre-post: true;
 
     in-out property <bool> g8-enabled: true;
     in-out property <int> g8-rate-index: 0;
@@ -84,6 +86,7 @@ export component VoidSeedEngine {
     callback toggle-void();
     callback toggle-track-mute();
     callback toggle-mosaic-enabled();
+    callback toggle-mosaic-loop-lock();
     callback mosaic-pitch-changed(float);
     callback mosaic-rate-changed(float);
     callback mosaic-size-changed(float);
@@ -112,6 +115,7 @@ export component VoidSeedEngine {
     callback ring-waves-rate-changed(float);
     callback ring-noise-changed(float);
     callback ring-noise-rate-changed(float);
+    callback toggle-ring-pre-post();
     callback toggle-g8-enabled();
     callback g8-rate-selected(int);
     callback g8-step-changed(int, float);
@@ -392,6 +396,7 @@ export component VoidSeedEngine {
                     height: 250px;
                     GranulatorDevice {
                         mosaic-enabled <=> root.mosaic-enabled;
+                        mosaic-loop-lock <=> root.mosaic-loop-lock;
                         mosaic-pitch <=> root.mosaic-pitch;
                         mosaic-rate <=> root.mosaic-rate;
                         mosaic-size <=> root.mosaic-size;
@@ -419,12 +424,14 @@ export component VoidSeedEngine {
                         mosaic-rand-rate-changed(value) => { root.mosaic-rand-rate-changed(value); }
                         mosaic-rand-size-changed(value) => { root.mosaic-rand-size-changed(value); }
                         mosaic-sos-changed(value) => { root.mosaic-sos-changed(value); }
+                        toggle-mosaic-loop-lock => root.toggle-mosaic-loop-lock();
                     }
                 }
 
                 // Silk Device
                 Rectangle {
                     width: (parent.width - 16px) / 2 - 15px;
+                    height: 250px;
                     SilkDevice {
                         ring-enabled <=> root.ring-enabled;
                         ring-cutoff <=> root.ring-cutoff;
@@ -442,7 +449,9 @@ export component VoidSeedEngine {
                         ring-waves-rate <=> root.ring-waves-rate;
                         ring-noise <=> root.ring-noise;
                         ring-noise-rate <=> root.ring-noise-rate;
+                        ring-pre-post <=> root.ring-pre-post;
                         toggle-ring-enabled => root.toggle-ring-enabled();
+                        toggle-ring-pre-post => root.toggle-ring-pre-post();
                         ring-cutoff-changed(value) => { root.ring-cutoff-changed(value); }
                         ring-resonance-changed(value) => { root.ring-resonance-changed(value); }
                         ring-decay-changed(value) => { root.ring-decay-changed(value); }

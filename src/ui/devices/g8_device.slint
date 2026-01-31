@@ -1,5 +1,5 @@
 import { Theme } from "../theme/index.slint";
-import { RDSHeaderLabel, RDSCircleToggle, RDSComboBox } from "../components/index.slint";
+import { RDSHeaderLabel, RDSCircleToggle, RDSComboBox, RDSSimpSlider } from "../components/index.slint";
 
 /*
 Device: G8
@@ -79,41 +79,21 @@ export component G8Device {
                 spacing: root.bar-spacing;
                 alignment: center;
 
-                for s in 32 : Rectangle {
-                    width: root.bar-width;
-                    height: parent.height;
-                    background: Theme.active.background_raised;
-                    border-width: 1px;
-                    border-color: Theme.active.border_subtle;
-                    border-radius: 4px;
-                    clip: true;
-
-                    Rectangle {
-                        x: 0px;
-                        width: parent.width;
-                        height: parent.height * root.gate-steps[s];
-                        y: parent.height - self.height;
-                        background: Theme.active.accent_secondary;
-                        border-radius: 3px;
-                    }
-
-                    TouchArea {
-                        width: parent.width;
-                        height: parent.height;
-                        pointer-event(event) => {
-                            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                                let next = Math.max(0.0, Math.min(1.0, 1.0 - (self.mouse-y / self.height)));
-                                root.gate-steps[s] = next;
-                                root.gate-step-changed(s, next);
-                            }
-                        }
-                        moved => {
-                            if (self.pressed) {
-                                let next = Math.max(0.0, Math.min(1.0, 1.0 - (self.mouse-y / self.height)));
-                                root.gate-steps[s] = next;
-                                root.gate-step-changed(s, next);
-                            }
-                        }
+                for s in 32 : RDSSimpSlider {
+                    slider-width: root.bar-width;
+                    slider-height: parent.height;
+                    orientation: "vertical";
+                    value: root.gate-steps[s];
+                    min-value: 0.0;
+                    max-value: 1.0;
+                    background-color: Theme.active.background_raised;
+                    fill-color: Theme.active.accent_secondary;
+                    border-clr: Theme.active.border_subtle;
+                    border-size: 1px;
+                    radius: 4px;
+                    value-changed(v) => {
+                        root.gate-steps[s] = v;
+                        root.gate-step-changed(s, v);
                     }
                 }
             }
